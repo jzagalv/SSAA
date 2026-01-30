@@ -1,0 +1,503 @@
+/* =========================================================
+   RESET / BASE
+   ========================================================= */
+* {
+    font-family: "Segoe UI", "Arial";
+}
+
+QWidget { font-size: 9pt; }
+QWidget {
+    background: {{BG}};
+    color: {{TEXT}};
+}
+
+/* =========================================================
+   VENTANAS Y CONTENEDORES
+   ========================================================= */
+QMainWindow {
+    background: {{BG}};
+}
+
+QFrame, QGroupBox {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    border-radius: 6px;
+}
+
+QGroupBox {
+    margin-top: 12px;
+    padding-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 6px;
+    color: {{BRAND}};
+    font-weight: 600;
+}
+
+/* =========================================================
+   BOTONES
+   ========================================================= */
+QPushButton {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+    border: 1px solid {{PRIMARY}};
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+
+QPushButton:hover {
+    background: {{PRIMARY_HOVER}};
+}
+
+QPushButton:pressed {
+    background: {{PRIMARY_PRESSED}};
+}
+
+QPushButton:disabled {
+    background: #CFE6C7;
+    color: {{TEXT_MUTED}};
+    border-color: #CFE6C7;
+}
+
+/* Botones secundarios */
+QPushButton[role="secondary"] {
+    background: {{SURFACE}};
+    color: {{TEXT}};
+    border: 1px solid {{BORDER}};
+}
+
+QPushButton[role="secondary"]:hover {
+    background: #E9EEF3;
+}
+
+/* Botones peligrosos */
+QPushButton[role="danger"] {
+    background: #C62828;
+    border-color: #C62828;
+    color: {{ON_DARK}};
+}
+
+QPushButton[role="danger"]:hover {
+    background: #B71C1C;
+}
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+QLineEdit,
+QSpinBox,
+QDoubleSpinBox,
+QComboBox,
+QDateEdit {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    border-radius: 6px;
+    /* Compact, CAD-like */
+    padding: 2px 6px;
+    min-height: 20px;
+}
+
+QLineEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QComboBox:focus {
+    border: 2px solid {{PRIMARY}};
+}
+
+QComboBox:disabled {
+    background: #ECEFF3;
+    color: {{TEXT_MUTED}};
+}
+
+QComboBox QAbstractItemView {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    selection-background-color: {{PRIMARY}};
+    selection-color: {{ON_DARK}};
+}
+
+/* =========================================================
+   CHECKBOX / RADIO
+   ========================================================= */
+QCheckBox {
+    spacing: 6px;
+}
+
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+}
+
+QCheckBox::indicator:unchecked {
+    border: 1px solid {{BORDER}};
+    background: {{SURFACE}};
+}
+
+QCheckBox::indicator:checked {
+    background: {{PRIMARY}};
+    border: 1px solid {{PRIMARY}};
+}
+
+/* =========================================================
+   TAB WIDGET
+   ========================================================= */
+QTabWidget::pane {
+    border: 1px solid {{BORDER}};
+    background: {{SURFACE}};
+}
+
+QTabBar::tab {
+    background: #E6EBF0;
+    padding: 8px 14px;
+    border: 1px solid {{BORDER}};
+    border-bottom: none;
+    color: {{TEXT}};
+}
+
+QTabBar::tab:selected {
+    background: {{SURFACE}};
+    border-top: 3px solid {{PRIMARY}};
+    font-weight: 600;
+}
+
+QTabBar::tab:hover {
+    background: #EDF2F7;
+}
+
+/* =========================================================
+   TABLAS
+   ========================================================= */
+QTableWidget {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    gridline-color: {{BORDER}};
+    /* Se activa vía make_table_sortable(...). Si alguna tabla no alterna,
+       no afecta visualmente. */
+    alternate-background-color: #f7f9fb;
+}
+
+QTableWidget::item {
+    /* Más compacto, estilo CAD */
+    padding: 3px 6px;
+    border: none;
+    /* Evitar texto blanco sobre fondo claro */
+    color: #1F2937;
+}
+
+/* Celdas editables en tablas (user editable) */
+QTableWidget::item:editable {
+    background: #FFF9C4; /* amarillo muy tenue */
+}
+
+/* ---------------------------------------------------------
+   Campos modificables por el usuario
+   - Regla general: inputs editables (no read-only)
+   - Regla específica: widgets marcados desde código con userField="true"
+   --------------------------------------------------------- */
+
+/* Inputs editables (no read-only) */
+QLineEdit:!read-only,
+QAbstractSpinBox:!read-only {
+    background: #FFF9C4; /* amarillo muy tenue */
+}
+
+/* Combobox habilitado (selección del usuario) */
+QComboBox:enabled {
+    background: #FFF9C4; /* amarillo muy tenue */
+}
+
+/* Overrides explícitos desde código */
+QLineEdit[userField="true"],
+QComboBox[userField="true"],
+QDoubleSpinBox[userField="true"],
+QSpinBox[userField="true"] {
+    background: #FFF9C4; /* amarillo muy tenue */
+}
+
+QHeaderView::section {
+    background: {{BRAND}};
+    color: {{ON_DARK}};
+    padding: 4px 6px;
+    border: 1px solid {{BRAND_DARK}};
+    font-weight: 600;
+}
+
+QTableWidget::item:selected {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+}
+
+/* Resalte suave al pasar el mouse (útil cuando las tablas no tienen selección) */
+QTableWidget::item:hover {
+    background: #eef5ff;
+}
+
+QTableCornerButton::section {
+    background: {{BRAND}};
+    border: 1px solid {{BRAND_DARK}};
+}
+
+/* =========================================================
+   MENÚ SUPERIOR
+   ========================================================= */
+QMenuBar {
+    background: {{BRAND}};
+    color: {{ON_DARK}};
+}
+
+QMenuBar::item:selected {
+    background: {{BRAND_DARK}};
+}
+
+QMenu {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+}
+
+QMenu::item:selected {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+}
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+QScrollBar:vertical {
+    background: #E6EBF0;
+    width: 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: {{PRIMARY}};
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: {{PRIMARY_HOVER}};
+}
+
+/* =========================================================
+   MESSAGE BOX / DIÁLOGOS — MODERNO LIMPIO (SIN CAJAS INTERNAS)
+   ========================================================= */
+QMessageBox {
+    background: {{SURFACE}};
+}
+
+/* Eliminar marcos internos que generan “rectángulos” */
+QMessageBox QFrame {
+    background: transparent;
+    border: none;
+}
+
+/* Texto del mensaje */
+QMessageBox QLabel {
+    background: transparent;
+    color: {{TEXT}};
+    font-size: 9.5pt;
+    padding: 6px 4px;
+    min-width: 420px;
+}
+
+/* Botones (consistentes con la app) */
+QMessageBox QPushButton {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+    border: 1px solid {{PRIMARY}};
+    border-radius: 6px;
+    padding: 6px 16px;
+    min-width: 90px;
+}
+
+QMessageBox QPushButton:hover {
+    background: {{PRIMARY_HOVER}};
+}
+
+QMessageBox QPushButton:pressed {
+    background: {{PRIMARY_PRESSED}};
+}
+
+/* Botones secundarios dentro de QMessageBox */
+QMessageBox QPushButton:!default {
+    background: #E6E6E6;
+    color: {{TEXT}};
+    border: 1px solid {{BORDER}};
+}
+
+QMessageBox QPushButton:!default:hover {
+    background: #DADADA;
+}
+
+
+/* =========================================================
+   ULTIMAS MODIFICACIONES PARA BOARD_FEED_SCREEN.PY
+   ========================================================= */
+
+/* Estado visual para widgets dentro de tablas cuando la fila está “activa” */
+QWidget[state="selected"] {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+}
+
+/* Asegura que combobox dentro de fila seleccionada tome el fondo */
+QComboBox[state="selected"] {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+    border: 1px solid {{PRIMARY}};
+}
+
+QGroupBox[role="panel"] {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    border-radius: 6px;
+}
+
+/* =========================
+   COMBOBOX MODERNO (SIN IMAGEN) — UNIFICADO
+   ========================= */
+QComboBox {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    border-radius: 8px;
+    /* Compacto para que se alinee bien dentro de QTableWidget */
+    padding: 1px 22px 1px 8px;   /* deja espacio para la flecha */
+    min-height: 20px;
+}
+
+QComboBox:hover {
+    border: 1px solid {{BORDER}};
+}
+
+QComboBox:focus {
+    border: 2px solid {{PRIMARY}};
+}
+
+/* Área del botón (el “rectángulo raro” venía de aquí) */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border: none;
+    background: transparent;
+}
+
+/* Flecha nativa */
+QComboBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+
+/* Combos dentro de tablas: sin margen, calce compacto */
+QTableWidget QComboBox {
+    margin: 0px;
+    border-radius: 6px;
+    min-height: 18px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+QTableWidget QCheckBox {
+    padding: 0px;
+}
+
+/* Popup */
+QComboBox QAbstractItemView {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    outline: none;
+    padding: 6px;
+    selection-background-color: {{PRIMARY}};
+    selection-color: {{ON_DARK}};
+}
+
+QComboBox:disabled {
+    background: #ECEFF3;
+    color: {{TEXT_MUTED}};
+    border: 1px solid {{BORDER}};
+}
+
+
+/* =========================================================
+   CAMPOS EDITABLES — INDICADOR VISUAL
+   ========================================================= */
+
+/* Celdas editables (texto) */
+QTableWidget::item[editable="true"] {
+    background: #FFF9DB;           /* amarillo muy tenue */
+    color: {{TEXT}};
+}
+
+/* Hover para reforzar interacción */
+QTableWidget::item[editable="true"]:hover {
+    background: #FFF3BF;
+}
+
+/* Widgets editables dentro de tablas */
+QLineEdit[editable="true"],
+QComboBox[editable="true"],
+QSpinBox[editable="true"],
+QDoubleSpinBox[editable="true"] {
+    background: #FFF9DB;
+    border: 1px solid #E0C97F;
+}
+
+/* Focus */
+QLineEdit[editable="true"]:focus,
+QComboBox[editable="true"]:focus,
+QSpinBox[editable="true"]:focus,
+QDoubleSpinBox[editable="true"]:focus {
+    border: 2px solid {{PRIMARY}};
+}
+
+
+/* =========================================================
+   ESTILOS ESPECÍFICOS POR PANTALLA (evitar setStyleSheet inline)
+   ========================================================= */
+
+/* Título de página */
+QLabel#pageTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: {{TEXT}};
+}
+
+/* Texto “muted” (mensajes / hints) */
+QLabel[mutedHint="true"] {
+    color: {{TEXT_MUTED}};
+}
+
+/* Label de capa en Diseñador */
+QLabel#designerLayerLabel {
+    font-weight: 600;
+    color: {{TEXT}};
+}
+
+/* Checkbox centrado en celda de tabla */
+QCheckBox[centeredCell="true"] {
+    margin-left: 50%;
+    margin-right: 50%;
+}
+
+/* Bank & Charger: pantalla negra (migrado desde screen.py) */
+QWidget#bank_black_screen {
+    background-color: #000000;
+}
+
+QWidget#bank_black_screen QGroupBox {
+    background: {{SURFACE}};
+    border: 1px solid {{BORDER}};
+    border-radius: 10px;
+    margin-top: 12px;
+    padding: 8px;
+}
+
+QWidget#bank_black_screen QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 2px 6px;
+    color: {{TEXT}};
+    font-weight: 700;
+}

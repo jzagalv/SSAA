@@ -1,0 +1,17 @@
+include README.md
+include CHANGELOG.md
+include LICENSE*
+include version.json
+include requirements.txt
+include FREEZE.md
+include INSTRUCCIONES_LICENCIA.md
+include LICENSING_TODO.md
+
+recursive-include resources *
+recursive-include docs *
+recursive-include scripts *
+
+# Exclude caches/build artifacts
+recursive-exclude __pycache__ *
+recursive-exclude .pytest_cache *
+recursive-exclude build *

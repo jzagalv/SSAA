@@ -1,0 +1,1 @@
+# Cabinet domain model placeholder

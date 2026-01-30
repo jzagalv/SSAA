@@ -1,0 +1,22 @@
+# -*- coding: utf-8 -*-
+"""
+{{controller_class}} (template)
+- No PyQt widgets creation here.
+- Operaciones delegan a services/core.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+class {{controller_class}}:
+    def __init__(self, data_model, view: Any):
+        self.data_model = data_model
+        self.view = view
+
+    def refresh(self) -> None:
+        # TODO: pull data from data_model/services and update view widgets
+        pass
+
+    def on_example_clicked(self) -> None:
+        # TODO: business action (service call) + then notify section changed if needed
+        pass

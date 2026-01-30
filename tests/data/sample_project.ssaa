@@ -1,0 +1,64 @@
+{
+  "_meta": {
+    "version": 1,
+    "created": "2026-01-01"
+  },
+  "proyecto": {
+    "nombre": "Sample S/E",
+    "frecuencia": 50
+  },
+  "instalaciones": {
+    "salas": [
+      [
+        "S1",
+        "Sala Control"
+      ]
+    ],
+    "gabinetes": [
+      {
+        "tag": "TAB-AC-01",
+        "nombre": "Tablero AC Servicios Aux.",
+        "sala": "S1",
+        "is_board": true,
+        "components": [
+          {
+            "base": "MCB",
+            "name": "Interruptor principal",
+            "pos": {
+              "x": 10,
+              "y": 20
+            },
+            "size": {
+              "w": 120,
+              "h": 40
+            }
+          }
+        ]
+      },
+      {
+        "tag": "TAB-DC-01",
+        "nombre": "Tablero DC 125V",
+        "sala": "S1",
+        "is_board": true
+      }
+    ]
+  },
+  "salas": [
+    [
+      "S1",
+      "Sala Control"
+    ]
+  ],
+  "gabinetes": [
+    [
+      "TAB-AC-01",
+      "Tablero AC Servicios Aux.",
+      "S1"
+    ],
+    [
+      "TAB-DC-01",
+      "Tablero DC 125V",
+      "S1"
+    ]
+  ]
+}

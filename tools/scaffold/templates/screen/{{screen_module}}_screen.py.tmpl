@@ -1,0 +1,36 @@
+# -*- coding: utf-8 -*-
+"""
+{{screen_class}} - Pantalla SSAA (template)
+- UI only: widgets + señales
+- lógica: delega en {{screen_module}}_controller.py
+"""
+from __future__ import annotations
+
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from app.section import Section
+
+from .{{screen_module}}_controller import {{controller_class}}
+
+class {{screen_class}}(QWidget):
+    SECTION = Section.{{section_enum}}
+
+    def __init__(self, data_model):
+        super().__init__()
+        self.data_model = data_model
+        self._controller = {{controller_class}}(data_model=data_model, view=self)
+        self._build_ui()
+        self._wire_signals()
+
+    def _build_ui(self) -> None:
+        lay = QVBoxLayout(self)
+        lay.addWidget(QLabel("{{screen_class}}"))
+        self.btn_example = QPushButton("Ejecutar ejemplo")
+        lay.addWidget(self.btn_example)
+        lay.addStretch(1)
+
+    def _wire_signals(self) -> None:
+        self.btn_example.clicked.connect(self._controller.on_example_clicked)
+
+    # Public update entrypoint (called by orchestrator)
+    def refresh(self) -> None:
+        self._controller.refresh()

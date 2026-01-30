@@ -1,0 +1,15 @@
+{
+  "project": "SSAA",
+  "stage": "Stage1",
+  "step": "4A.7",
+  "description": "v11-lite: CI minimal (tests + arquitectura), sin pre-commit/ruff obligatorios.",
+  "breaking_changes": false,
+  "frozen": false,
+  "semver": "1.4.0-alpha.67",
+  "version": "1.4.0-alpha.68.1",
+  "build": 64,
+  "notes": "v11: agrega GitHub Actions (CI + build Windows), ruff + formateo, y pre-commit para mantener calidad y límites de capas.",
+  "name": "SSAA_stage1_step_4A7",
+  "date": "2026-01-01",
+  "channel": "alpha"
+}

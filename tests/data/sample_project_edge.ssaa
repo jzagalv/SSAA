@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "created_by": "tests",
+    "note": "edge sample"
+  },
+  "proyecto": {
+    "nombre": "Sample Edge",
+    "frecuencia": "50"
+  },
+  "gabinetes": [
+    {
+      "nombre": "Gab sin ID",
+      "tableros": [
+        {
+          "nombre": "T1"
+        }
+      ]
+    }
+  ],
+  "ssaa_topology_layers": [
+    "should",
+    "be",
+    "dict"
+  ]
+}

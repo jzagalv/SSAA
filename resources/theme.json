@@ -1,0 +1,16 @@
+{
+  "PRIMARY": "#40A018",
+  "PRIMARY_HOVER": "#338514",
+  "PRIMARY_PRESSED": "#2A6F10",
+
+  "BRAND": "#204058",
+  "BRAND_DARK": "#002848",
+
+  "BG": "#F6F7F9",
+  "SURFACE": "#FFFFFF",
+  "BORDER": "#D7DDE5",
+
+  "TEXT": "#111111",
+  "TEXT_MUTED": "#5B6775",
+  "ON_DARK": "#FFFFFF"
+}

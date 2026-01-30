@@ -1,0 +1,14 @@
+{
+  "file_type": "SSAA_LIB_MATERIALES",
+  "schema_version": 1,
+  "name": "Ejemplo materiales",
+  "mcb": [
+    {
+      "serie": "MCB",
+      "tipo": "1P",
+      "curva": "C",
+      "in_a": 10
+    }
+  ],
+  "cables": []
+}

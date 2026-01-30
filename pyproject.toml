@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssaa-designer"
+version = "1.4.0-alpha.62"
+description = "SSAA Designer - Stage1 Step 4A.7"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Proprietary"}
+authors = [{name = "I-SEP"}]
+
+# Keep runtime deps minimal here; deployments may pin via requirements.txt
+dependencies = [
+  "PyQt5>=5.15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+ssaa = "ssaa.__main__:__main__"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+  "ssaa",
+  "app*",
+  "cabinet*",
+  "core*",
+  "domain*",
+  "infra*",
+  "screens*",
+  "services*",
+  "storage*",
+  "ui*",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

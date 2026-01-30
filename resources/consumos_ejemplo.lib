@@ -1,0 +1,17 @@
+{
+  "file_type": "SSAA_LIB_CONSUMOS",
+  "schema_version": 1,
+  "name": "Ejemplo consumos",
+  "items": [
+    {
+      "name": "RTU",
+      "marca": "Genérico",
+      "modelo": "----",
+      "potencia_w": 60,
+      "potencia_va": null,
+      "usar_va": false,
+      "tipo_consumo": "C.C. permanente",
+      "fase": "1F"
+    }
+  ]
+}

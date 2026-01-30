@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "created_by": "tests",
+    "note": "modern sample"
+  },
+  "project_version": 4,
+  "proyecto": {
+    "nombre": "Sample Modern",
+    "frecuencia_hz": 50
+  },
+  "instalaciones": {
+    "gabinetes": [
+      {
+        "id": "GAB-001",
+        "nombre": "Gabinete 1",
+        "salas": [
+          "S1"
+        ]
+      }
+    ]
+  },
+  "salas": [
+    {
+      "id": "S1",
+      "nombre": "Sala 1"
+    }
+  ],
+  "gabinetes": [],
+  "ssaa_topology_layers": {
+    "MAIN": {
+      "nodes": [
+        {
+          "id": "N1",
+          "type": "board",
+          "name": "TDF"
+        }
+      ],
+      "edges": []
+    }
+  }
+}

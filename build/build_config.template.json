@@ -1,0 +1,6 @@
+{
+  "LICENSE_MODE": "offline",
+  "LICENSE_GRACE_DAYS": 7,
+  "LICENSE_TOKEN_URL": "https://<tu_onedrive_o_sharepoint>/token.jwt",
+  "LICENSE_PUBLIC_KEY_PEM": "-----BEGIN PUBLIC KEY-----\n<PEGA_AQUI_TU_PUBLIC_KEY>\n-----END PUBLIC KEY-----\n"
+}
