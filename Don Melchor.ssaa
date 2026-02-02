@@ -179,7 +179,8 @@
             "p_total": 350.0,
             "i_total": 3.7433155080213902
           }
-        }
+        },
+        "momentary_signature": "bd05bdc874316b94aeec2d6b822f08b06a53df4d"
       }
     },
     "bb_ah_calculada": 430.50408125,
@@ -206,77 +207,9 @@
       "charger_k_alt": 1.0
     },
     "validation_issues_by_section": {
-      "project": [
-        {
-          "code": "PROJ_MISSING_FIELD",
-          "msg": "Falta Nombre de proyecto en 'Proyecto'.",
-          "level": "warn",
-          "context": "nombre_proyecto"
-        },
-        {
-          "code": "PROJ_MISSING_FIELD",
-          "msg": "Falta Cliente en 'Proyecto'.",
-          "level": "warn",
-          "context": "cliente"
-        },
-        {
-          "code": "PROJ_VCC_INVALID",
-          "msg": "La tensión C.C. (Vcc/V_CC) no está definida o es inválida.",
-          "level": "warn",
-          "context": "v_cc"
-        }
-      ],
-      "instalaciones": [],
-      "cabinet": [],
-      "cc": [
-        {
-          "code": "CC_VCC_INVALID",
-          "msg": "Vcc para cálculo C.C. no está definida o es inválida.",
-          "level": "error",
-          "context": "v_cc"
-        }
-      ],
-      "bank_charger": [
-        {
-          "code": "BC_VCC_INVALID",
-          "msg": "No se puede dimensionar banco/cargador sin Vcc válido.",
-          "level": "error",
-          "context": "v_cc"
-        }
-      ]
+      "instalaciones": []
     },
-    "validation_issues": [
-      {
-        "code": "PROJ_MISSING_FIELD",
-        "msg": "Falta Nombre de proyecto en 'Proyecto'.",
-        "level": "warn",
-        "context": "nombre_proyecto"
-      },
-      {
-        "code": "PROJ_MISSING_FIELD",
-        "msg": "Falta Cliente en 'Proyecto'.",
-        "level": "warn",
-        "context": "cliente"
-      },
-      {
-        "code": "PROJ_VCC_INVALID",
-        "msg": "La tensión C.C. (Vcc/V_CC) no está definida o es inválida.",
-        "level": "warn",
-        "context": "v_cc"
-      },
-      {
-        "code": "CC_VCC_INVALID",
-        "msg": "Vcc para cálculo C.C. no está definida o es inválida.",
-        "level": "error",
-        "context": "v_cc"
-      },
-      {
-        "code": "BC_VCC_INVALID",
-        "msg": "No se puede dimensionar banco/cargador sin Vcc válido.",
-        "level": "error",
-        "context": "v_cc"
-      }
-    ]
+    "validation_issues": []
   },
   "instalaciones": {
     "ubicaciones": [
@@ -3716,7 +3649,7 @@
         "cc_b2": false,
         "ca_esencial": true,
         "ca_no_esencial": false,
-        "is_energy_source": false
+        "is_energy_source": true
       },
       {
         "id": "c7dcfc17-bddc-403f-8215-20fb000fbfed",
@@ -3730,7 +3663,7 @@
         "cc_b2": false,
         "ca_esencial": true,
         "ca_no_esencial": false,
-        "is_energy_source": false
+        "is_energy_source": true
       },
       {
         "id": "1f45d160-c03b-42df-8d58-d6de0e4f9d26",
@@ -5208,6 +5141,48 @@
         "cc_b2": true,
         "ca_esencial": false,
         "ca_no_esencial": true,
+        "is_energy_source": false
+      },
+      {
+        "id": "86bbd1fa-d6eb-43e5-a5a4-a19da3d93020",
+        "tag": "TSA-01",
+        "nombre": "Transformador de SS/AA",
+        "sala": "Patio Subestación - Patio Subestación",
+        "ubicacion_id": "87a5e493-20da-41fe-a73f-19aaae57cab5",
+        "is_board": false,
+        "components": [],
+        "cc_b1": false,
+        "cc_b2": false,
+        "ca_esencial": false,
+        "ca_no_esencial": false,
+        "is_energy_source": false
+      },
+      {
+        "id": "2ed3813d-394e-4a27-91e1-18e522c053fb",
+        "tag": "BBAT-01",
+        "nombre": "Banco de Baterías Nº1",
+        "sala": "Sala de Control - Sala de Control",
+        "ubicacion_id": "616ad93f-a1af-4944-aa09-f68614e87a0f",
+        "is_board": false,
+        "components": [],
+        "cc_b1": false,
+        "cc_b2": false,
+        "ca_esencial": false,
+        "ca_no_esencial": false,
+        "is_energy_source": false
+      },
+      {
+        "id": "a4a3bf15-2ac8-4811-9979-ce3d12472b91",
+        "tag": "BBAT-02",
+        "nombre": "Banco de Baterías Nº2",
+        "sala": "Sala de Control - Sala de Control",
+        "ubicacion_id": "616ad93f-a1af-4944-aa09-f68614e87a0f",
+        "is_board": false,
+        "components": [],
+        "cc_b1": false,
+        "cc_b2": false,
+        "ca_esencial": false,
+        "ca_no_esencial": false,
         "is_energy_source": false
       }
     ]
