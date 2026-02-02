@@ -3,7 +3,99 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.106] - 2026-02-02
+### Added
+- Selector de tema Claro/Oscuro en menÃº Ver > Tema con cambio en caliente y persistencia.
+### Changed
+- MigraciÃ³n de colores de UI a tokens/QSS donde corresponde (base mantiene colores actuales).
+
+## [1.4.0-alpha.102] - 2026-02-01
+### Fixed
+- CC: totales de Permanentes ya no dependen de cc_results; se calculan desde calculated.cc/controller.
+- CC: resumen de Momentáneos muestra p/i por escenario correctamente.
+- CC: Aleatorios: checkbox Sel. persiste y refleja estado (agregado get_random_selected) y totales seleccionados correctos.
+
+## [1.4.0-alpha.105] - 2026-02-01
+### Fixed
+- CC Aleatorios: totales seleccionados ahora se calculan en vivo con compute_random (sin depender de calculated.cc.summary).
+- CC Aleatorios: labels de totales se actualizan al marcar/desmarcar "Sel." (dataChanged conectado).
+
+## [1.4.0-alpha.104] - 2026-02-01
+### Fixed
+- CC Momentáneos: el resumen por escenarios ya no queda congelado en ceros cuando calculated.cc.scenarios_totals está stale; se recalcula al editar Incluir/Escenario.
+- CC Momentáneos: el momentáneo derivado desde permanentes vuelve a sumarse al escenario 1.
+
 ## [Unreleased]
+### Fixed
+- Tests/CI no requieren PyQt para importar CC table schema.
+- Aleatorios now displays correct I values.
+- Scenario name persistence no longer depends on UI commits; placeholders never overwrite saved names.
+- CC now recalculates only via orchestrator; UI renders from cc_results.
+- Removed legacy UI recalc paths and duplicate timers.
+- Crash on startup when wiring global utilization spinbox (missing handler).
+- cc_results treated as derived and excluded from persistence.
+- NameError fix: logging imported in app/controller.py.
+- Faster project save (removed derived componentes.gabinetes duplication).
+- Tests are UTF-8 clean and CI-safe.
+- cc_consumption package no longer imports UI in __init__.py (import-safe utilities).
+- Tests are UTF-8 clean; cc_consumption utils import no longer pulls PyQt5 via __init__.
+- Tests ahora UTF-8 clean; cc_consumption utils desacoplado de imports PyQt.
+- Placeholder "Escenario N" ya no borra nombres reales guardados en cc_escenarios durante commits/refresh.
+- Momentaneos ya no muestra placeholders cuando hay nombre real guardado.
+- cc_scenarios_summary default ahora es lista (no dict).
+- Declared missing runtime deps (matplotlib, PyJWT, cryptography) and added startup dependency checks.
+- Renamed .gitignoge to .gitignore.
+- Consumos C.C. ahora refleja cargas de gabinetes (SSOT gabinetes + sync entre instalaciones["gabinetes"] y data_model.gabinetes).
+- Refresco confiable al cambiar de pestaña y al editar valores (refresh debounced via orchestrator).
+- Crash en Consumos C.C. por loader faltante load_permanentes.
+- Rutas de librerías ahora son relativas y con fallback si faltan archivos.
+- Crash en totales de permanentes cuando no existe summary calculado.
+- Selección de aleatorios ahora persiste y se recarga correctamente.
+- Totales aleatorios se actualizan en tiempo real al marcar/desmarcar.
+- Persistencia de aleatorios y momentÃ¡neos ahora hace roundtrip (flags por componente).
+- Nombres de escenarios en C.C. Momentáneos ahora persisten (metadata sin refresh/recalc).
+- Contrato CC unificado en proyecto.cc_escenarios (sin schema paralelo).
+- Migración CC integrada en upgrade_project_dict (una sola pipeline).
+- Restaurado pipeline único de migración (sin migrate_to_v3).
+- SSOT: identidad de listas gabinetes/ubicaciones garantizada (sin copias).
+- DataModel.project root definido para tracking de librerías.
+- Project load ahora popula vistas legacy aun con project_model (roundtrip estable).
+
+### Added
+- Tests de journeys CC (persistencia y no-mezcla).
+- Automatic CC recalculation on input changes (debounced).
+- Regression tests for CC auto-recalc debounce and no-loop.
+- CC background compute with coalescing and cancellation.
+
+### Improved
+- Migrated CC Momentaneos loads table to QAbstractTableModel (MVC, faster refresh).
+- Migrated CC Momentaneos scenarios summary to QAbstractTableModel.
+- CC UI refresh now driven by Computed(CC); no manual recalculation needed.
+- UI remains responsive during heavy CC computations.
+- Migrated CC Permanentes table to QAbstractTableModel (MVC, faster refresh, easier maintenance).
+- Migrated CC Aleatorios table to QAbstractTableModel (better performance and maintainability).
+- Coalesced CC refresh events to avoid double refresh.
+- Perf logging for save serialization (time + size).
+- No se persisten placeholders "Escenario N" en cc_escenarios.
+- EventBus ahora registra errores de handlers (debug).
+
+### Chore
+- Cleanup legacy CC table code and consolidate utilities (no functional changes).
+- Remove unused imports/comments; improve test import-safety.
+- Remove python cache artifacts and harden gitignore.
+- Improve compute error logging and remove runtime prints.
+- Fix orchestrator docstrings for background compute.
+
+### Refactor
+- Se separa cc_scenarios_summary (legacy nombres) de escenarios_totals (calculated.cc).
+- Contrato JSON v3 para CC (migración + normalización en carga).
+- SSOT gabinetes canonical en instalaciones.gabinetes (se evitan duplicados persistidos).
+- Runtime SSOT con Project/Cabinet/Component y serializer dedicado (sin duplicar gabinetes/componentes).
+- Refresh orientado a eventos (metadata/input/model) con debounce para CC.
+- Helpers de esquema de tablas C.C. centralizados (lectura/escritura por fila).
+
+### Fixed
+- CC no reconstruye al editar nombres de escenario (evita pisar metadata).
 
 ## [1.4.0-alpha.68] - 2026-01-02
 ### Fixed
@@ -29,6 +121,7 @@ The format is based on *Keep a Changelog* and this project adheres to *Semantic 
 
 ## [1.4.0-alpha.62] - 2026-01-01
 ### Added
+- Tests de journeys CC (persistencia y no-mezcla).
 - GitHub Actions CI workflow (lint/format/tests + architecture boundaries).
 - Windows PyInstaller build workflow (manual + tag builds).
 - Ruff configuration (lint + formatter) and dev dependencies.

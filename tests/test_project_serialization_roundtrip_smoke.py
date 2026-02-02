@@ -43,6 +43,7 @@ def test_serialization_roundtrip_smoke():
 
     payload = to_project_dict(m)
     assert payload.get("_meta", {}).get("version") == PROJECT_VERSION
+    assert payload.get("componentes", {}) == {}
 
     m2 = _DummyModel()
     apply_project_dict(m2, payload)
@@ -52,3 +53,19 @@ def test_serialization_roundtrip_smoke():
     assert isinstance(m2.proyecto.get(K.SSAA_TOPOLOGY_LAYERS), dict)
     assert len(m2.instalaciones.get("gabinetes", [])) == 1
     assert m2.dirty is False
+
+
+def test_apply_project_dict_populates_legacy_views_with_project_model():
+    m = _DummyModel(project_folder="/tmp", project_filename="demo")
+    m.proyecto[K.UTILIZATION_PCT_GLOBAL] = 40
+    m.instalaciones["ubicaciones"] = [{"id": "u1", "tag": "S1", "nombre": "Sala"}]
+    m.instalaciones["gabinetes"] = [{"id": "g1", "tag": "G1", "components": []}]
+
+    payload = to_project_dict(m)
+
+    m2 = _DummyModel()
+    apply_project_dict(m2, payload)
+
+    assert getattr(m2, "project_model", None) is not None
+    assert m2.proyecto.get(K.UTILIZATION_PCT_GLOBAL) == 40
+    assert len(m2.instalaciones.get("gabinetes", [])) == 1

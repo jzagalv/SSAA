@@ -1,2 +1,4 @@
 PyQt5>=5.15
 PyJWT>=2.8.0
+matplotlib>=3.7
+cryptography>=41.0

@@ -35,7 +35,7 @@ def _safe_call(fn: Callable[[], Any], *, label: str) -> None:
 
 
 class SectionOrchestrator:
-    def __init__(self, *, app, data_model, calc_service, validation_service):
+    def __init__(self, *, app, data_model, calc_service, validation_service, event_bus=None):
         self.app = app
         self.dm = data_model
         self.calc_service = calc_service
@@ -45,6 +45,15 @@ class SectionOrchestrator:
         # Precompute action maps (single source of truth)
         self._recalc_actions = build_recalc_actions(app=app, calc_service=calc_service)
         self._refresh_actions = build_refresh_actions(app=app)
+        self._event_bus = event_bus
+        if self._event_bus is not None:
+            try:
+                from app.events import MetadataChanged, InputChanged, ModelChanged
+                self._event_bus.subscribe(MetadataChanged, self._on_metadata_changed)
+                self._event_bus.subscribe(InputChanged, self._on_input_changed)
+                self._event_bus.subscribe(ModelChanged, self._on_model_changed)
+            except Exception:
+                log.debug("Failed to subscribe to EventBus (best-effort).", exc_info=True)
 
     # ---------------- public API ----------------
     def on_section_changed(self, section) -> None:
@@ -90,6 +99,30 @@ class SectionOrchestrator:
         if not spec:
             return
         self._run_spec(Section.PROJECT_LOADED, spec)
+
+    # ---------------- EventBus handlers ----------------
+    def _on_metadata_changed(self, event) -> None:
+        from app.sections import Section
+        if getattr(event, "section", None) != Section.CC:
+            return
+        scr = getattr(self.app, "cc_screen", None)
+        if scr is not None and hasattr(scr, "refresh_metadata"):
+            _safe_call(lambda: scr.refresh_metadata(getattr(event, "fields", None)), label="cc metadata refresh")
+
+    def _on_input_changed(self, event) -> None:
+        from app.sections import Section
+        if getattr(event, "section", None) != Section.CC:
+            return
+        # CC input recompute is handled by the compute orchestrator.
+        return
+
+    def _on_model_changed(self, event) -> None:
+        from app.sections import Section
+        if getattr(event, "section", None) != Section.CC:
+            return
+        scr = getattr(self.app, "cc_screen", None)
+        if scr is not None and hasattr(scr, "refresh_from_model"):
+            _safe_call(lambda: scr.refresh_from_model(), label="cc model refresh")
 
     # ---------------- internals ----------------
     def _run_spec(self, section, spec) -> None:

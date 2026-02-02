@@ -30,6 +30,33 @@ log = logging.getLogger(__name__)
 
 
 class CCConsumptionController(BaseController):
+
+    def _emit_metadata_changed(self, fields: Dict[str, Any]) -> None:
+        dm = self.data_model
+        if dm is None:
+            return
+        bus = getattr(dm, "event_bus", None)
+        if bus is None:
+            return
+        try:
+            from app.events import MetadataChanged
+            bus.emit(MetadataChanged(section=Section.CC, fields=fields))
+        except Exception:
+            log.debug("MetadataChanged emit failed (best-effort).", exc_info=True)
+
+    def _emit_input_changed(self, fields: Dict[str, Any]) -> None:
+        dm = self.data_model
+        if dm is None:
+            return
+        bus = getattr(dm, "event_bus", None)
+        if bus is None:
+            return
+        try:
+            from app.events import InputChanged
+            bus.emit(InputChanged(section=Section.CC, fields=fields))
+        except Exception:
+            log.debug("InputChanged emit failed (best-effort).", exc_info=True)
+
     def __init__(self, data_model):
         super().__init__(data_model, section=Section.CC)
 
@@ -64,7 +91,7 @@ class CCConsumptionController(BaseController):
         after = fac.get_utilization_pct_global()
         if after != before:
             self.mark_dirty()
-            self.notify_changed()
+            self._emit_input_changed({"pct_global": after})
             return True
         return False
 
@@ -75,11 +102,11 @@ class CCConsumptionController(BaseController):
         after = fac.get_cc_use_pct_global()
         if after != before:
             self.mark_dirty()
-            self.notify_changed()
+            self._emit_input_changed({"use_pct_global": after})
             return True
         return False
 
-    def set_scenario_desc(self, esc: int, desc: str) -> bool:
+    def set_scenario_desc(self, esc: int, desc: str, notify: bool = False) -> bool:
         """Actualiza descripción del escenario (fuente de verdad: ProjectFacade).
 
         Reglas:
@@ -95,8 +122,6 @@ class CCConsumptionController(BaseController):
         esc_key = str(esc_i)
 
         desc_clean = (str(desc) if desc is not None else "").strip()
-        if not desc_clean:
-            desc_clean = f"Escenario {esc_i}"
 
         scenarios = fac.get_cc_scenarios() or {}
         before = str(scenarios.get(esc_key, "") or "")
@@ -121,8 +146,19 @@ class CCConsumptionController(BaseController):
         fac.set_cc_scenarios_summary(summary)
 
         self.mark_dirty()
-        self.notify_changed()
+        if notify:
+            self.notify_changed()
+        self._emit_metadata_changed({"scenario_name": esc_i})
         return True
+
+    def get_scenario_desc(self, esc: int) -> str:
+        """Get scenario description from the canonical cc_escenarios dict."""
+        esc_i = int(esc) if esc else 1
+        if esc_i < 1:
+            esc_i = 1
+        fac = self.facade()
+        scenarios = fac.get_cc_scenarios() or {}
+        return str(scenarios.get(str(esc_i), "") or "")
 
     def normalize_cc_scenarios_storage(self, n_esc: int | None = None) -> bool:
         """Normaliza almacenamiento de nombres de escenarios a formato dict (sin legacy list).
@@ -151,7 +187,7 @@ class CCConsumptionController(BaseController):
                 else:
                     desc = str(it or "").strip()
                 if not desc:
-                    desc = f"Escenario {i}"
+                    desc = ""
                 d[str(i)] = desc
             proj["cc_escenarios"] = d
             changed = True
@@ -171,9 +207,8 @@ class CCConsumptionController(BaseController):
                 d = proj.get("cc_escenarios") or {}
                 for i in range(1, n + 1):
                     k = str(i)
-                    v = str(d.get(k, "") or "").strip()
-                    if not v:
-                        d[k] = f"Escenario {i}"
+                    if k not in d:
+                        d[k] = ""
                         changed = True
                 proj["cc_escenarios"] = d
 
@@ -235,8 +270,55 @@ class CCConsumptionController(BaseController):
         gabinetes = get_model_gabinetes(self.data_model)
         return compute_cc_aleatorios_totals(gabinetes, vmin)
 
+    def _find_comp_by_id(self, comp_id: str) -> Dict[str, Any] | None:
+        if not comp_id:
+            return None
+        for gab in get_model_gabinetes(self.data_model):
+            for comp in gab.get("components", []) or []:
+                if comp.get("id") == comp_id:
+                    return comp
+        return None
+
+    def set_random_selected(self, comp_id: str, selected: bool) -> bool:
+        comp = self._find_comp_by_id(comp_id)
+        if not isinstance(comp, dict):
+            return False
+        data = comp.setdefault("data", {})
+        if data.get("cc_aleatorio_sel") == bool(selected):
+            return False
+        data["cc_aleatorio_sel"] = bool(selected)
+        self.mark_dirty()
+        self._emit_input_changed({"aleatorio_sel": True})
+        return True
+
+    def get_random_selected(self, comp_id: str) -> bool:
+        comp = self._find_comp_by_id(comp_id)
+        if not isinstance(comp, dict):
+            return False
+        data = comp.get("data", {}) or {}
+        return bool(data.get("cc_aleatorio_sel", False))
+
+    def set_momentary_flags(self, comp_id: str, incluir: bool, escenario: int) -> bool:
+        comp = self._find_comp_by_id(comp_id)
+        if not isinstance(comp, dict):
+            return False
+        data = comp.setdefault("data", {})
+        old_incluir = bool(data.get("cc_mom_incluir", True))
+        old_esc = int(data.get("cc_mom_escenario", 1) or 1)
+        new_incluir = bool(incluir)
+        new_esc = int(escenario or 1)
+        if new_esc < 1:
+            new_esc = 1
+        if old_incluir == new_incluir and old_esc == new_esc:
+            return False
+        data["cc_mom_incluir"] = new_incluir
+        data["cc_mom_escenario"] = new_esc
+        self.mark_dirty()
+        self._emit_input_changed({"momentaneo_flags": True})
+        return True
+
     def compute_totals(self, *, vmin: float) -> Dict[str, float]:
-        """Totales (P/I) para permanentes + momentáneos.
+        """Totales (P/I) para permanentes + momentaneos.
 
         Siempre devuelve:
             p_total, i_total, p_perm, i_perm, p_mom, i_mom, p_sel, i_sel
@@ -257,7 +339,7 @@ class CCConsumptionController(BaseController):
                 p_total = float(summary.get("p_total_w", summary.get("p_total", p_perm + p_mom)) or 0.0)
                 i_total = float(summary.get("i_total_a", summary.get("i_total", i_perm + i_mom)) or 0.0)
 
-                # Selección aleatoria (si existe)
+                # Seleccion aleatoria (si existe)
                 p_sel = float(summary.get("p_sel_w", summary.get("p_sel", 0.0)) or 0.0)
                 i_sel = float(summary.get("i_sel_a", summary.get("i_sel", 0.0)) or 0.0)
 
@@ -274,23 +356,23 @@ class CCConsumptionController(BaseController):
             except Exception:
                 pass
 
-                # fallback: compute quickly (best-effort)
-                perm = self.compute_permanentes(vmin=vmin)
-                mom = self.compute_momentary(vmin=vmin)
-                rnd = self.compute_random(vmin=vmin)
+        # fallback: compute quickly (best-effort)
+        perm = self.compute_permanentes(vmin=vmin)
+        mom = self.compute_momentary(vmin=vmin)
+        rnd = self.compute_random(vmin=vmin)
 
-                p_perm = float(perm.get("p_total", 0.0) or 0.0)
-                i_perm = float(perm.get("i_total", 0.0) or 0.0)
-                p_mom = float(mom.get("p_total", 0.0) or 0.0)
-                i_mom = float(mom.get("i_total", 0.0) or 0.0)
+        p_perm = float(perm.get("p_total", 0.0) or 0.0)
+        i_perm = float(perm.get("i_total", 0.0) or 0.0)
+        p_mom = float(mom.get("p_total", 0.0) or 0.0)
+        i_mom = float(mom.get("i_total", 0.0) or 0.0)
 
-                return {
-                    "p_total": p_perm + p_mom,
-                    "i_total": i_perm + i_mom,
-                    "p_perm": p_perm,
-                    "i_perm": i_perm,
-                    "p_mom": p_mom,
-                    "i_mom": i_mom,
-                    "p_sel": float(rnd.get("p_sel", 0.0) or 0.0),
-                    "i_sel": float(rnd.get("i_sel", 0.0) or 0.0),
-                }
+        return {
+            "p_total": p_perm + p_mom,
+            "i_total": i_perm + i_mom,
+            "p_perm": p_perm,
+            "i_perm": i_perm,
+            "p_mom": p_mom,
+            "i_mom": i_mom,
+            "p_sel": float(rnd.get("p_sel", 0.0) or 0.0),
+            "i_sel": float(rnd.get("i_sel", 0.0) or 0.0),
+        }

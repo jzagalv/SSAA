@@ -1,2 +1,1 @@
-from .cc_consumption_screen import CCConsumptionScreen
-from .cc_consumption_controller import CCConsumptionController
+# Package init (no UI imports). Keep this package import-safe for tests/CI.

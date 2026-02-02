@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, List, Optional
 from core.sections import Section
 import json
+import logging
 import os
 import uuid
 from copy import deepcopy
@@ -29,6 +30,7 @@ from storage.project_schema import (
     norm_pos,
     norm_size,
 )
+from domain.models.project import Project
 
 
 # Backward-compat: nombre histórico. Mantener para imports antiguos.
@@ -135,6 +137,9 @@ class DataModel:
         self.file_path = ""
         self.file_name = ""
 
+        # SSOT project model (optional)
+        self.project_model = None
+
         # ----------------- librerías externas -----------------
         # Las librerías (consumos/materiales) son GLOBALes y sirven para
         # proponer datos/estandarizar. Importante: al abrir un proyecto, NO se
@@ -181,12 +186,15 @@ class DataModel:
             "cc_usar_pct_global": True,
             "cc_num_escenarios": 1,
             "cc_escenarios": {},
-            "cc_scenarios_summary": {},
+            "cc_scenarios_summary": [],
             "perfil_cargas": [],
         }
 
         self.instalaciones = {"ubicaciones": [], "gabinetes": []}
         self.componentes = {"gabinetes": []}
+
+        # root dict view (compat)
+        self.project = {"proyecto": self.proyecto, "instalaciones": self.instalaciones, "componentes": self.componentes}
 
         # alias legacy (por compatibilidad con pantallas existentes)
         self.components = []
@@ -218,6 +226,22 @@ class DataModel:
             return
         self.dirty = bool(v)
 
+    def set_cc_results(self, results: dict, *, notify: bool = False) -> None:
+        """Set derived CC results without emitting InputChanged."""
+        if not isinstance(getattr(self, "proyecto", None), dict):
+            return
+        self.proyecto["cc_results"] = results if isinstance(results, dict) else {}
+        if notify and hasattr(self, "notify_section_changed"):
+            self.notify_section_changed(Section.CC, mark_dirty=False)
+
+    def get_cc_inputs_snapshot(self) -> dict:
+        """Return a safe snapshot of CC inputs (no cc_results, no Qt objects)."""
+        proj = getattr(self, "proyecto", {}) or {}
+        snap = deepcopy(proj) if isinstance(proj, dict) else {}
+        if isinstance(snap, dict):
+            snap.pop("cc_results", None)
+        return snap
+
     def set_ui_refreshing(self, v: bool):
         self._ui_refreshing = bool(v)
     @staticmethod
@@ -232,6 +256,9 @@ class DataModel:
         if kind not in ("consumos", "materiales"):
             raise ValueError("Tipo de librería inválido")
         self.library_paths[kind] = path or ""
+        if getattr(self, 'project_model', None) is not None:
+            self.project_model.library_links[kind] = path or ""
+
 
     def resolve_library_path(self, path: str) -> str:
         """Resuelve rutas de librerías.
@@ -303,6 +330,8 @@ class DataModel:
             raise ValueError("schema_version inválido en la librería")
 
         self.library_paths[kind] = path
+        if getattr(self, 'project_model', None) is not None:
+            self.project_model.library_links[kind] = path or ""
         self.library_data[kind] = data
         return data
 
@@ -722,14 +751,153 @@ class DataModel:
 
     # ----------------- compat helpers -----------------
     def _sync_aliases_out(self):
-        self.salas[:] = self.instalaciones["ubicaciones"]
-        self.gabinetes[:] = self.instalaciones["gabinetes"]
+        if getattr(self, 'project_model', None) is not None:
+            self.instalaciones['ubicaciones'] = self.project_model.installations.ubicaciones
+            self.instalaciones['gabinetes'] = self.project_model.installations.cabinets_view
+            self.ubicaciones = self.instalaciones['ubicaciones']
+            self.salas = self.ubicaciones
+            self.gabinetes = self.instalaciones['gabinetes']
+            self._enforce_alias_identity()
+            return
+        self.salas = self.instalaciones['ubicaciones']
+        self.gabinetes = self.instalaciones['gabinetes']
+        self._enforce_alias_identity()
 
     def _sync_aliases_in(self):
-        if self.salas is not self.instalaciones["ubicaciones"]:
-            self.instalaciones["ubicaciones"] = list(self.salas)
-        if self.gabinetes is not self.instalaciones["gabinetes"]:
-            self.instalaciones["gabinetes"] = list(self.gabinetes)
+        if getattr(self, 'project_model', None) is not None:
+            self.instalaciones['ubicaciones'] = self.project_model.installations.ubicaciones
+            self.instalaciones['gabinetes'] = self.project_model.installations.cabinets_view
+            self.ubicaciones = self.instalaciones['ubicaciones']
+            self.salas = self.ubicaciones
+            self.gabinetes = self.instalaciones['gabinetes']
+            return
+        if self.salas is not self.instalaciones['ubicaciones']:
+            self.salas = self.instalaciones['ubicaciones']
+        if self.gabinetes is not self.instalaciones['gabinetes']:
+            self.gabinetes = self.instalaciones['gabinetes']
+
+    def ensure_aliases_consistent(self):
+        """Best-effort sync between legacy aliases and instalaciones."""
+        def _count_components(gabs):
+            total = 0
+            for g in gabs or []:
+                if not isinstance(g, dict):
+                    continue
+                comps = g.get("components", []) or []
+                total += len(comps)
+            return total
+
+        try:
+            self._sync_aliases_in()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+        try:
+            self._sync_aliases_out()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+        instalaciones = getattr(self, "instalaciones", None)
+        if not isinstance(instalaciones, dict):
+            return
+
+        gab_inst = instalaciones.get("gabinetes", None)
+        gab_alias = getattr(self, "gabinetes", None)
+
+        if isinstance(gab_inst, list) and isinstance(gab_alias, list) and gab_inst and gab_alias:
+            comp_inst = _count_components(gab_inst)
+            comp_alias = _count_components(gab_alias)
+            if comp_alias > comp_inst:
+                canonical = gab_alias
+            elif comp_inst > comp_alias:
+                canonical = gab_inst
+            else:
+                canonical = gab_alias
+            instalaciones["gabinetes"] = canonical
+            self.gabinetes = canonical
+            return
+
+        if isinstance(gab_alias, list) and gab_alias and (
+            not isinstance(gab_inst, list) or len(gab_inst) == 0
+        ):
+            instalaciones["gabinetes"] = gab_alias
+            self.gabinetes = gab_alias
+            return
+
+        if isinstance(gab_inst, list) and gab_inst and (
+            not isinstance(gab_alias, list) or len(gab_alias) == 0
+        ):
+            if isinstance(gab_alias, list):
+                self.gabinetes = gab_inst
+            else:
+                self.gabinetes = gab_inst
+
+    def _check_cabinet_views(self):
+        if getattr(self, 'project_model', None) is None:
+            return
+        try:
+            if id(self.instalaciones.get('gabinetes')) != id(self.project_model.installations.cabinets_view):
+                import logging
+                logging.getLogger(__name__).warning("Cabinet views desaligned (SSOT breach).")
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+    def _enforce_alias_identity(self) -> None:
+        """Ensure SSOT identity for gabinetes/ubicaciones aliases (best-effort)."""
+        try:
+            ins = self.instalaciones if isinstance(self.instalaciones, dict) else {}
+            gabs = ins.get("gabinetes")
+            locs = ins.get("ubicaciones")
+            if gabs is not None and getattr(self, "gabinetes", None) is not gabs:
+                logging.getLogger(__name__).warning("SSOT guardrail: realigning gabinetes alias.")
+                self.gabinetes = gabs
+            if locs is not None:
+                if getattr(self, "ubicaciones", None) is not locs:
+                    logging.getLogger(__name__).warning("SSOT guardrail: realigning ubicaciones alias.")
+                    self.ubicaciones = locs
+                if getattr(self, "salas", None) is not locs:
+                    logging.getLogger(__name__).warning("SSOT guardrail: realigning salas alias.")
+                    self.salas = locs
+            if __debug__:
+                if gabs is not None:
+                    assert self.gabinetes is gabs
+                if locs is not None:
+                    assert self.ubicaciones is locs
+                    assert self.salas is locs
+        except Exception:
+            logging.getLogger(__name__).debug("SSOT guardrail failed (best-effort).", exc_info=True)
+
+    def set_project(self, project: Project) -> None:
+        self.project_model = project
+        if self.project_model is None:
+            return
+        self.project_model.sync_views()
+        self.proyecto = self.project_model.proyecto_dict
+        self.instalaciones['ubicaciones'] = self.project_model.installations.ubicaciones
+        self.instalaciones['gabinetes'] = self.project_model.installations.cabinets_view
+        self.ubicaciones = self.instalaciones['ubicaciones']
+        self.salas = self.ubicaciones
+        self.gabinetes = self.instalaciones['gabinetes']
+        # Derived components view (compat)
+        try:
+            self.componentes['gabinetes'] = [
+                {"tag": g.get("tag", ""), "components": g.get("components", [])}
+                for g in self.instalaciones.get('gabinetes', [])
+            ]
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+        # root dict view (compat)
+        self.project = {"proyecto": self.proyecto, "instalaciones": self.instalaciones, "componentes": self.componentes}
+        self._check_cabinet_views()
+
+    def get_cabinets(self):
+        if getattr(self, 'project_model', None) is not None:
+            return self.project_model.installations.cabinets
+        return self.instalaciones.get('gabinetes', [])
 
     # ----------------- helpers de normalización -----------------
     @staticmethod

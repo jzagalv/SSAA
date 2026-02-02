@@ -14,81 +14,13 @@ from typing import Callable, Iterable, Optional, Dict
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 from PyQt5.QtCore import Qt
 
-# ----------------------------
-# Column indices (no magic numbers)
-# ----------------------------
-
-# Permanentes
-PERM_COL_GAB = 0
-PERM_COL_TAG = 1
-PERM_COL_DESC = 2
-PERM_COL_PW = 3          # P total [W]
-PERM_COL_PCT = 4         # % Utilización
-PERM_COL_P_PERM = 5      # P permanente [W]
-PERM_COL_I = 6           # I permanente [A]
-PERM_COL_P_MOM = 7       # P momentánea [W]
-PERM_COL_I_OUT = 8       # I fuera % [A]
-
-PERM_HEADERS = [
-    "Gabinete",
-    "TAG",
-    "Descripción",
-    "P total [W]",
-    "% Utilización",
-    "P permanente [W]",
-    "I permanente [A]",
-    "P momentánea [W]",
-    "I fuera % [A]",
-]
-
-# Momentáneos
-MOM_COL_GAB = 0
-MOM_COL_TAG = 1
-MOM_COL_DESC = 2
-MOM_COL_PEFF = 3
-MOM_COL_I = 4
-MOM_COL_INCLUIR = 5
-MOM_COL_ESC = 6
-
-MOM_HEADERS = [
-    "Gabinete",
-    "TAG",
-    "Descripción",
-    "P efectiva [W]",
-    "I [A]",
-    "Incluir",
-    "Escenario",
-]
-
-# Resumen de escenarios
-MOMR_COL_ESC = 0
-MOMR_COL_DESC = 1
-MOMR_COL_PT = 2
-MOMR_COL_IT = 3
-
-MOMR_HEADERS = [
-    "Escenario",
-    "Descripción",
-    "P total [W]",
-    "I total [A]",
-]
-
-# Aleatorios
-ALE_COL_SEL = 0
-ALE_COL_GAB = 1
-ALE_COL_TAG = 2
-ALE_COL_DESC = 3
-ALE_COL_PEFF = 4
-ALE_COL_I = 5
-
-ALE_HEADERS = [
-    "Sel.",
-    "Gabinete",
-    "TAG",
-    "Descripción",
-    "P efectiva [W]",
-    "I [A]",
-]
+from .table_schema import (
+    PERM_COL_GAB, PERM_COL_TAG, PERM_COL_DESC, PERM_COL_PW, PERM_COL_PCT, PERM_COL_P_PERM, PERM_COL_I, PERM_COL_P_MOM, PERM_COL_I_OUT,
+    MOM_COL_GAB, MOM_COL_TAG, MOM_COL_DESC, MOM_COL_PEFF, MOM_COL_I, MOM_COL_INCLUIR, MOM_COL_ESC,
+    MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
+    ALE_COL_SEL, ALE_COL_GAB, ALE_COL_TAG, ALE_COL_DESC, ALE_COL_PEFF, ALE_COL_I,
+    PERM_HEADERS, MOM_HEADERS, MOMR_HEADERS, ALE_HEADERS,
+)
 
 # ----------------------------
 # Table factories
@@ -283,7 +215,8 @@ def load_aleatorios(
 
         it_sel = QTableWidgetItem("")
         it_sel.setFlags(it_sel.flags() | Qt.ItemIsUserCheckable)
-        it_sel.setCheckState(Qt.Unchecked)
+        selected = bool(getattr(it, "ale_sel", False))
+        it_sel.setCheckState(Qt.Checked if selected else Qt.Unchecked)
         table.setItem(row, ALE_COL_SEL, it_sel)
 
         gab_label = f"{getattr(it, 'gab_tag', '')} - {getattr(it, 'gab_nombre', '')}".strip(" -")

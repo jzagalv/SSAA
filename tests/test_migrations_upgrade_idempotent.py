@@ -22,6 +22,10 @@ def test_upgrade_from_v1_produces_v4_and_is_idempotent():
             "frecuencia": 50,
             # legacy designer topology key may exist
             K.SSAA_TOPOLOGY: {"nodes": [], "edges": []},
+            # legacy CC contracts
+            "cc": {"scenarios": {"1": "Legacy CC Scenario"}},
+            "cc_escenarios": [{"desc": "Escenario legado 1"}],
+            "cc_scenarios_summary": {"1": {"p_total": 10.0, "i_total": 0.1}},
         },
         # legacy top-level lists
         "salas": [["S1", "Sala 1"]],
@@ -37,10 +41,19 @@ def test_upgrade_from_v1_produces_v4_and_is_idempotent():
     assert isinstance(upgraded_1["instalaciones"].get("gabinetes"), list)
     assert len(upgraded_1["instalaciones"]["gabinetes"]) == 1
     assert upgraded_1["instalaciones"]["gabinetes"][0].get("id")
+    assert "gabinetes" not in upgraded_1
 
     # Ensure we have a topology layers dict even if empty, and it is a dict.
     topo_layers = (upgraded_1.get("proyecto", {}) or {}).get(K.SSAA_TOPOLOGY_LAYERS, {})
     assert isinstance(topo_layers, dict)
+
+    # CC contract migration
+    proj = upgraded_1.get("proyecto", {})
+    assert isinstance(proj.get("cc_escenarios"), dict)
+    assert proj["cc_escenarios"].get("1") == "Escenario legado 1"
+    assert "cc" not in proj or "scenarios" not in proj.get("cc", {})
+    calc_cc = (proj.get("calculated") or {}).get("cc", {})
+    assert isinstance(calc_cc.get("scenarios_totals"), dict)
 
     # Idempotency: upgrading a v4 payload again should not change the result.
     upgraded_2 = upgrade_project_dict(deepcopy(upgraded_1), to_version=PROJECT_VERSION)

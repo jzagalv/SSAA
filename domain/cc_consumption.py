@@ -199,13 +199,32 @@ def get_model_gabinetes(data_model: Any) -> List[Dict[str, Any]]:
     - data_model.instalaciones["gabinetes"] si existe
     - fallback data_model.gabinetes
     """
+    def _count_components(gabs: List[Dict[str, Any]]) -> int:
+        total = 0
+        for gab in gabs or []:
+            if not isinstance(gab, dict):
+                continue
+            comps = gab.get("components", []) or []
+            total += len(comps)
+        return total
+
     instalaciones = getattr(data_model, "instalaciones", {}) or {}
-    gab = instalaciones.get("gabinetes", None)
-    if isinstance(gab, list):
-        return gab
-    g2 = getattr(data_model, "gabinetes", None)
-    if isinstance(g2, list):
-        return g2
+    gab_inst = instalaciones.get("gabinetes", None)
+    gab_alias = getattr(data_model, "gabinetes", None)
+
+    if isinstance(gab_inst, list) and isinstance(gab_alias, list):
+        comp_inst = _count_components(gab_inst)
+        comp_alias = _count_components(gab_alias)
+        if comp_alias > comp_inst:
+            return gab_alias
+        if comp_inst > comp_alias:
+            return gab_inst
+        return gab_alias
+
+    if isinstance(gab_inst, list):
+        return gab_inst
+    if isinstance(gab_alias, list):
+        return gab_alias
     return []
 
 
@@ -576,7 +595,7 @@ def compute_momentary_scenarios(
     # momentáneo derivado desde permanentes (mismo criterio en toda la app)
     p_mom_perm_total = compute_momentary_from_permanents(proyecto, gabinetes)
     if p_mom_perm_total > 0:
-        sum_p[1] = sum_p.get(1, 0.0)# + float(p_mom_perm_total)
+        sum_p[1] = sum_p.get(1, 0.0) + float(p_mom_perm_total)
 
     out: Dict[int, Dict[str, float]] = {}
     for esc, p in sum_p.items():

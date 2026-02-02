@@ -1,50 +1,47 @@
 # -*- coding: utf-8 -*-
 """
-Pestaña de resumen de consumos en Corriente Continua (C.C.).
+PestaÃ±a de resumen de consumos en Corriente Continua (C.C.).
 
-Sólo considera componentes con:
+SÃ³lo considera componentes con:
     - tipo_consumo = "C.C. permanente"
-    - tipo_consumo = "C.C. momentáneo"
+    - tipo_consumo = "C.C. momentÃ¡neo"
     - tipo_consumo = "C.C. aleatorio"
 
 Secciones:
 1) Consumos permanentes:
    - Tabla con cada carga permanente en C.C.
    - Corriente calculada con P/Vcc.
-   - Columna con % de utilización (global por defecto, editable opcional).
+   - Columna con % de utilizaciÃ³n (global por defecto, editable opcional).
    - Columna con "I fuera de %" (I * (1 - pct/100)).
    - Totales al pie.
-   - Botón para guardar captura de la tabla completa.
+   - BotÃ³n para guardar captura de la tabla completa.
 
-2) Consumos momentáneos:
-   - Tabla con cargas momentáneas en C.C.
-   - El usuario marca qué cargas incluir y a qué "Escenario" pertenecen.
-   - SpinBox para definir N° de escenarios.
-   - Tabla de resumen por escenario (con columna de Descripción editable).
+2) Consumos momentÃ¡neos:
+   - Tabla con cargas momentÃ¡neas en C.C.
+   - El usuario marca quÃ© cargas incluir y a quÃ© "Escenario" pertenecen.
+   - SpinBox para definir NÂ° de escenarios.
+   - Tabla de resumen por escenario (con columna de DescripciÃ³n editable).
    - Botones para guardar imagen de ambas tablas.
 
 3) Consumos aleatorios:
    - Tabla con cargas "C.C. aleatorio" en C.C.
-   - Columna de selección por checkbox.
+   - Columna de selecciÃ³n por checkbox.
    - Totales de P e I de los seleccionados.
-   - Botón para guardar captura de la tabla completa.
+   - BotÃ³n para guardar captura de la tabla completa.
 """
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QTableWidget,
-    QTableWidgetItem, QPushButton, QDoubleSpinBox, QSpinBox, QCheckBox,
-    QFileDialog, QHeaderView, QComboBox, QTabWidget
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel,
+    QPushButton, QDoubleSpinBox, QSpinBox, QCheckBox,
+    QFileDialog, QHeaderView, QTabWidget, QTableView, QAbstractItemView
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QGuiApplication
 
 
 from ui.common.state import save_header_state, restore_header_state
 from screens.base import ScreenBase
 from app.sections import Section
-from functools import partial
-
-from ui.table_utils import make_table_sortable
 
 from .cc_consumption_controller import CCConsumptionController
 
@@ -55,13 +52,8 @@ from domain.cc_consumption import (
     get_pct_global,
     get_usar_pct_global,
     get_num_escenarios,
-    get_escenarios_desc,
     iter_cc_items,
     split_by_tipo,
-    get_pct_for_permanent,
-    compute_cc_permanentes_totals,
-    compute_momentary_scenarios_full,
-    compute_cc_aleatorios_totals,
 )
 
 import logging
@@ -75,9 +67,6 @@ from screens.cc_consumption.widgets import (
     MOM_COL_GAB, MOM_COL_TAG, MOM_COL_DESC, MOM_COL_PEFF, MOM_COL_I, MOM_COL_INCLUIR, MOM_COL_ESC,
     MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
     ALE_COL_SEL, ALE_COL_GAB, ALE_COL_TAG, ALE_COL_DESC, ALE_COL_PEFF, ALE_COL_I,
-    # factories + render
-    create_perm_table, create_mom_table, create_mom_summary_table, create_rand_table,
-    load_permanentes, load_momentaneos, load_aleatorios,
 )
 
 from .tabs.permanentes_tab import PermanentesTabMixin
@@ -87,18 +76,12 @@ from .tabs.aleatorios_tab import AleatoriosTabMixin
 
 class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, AleatoriosTabMixin):
     SECTION = Section.CC
-    porcentaje_util_changed = pyqtSignal(float)   # <-- nueva señal
+    porcentaje_util_changed = pyqtSignal(float)   # <-- nueva seÃ±al
     def __init__(self, data_model, parent=None):
         super().__init__(data_model, parent=parent)
         self.data_model = data_model
         self._controller = CCConsumptionController(data_model)
-        self._building = False  # para no disparar señales mientras se carga
-
-        # Auto-refresh (sin botón): agrupa cambios rápidos (typing/spin) en un solo reload.
-        self._auto_reload_timer = QTimer(self)
-        self._auto_reload_timer.setSingleShot(True)
-        self._auto_reload_timer.setInterval(250)
-        self._auto_reload_timer.timeout.connect(self.reload_data)
+        self._building = False  # para no disparar seÃ±ales mientras se carga
 
         self._build_ui()
         self._restore_ui_state()
@@ -111,6 +94,16 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
+        # EventBus: refresh display on computed results.
+        try:
+            bus = getattr(self.data_model, "event_bus", None)
+            if bus is not None:
+                from app.events import Computed, ComputeStarted
+                bus.subscribe(Computed, self._on_cc_computed)
+                bus.subscribe(ComputeStarted, self._on_cc_compute_started)
+        except Exception:
+            log.debug("Failed to subscribe to Computed event (best-effort).", exc_info=True)
+
         # Startup-safe: do not compute totals during __init__. The orchestrator
         # will call reload_data() when a project is loaded or data changes.
         self.enter_safe_state()
@@ -120,9 +113,26 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         try:
             self._building = True
             # Clear tables to avoid showing stale data.
-            for tbl in (getattr(self, 'tbl_perm', None), getattr(self, 'tbl_mom', None), getattr(self, 'tbl_mom_res', None), getattr(self, 'tbl_ale', None)):
-                if tbl is not None:
-                    tbl.setRowCount(0)
+            tbl_mom = getattr(self, 'tbl_mom', None)
+            if tbl_mom is not None:
+                model = tbl_mom.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
+            tbl_mom_res = getattr(self, 'tbl_mom_resumen', None)
+            if tbl_mom_res is not None:
+                model = tbl_mom_res.model()
+                if model is not None and hasattr(model, 'set_rows'):
+                    model.set_rows([])
+            tbl_perm = getattr(self, 'tbl_perm', None)
+            if tbl_perm is not None:
+                model = tbl_perm.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
+            tbl_ale = getattr(self, 'tbl_ale', None)
+            if tbl_ale is not None:
+                model = tbl_ale.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
             # Show a non-blocking hint.
             if hasattr(self, 'lbl_empty_hint'):
                 self.lbl_empty_hint.setVisible(True)
@@ -145,25 +155,10 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
-    def _schedule_reload_data(self):
-        """Programa un reload_data() 'debounced'.
-
-        Reemplaza el botón 'Actualizar valores': ante cambios de parámetros
-        (Vcc nominal, Vmin, % global, etc.) se recalcula automáticamente.
-        """
-        if getattr(self, "_building", False) or getattr(self, "_updating", False):
-            return
-        # Re-armar/actualizar tabla puede ser costoso, por eso se "debounced"
-        # con un timer corto.
-        try:
-            self._auto_reload_timer.start()
-        except Exception:
-            self.reload_data()
-
     def showEvent(self, event):
-        """Al mostrar la pantalla, refrescar automáticamente."""
+        """Al mostrar la pantalla, refrescar automÃ¡ticamente."""
         super().showEvent(event)
-        self._schedule_reload_data()
+        self._emit_cc_input_changed(reason="show")
 
     def _find_comp_by_id(self, comp_id: str):
         if not comp_id:
@@ -185,6 +180,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
     def _apply_debug_to_table(self, table, tag_col: int):
         if table is None:
+            return
+        if not hasattr(table, "item"):
             return
         for r in range(table.rowCount()):
             it = table.item(r, tag_col)
@@ -213,29 +210,35 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.lbl_empty_hint.setVisible(False)
         root.addWidget(self.lbl_empty_hint)
 
-        # Widget de pestañas internas
+        # Compute hint (non-blocking)
+        self.lbl_cc_computing = QLabel("Calculando…")
+        self.lbl_cc_computing.setProperty("mutedHint", True)
+        self.lbl_cc_computing.setVisible(False)
+        root.addWidget(self.lbl_cc_computing)
+
+        # Widget de pestaÃ±as internas
         self.tabs = QTabWidget()
         root.addWidget(self.tabs)
 
-        # ================== Sección 1: Permanentes ==================
+        # ================== SecciÃ³n 1: Permanentes ==================
         self.grp_perm = QGroupBox("Consumos Permanentes en C.C.")
         g_perm = self.grp_perm
         v_perm = QVBoxLayout(g_perm)
 
-        # Línea de tensión nominal y % utilización
+        # LÃ­nea de tensiÃ³n nominal y % utilizaciÃ³n
         top_perm = QHBoxLayout()
 
         # --- Bloque Vnom / Vmin ---
         vbox_v = QVBoxLayout()
 
         row_vnom = QHBoxLayout()
-        row_vnom.addWidget(QLabel("Tensión nominal C.C. [V]:"))
+        row_vnom.addWidget(QLabel("TensiÃ³n nominal C.C. [V]:"))
         self.lbl_vcc = QLabel("-")
         row_vnom.addWidget(self.lbl_vcc)
         row_vnom.addStretch()
 
         row_vmin = QHBoxLayout()
-        row_vmin.addWidget(QLabel("Vmin para cálculo de corrientes [V]:"))
+        row_vmin.addWidget(QLabel("Vmin para cÃ¡lculo de corrientes [V]:"))
         self.lbl_vmin = QLabel("-")
         row_vmin.addWidget(self.lbl_vmin)
         row_vmin.addStretch()
@@ -247,7 +250,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # --- Resto de controles ---
         top_perm.addSpacing(20)
-        top_perm.addWidget(QLabel("% Utilización global:"))
+        top_perm.addWidget(QLabel("% UtilizaciÃ³n global:"))
         self.spin_pct_global = QDoubleSpinBox()
         self.spin_pct_global.setRange(0.0, 100.0)
         self.spin_pct_global.setDecimals(2)
@@ -258,30 +261,29 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.chk_usar_global.setChecked(True)
         top_perm.addWidget(self.chk_usar_global)
 
-        # (Auto-refresh) Eliminamos el botón "Actualizar datos". La vista se
-        # actualiza automáticamente al cambiar parámetros o al mostrar la pestaña.
+        # (Auto-refresh) Eliminamos el botÃ³n "Actualizar datos". La vista se
+        # actualiza automÃ¡ticamente al cambiar parÃ¡metros o al mostrar la pestaÃ±a.
 
         top_perm.addStretch()
         v_perm.addLayout(top_perm)
         # Tabla de permanentes
-        self.tbl_perm = create_perm_table(self)
+        self.tbl_perm = QTableView(self)
         header_p = self.tbl_perm.horizontalHeader()
         header_p.setMinimumSectionSize(40)
         header_p.setStretchLastSection(False)
-        make_table_sortable(self.tbl_perm)
         self.tbl_perm.verticalHeader().setDefaultSectionSize(26)
 
-        # La tabla debe ocupar el alto disponible (ev el alto disponible (evita “aire” debajo)
+        # La tabla debe ocupar el alto disponible (ev el alto disponible (evita âaireâ debajo)
         v_perm.addWidget(self.tbl_perm, 1)
 
-        # Totales y botón imagen
+        # Totales y botÃ³n imagen
         bottom_perm = QHBoxLayout()
 
         self.lbl_perm_total_p_total = QLabel("Total P total: 0.00 [W]")
         self.lbl_perm_total_p_perm = QLabel("Total P permanente: 0.00 [W]")
         self.lbl_perm_total_i = QLabel("Total I permanente: 0.00 [A]")
-        self.lbl_perm_total_p_mom = QLabel("Total P momentánea: 0.00 [W]")
-        self.lbl_perm_total_i_fuera = QLabel("Total I momentánea: 0.00 [A]")
+        self.lbl_perm_total_p_mom = QLabel("Total P momentÃ¡nea: 0.00 [W]")
+        self.lbl_perm_total_i_fuera = QLabel("Total I momentÃ¡nea: 0.00 [A]")
 
         bottom_perm.addWidget(self.lbl_perm_total_p_total)
         bottom_perm.addSpacing(20)
@@ -294,84 +296,76 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         bottom_perm.addWidget(self.lbl_perm_total_i_fuera)
 
         bottom_perm.addStretch()
-        self.btn_img_perm = QPushButton("Guardar imagen tabla permanentes…")
+        self.btn_img_perm = QPushButton("Guardar imagen tabla permanentesâ¦")
         bottom_perm.addWidget(self.btn_img_perm)
         v_perm.addLayout(bottom_perm)
 
-        # --- Pestaña "Permanentes" ---
+        # --- PestaÃ±a "Permanentes" ---
         perm_page = QWidget()
         perm_layout = QVBoxLayout(perm_page)
         perm_layout.addWidget(g_perm, 1)
         self.tabs.addTab(perm_page, "Permanentes")
 
-        # ================== Sección 2: Momentáneos ==================
-        self.grp_mom = QGroupBox("Consumos Momentáneos en C.C. – Escenarios")
+        # ================== SecciÃ³n 2: MomentÃ¡neos ==================
+        self.grp_mom = QGroupBox("Consumos MomentÃ¡neos en C.C. â Escenarios")
         g_mom = self.grp_mom
         v_mom = QVBoxLayout(g_mom)
 
         top_mom = QHBoxLayout()
-        top_mom.addWidget(QLabel("N° de escenarios:"))
+        top_mom.addWidget(QLabel("NÂ° de escenarios:"))
         self.spin_escenarios = QSpinBox()
         self.spin_escenarios.setRange(1, 20)
         self.spin_escenarios.setValue(1)
         top_mom.addWidget(self.spin_escenarios)
         top_mom.addStretch()
         v_mom.addLayout(top_mom)
-        # Tabla de cargas momentáneas
-        self.tbl_mom = create_mom_table(self)
-        self.tbl_mom.itemChanged.connect(self._on_mom_item_changed)
+        # Tabla de cargas momentÃ¡neas
+        self.tbl_mom = QTableView(self)
         header_m = self.tbl_mom.horizontalHeader()
         header_m.setMinimumSectionSize(40)
         header_m.setStretchLastSection(False)
-        make_table_sortable(self.tbl_mom)
         self.tbl_mom.verticalHeader().setDefaultSectionSize(26)
         self.tbl_mom.setSortingEnabled(False)   # <-- CLAVE (tiene checkbox/combo)
 
         # Tabla principal ocupa el alto disponible
         v_mom.addWidget(self.tbl_mom, 3)
 
-        # Tabla de resumen por escenario (con descripción)
-        self.tbl_mom_resumen = create_mom_summary_table(self)
+        # Tabla de resumen por escenario (con descripcion)
+        self.tbl_mom_resumen = QTableView(self)
         header_mr = self.tbl_mom_resumen.horizontalHeader()
-
         header_mr.setSectionResizeMode(QHeaderView.Interactive)
         header_mr.setMinimumSectionSize(40)
         header_mr.setStretchLastSection(False)
-        make_table_sortable(self.tbl_mom_resumen)
-        self.tbl_mom_resumen.verticalHeader().setDefaultSectionSize(24)
-        self.tbl_mom_resumen.verticalHeader().setDefaultSectionSize(26)
+        self.tbl_mom_resumen.setSortingEnabled(False)
+        self.tbl_mom_resumen.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_mom_resumen.verticalHeader().setDefaultSectionSize(26)
         v_mom.addWidget(self.tbl_mom_resumen, 1)
 
         bottom_mom = QHBoxLayout()
         bottom_mom.addStretch()
-        self.btn_img_mom_cargas = QPushButton("Imagen tabla momentáneos…")
-        self.btn_img_mom_esc = QPushButton("Imagen tabla escenarios…")
+        self.btn_img_mom_cargas = QPushButton("Imagen tabla momentÃ¡neosâ¦")
+        self.btn_img_mom_esc = QPushButton("Imagen tabla escenariosâ¦")
         bottom_mom.addWidget(self.btn_img_mom_cargas)
         bottom_mom.addWidget(self.btn_img_mom_esc)
         v_mom.addLayout(bottom_mom)
 
-        # --- Pestaña "Momentáneos" ---
+        # --- PestaÃ±a "MomentÃ¡neos" ---
         mom_page = QWidget()
         mom_layout = QVBoxLayout(mom_page)
         mom_layout.addWidget(g_mom, 1)
-        self.tabs.addTab(mom_page, "Momentáneos")
+        self.tabs.addTab(mom_page, "MomentÃ¡neos")
 
 
-        # ================== Sección 3: Aleatorios ==================
+        # ================== SecciÃ³n 3: Aleatorios ==================
         self.grp_ale = QGroupBox("Consumos Aleatorios en C.C.")
         g_ale = self.grp_ale
         v_ale = QVBoxLayout(g_ale)
-        self.tbl_ale = create_rand_table(self)
+        self.tbl_ale = QTableView(self)
         header_a = self.tbl_ale.horizontalHeader()
 
         header_a.setSectionResizeMode(QHeaderView.Interactive)
         header_a.setMinimumSectionSize(40)
         header_a.setStretchLastSection(False)
-        make_table_sortable(self.tbl_ale)
-        self.tbl_ale.verticalHeader().setDefaultSectionSize(26)
-        self.tbl_ale.verticalHeader().setDefaultSectionSize(26)
-        self.tbl_ale.verticalHeader().setDefaultSectionSize(26)
         self.tbl_ale.setSortingEnabled(False)   # <-- recomendado
         v_ale.addWidget(self.tbl_ale, 1)
 
@@ -382,11 +376,11 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         bottom_ale.addSpacing(30)
         bottom_ale.addWidget(self.lbl_ale_total_i)
         bottom_ale.addStretch()
-        self.btn_img_ale = QPushButton("Guardar imagen tabla aleatorios…")
+        self.btn_img_ale = QPushButton("Guardar imagen tabla aleatoriosâ¦")
         bottom_ale.addWidget(self.btn_img_ale)
         v_ale.addLayout(bottom_ale)
 
-        # --- Pestaña "Aleatorios" ---
+        # --- PestaÃ±a "Aleatorios" ---
         ale_page = QWidget()
         ale_layout = QVBoxLayout(ale_page)
         ale_layout.addWidget(g_ale, 1)
@@ -395,14 +389,10 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         # No agregamos stretch extra: el contenido ya expande
 
         # ================== Conexiones ==================
-        # (auto-refresh) ya no hay botón manual.
+        # (auto-refresh) ya no hay botÃ³n manual.
         self.spin_pct_global.valueChanged.connect(self._on_global_pct_changed)
-        self.spin_pct_global.valueChanged.connect(self._schedule_reload_data)
         self.chk_usar_global.toggled.connect(self._on_chk_usar_global_toggled)
-        self.chk_usar_global.toggled.connect(self._schedule_reload_data)
-        self.tbl_perm.itemChanged.connect(self._on_perm_item_changed)
 
-        self.tbl_mom_resumen.itemChanged.connect(self._on_mom_resumen_item_changed)
         self.spin_escenarios.valueChanged.connect(self._rebuild_momentary_scenarios)
 
         self.btn_img_perm.clicked.connect(
@@ -418,53 +408,58 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             lambda: self._save_section_as_image(self.grp_ale, self.tbl_ale, "consumos_aleatorios.png")
         )
 
-    def refresh_from_model(self):
-        proyecto = getattr(self.data_model, "proyecto", {}) or {}
 
-        def _to_float(x, default=0.0):
-            try:
-                if x is None:
-                    return default
-                if isinstance(x, str):
-                    x = x.strip().replace(",", ".")
-                    if x == "":
-                        return default
-                return float(x)
-            except Exception:
-                return default
+    def refresh_metadata(self, fields=None):
+        # Metadata changes should not trigger reload/recalc.
+        self.refresh_display_only()
 
-        v_nom = _to_float(proyecto.get("dc_nominal_voltage"), 0.0)
+    def refresh_input(self, fields=None):
+        # Display-only refresh driven by computed results.
+        self.refresh_display_only()
 
-        # Toma el porcentaje desde el proyecto (ajusta la key si tu proyecto usa otro nombre)
-        vmin_pct = _to_float(
-            proyecto.get("dc_vmin_pct", proyecto.get("tension_minima_pct", 15.0)),
-            15.0
-        )
+    def refresh_display_only(self):
+        try:
+            self.commit_pending_edits()
+        except Exception:
+            pass
+        self._update_permanent_totals()
+        self._update_momentary_summary_display()
+        self._update_aleatory_totals()
 
-        # Calcula Vmin
-        vmin_calc = v_nom * (1.0 - vmin_pct / 100.0) if v_nom > 0 else 0.0
-
-        # --- SETEAR EN WIDGETS SOLO SI EXISTEN ---
-        # 1) Tensión nominal (si tienes un QLineEdit/label asociado)
-        for attr in ("edit_vnom", "txt_vnom", "le_vnom", "inp_vnom", "lbl_vnom", "lbl_vmin"):
-            w = getattr(self, attr, None)
-            if w is not None and hasattr(w, "setText"):
-                w.setText(f"{v_nom:.2f}" if v_nom > 0 else "")
-                break
-
-        # 2) Vmin para cálculo: prueba varios nombres comunes / tuyos
-        for attr in ("edit_vmin_calc", "edit_vmin", "txt_vmin", "le_vmin", "inp_vmin", "lbl_vmin_calc", "lbl_vmin"):
-            w = getattr(self, attr, None)
-            if w is not None and hasattr(w, "setText"):
-                w.setText(f"{vmin_calc:.2f}" if vmin_calc > 0 else "")
+    def _on_cc_computed(self, event):
+        try:
+            from app.sections import Section
+            if getattr(event, "section", None) != Section.CC:
                 return
+            if hasattr(self, "lbl_cc_computing"):
+                self.lbl_cc_computing.setVisible(False)
+            self.refresh_display_only()
+        except Exception:
+            log.debug("Computed event handling failed (best-effort).", exc_info=True)
 
-        # Si llegamos aquí, no encontramos el widget. No crashear: solo log.
-        print("[CCConsumptionScreen] No se encontró el widget para Vmin (revisa el nombre del QLineEdit/label).")
+    def _emit_cc_input_changed(self, reason: str):
+        bus = getattr(self.data_model, "event_bus", None)
+        if bus is None:
+            return
+        try:
+            from app.events import InputChanged
+            bus.emit(InputChanged(section=Section.CC, fields={"reason": reason}))
+        except Exception:
+            log.debug("Failed to emit InputChanged (best-effort).", exc_info=True)
+
+    def _on_cc_compute_started(self, event):
+        try:
+            from app.sections import Section
+            if getattr(event, "section", None) != Section.CC:
+                return
+            if hasattr(self, "lbl_cc_computing"):
+                self.lbl_cc_computing.setVisible(True)
+        except Exception:
+            log.debug("ComputeStarted handling failed (best-effort).", exc_info=True)
 
 
     # =========================================================
-    # Helpers numéricos / de datos
+    # Helpers numÃ©ricos / de datos
     # =========================================================
     @staticmethod
     def _to_float(val, default=0.0):
@@ -485,15 +480,20 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         # Delegar en controller (centraliza mutaciones y dirty flag)
         return self._controller.set_project_value(key, value)
 
-    def _auto_resize(self, table: QTableWidget, min_widths: dict = None):
-        """Ajusta las columnas al contenido con un ancho mínimo por columna."""
+    def _auto_resize(self, table, min_widths: dict = None):
+        """Ajusta las columnas al contenido con un ancho mÃ­nimo por columna."""
         if table is None:
             return
         if min_widths is None:
             min_widths = {}
         table.resizeColumnsToContents()
         header = table.horizontalHeader()
-        for col in range(table.columnCount()):
+        if hasattr(table, "columnCount"):
+            col_count = table.columnCount()
+        else:
+            model = table.model()
+            col_count = model.columnCount() if model is not None else 0
+        for col in range(col_count):
             current = header.sectionSize(col)
             minw = min_widths.get(col, 60)
             if current < minw:
@@ -501,6 +501,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
     def load_from_model(self):
         # ScreenBase hook: cargar datos desde el modelo a la UI
+        self.reload_data()
+
+    def refresh_from_model(self):
         self.reload_data()
 
     def save_to_model(self):
@@ -511,8 +514,22 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.commit_pending_edits()
         self._building = True
 
+        try:
+            if hasattr(self.data_model, "ensure_aliases_consistent"):
+                self.data_model.ensure_aliases_consistent()
+        except Exception:
+            log.debug("Failed to ensure aliases consistency (best-effort).", exc_info=True)
+
         # --- Proyecto / modelo ---
         proj = getattr(self.data_model, "proyecto", {}) or {}
+        try:
+            n_esc = int(proj.get("cc_num_escenarios", 1) or 1)
+        except Exception:
+            n_esc = 1
+        try:
+            self._controller.normalize_cc_scenarios_storage(n_esc)
+        except Exception:
+            log.debug("Failed to normalize cc scenarios (best-effort).", exc_info=True)
         gabinetes = get_model_gabinetes(self.data_model)
 
         # Startup-safe / empty project: if required data is missing, avoid any
@@ -530,9 +547,26 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             self.lbl_vmin.setText("-")
             if hasattr(self, 'lbl_empty_hint'):
                 self.lbl_empty_hint.setVisible(True)
-            for tbl in (getattr(self, 'tbl_perm', None), getattr(self, 'tbl_mom', None), getattr(self, 'tbl_mom_res', None), getattr(self, 'tbl_ale', None)):
-                if tbl is not None:
-                    tbl.setRowCount(0)
+            tbl_perm = getattr(self, 'tbl_perm', None)
+            if tbl_perm is not None:
+                model = tbl_perm.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
+            tbl_mom = getattr(self, 'tbl_mom', None)
+            if tbl_mom is not None:
+                model = tbl_mom.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
+            tbl_mom_res = getattr(self, 'tbl_mom_resumen', None)
+            if tbl_mom_res is not None:
+                model = tbl_mom_res.model()
+                if model is not None and hasattr(model, 'set_rows'):
+                    model.set_rows([])
+            tbl_ale = getattr(self, 'tbl_ale', None)
+            if tbl_ale is not None:
+                model = tbl_ale.model()
+                if model is not None and hasattr(model, "set_items"):
+                    model.set_items([])
             self._building = False
             return
 
@@ -561,6 +595,47 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         all_items = iter_cc_items(proj, gabinetes)
         permanentes, momentaneos, aleatorios = split_by_tipo(all_items)
 
+        if not all_items:
+            try:
+                gab_count = len(gabinetes or [])
+                comp_count = 0
+                example_data = None
+                tipo_counts = {}
+                for gab in gabinetes or []:
+                    comps = gab.get("components", []) or []
+                    comp_count += len(comps)
+                    if example_data is None:
+                        for comp in comps:
+                            data = comp.get("data", None)
+                            if isinstance(data, dict) and data:
+                                example_data = {
+                                    "tipo_consumo": data.get("tipo_consumo"),
+                                    "potencia_w": data.get("potencia_w"),
+                                }
+                                break
+                    for comp in comps:
+                        data = comp.get("data", {}) or {}
+                        tipo = str(data.get("tipo_consumo", "") or "")
+                        if tipo:
+                            tipo_counts[tipo] = tipo_counts.get(tipo, 0) + 1
+                    if example_data is not None:
+                        break
+                log.debug(
+                    "CC reload_data empty: gabinetes=%s components=%s example_data=%s",
+                    gab_count,
+                    comp_count,
+                    example_data,
+                )
+                if comp_count > 0:
+                    log.warning(
+                        "CC reload_data empty but components exist: gabinetes=%s components=%s tipos=%s",
+                        gab_count,
+                        comp_count,
+                        tipo_counts,
+                    )
+            except Exception:
+                log.debug("CC reload_data empty: diagnostics failed.", exc_info=True)
+
         # --- Cargar tablas ---
         self._load_permanentes(permanentes, proj)            # <-- cambiado
         self._load_momentaneos(momentaneos) # <-- igual, pero ahora recibe CCItem
@@ -568,21 +643,13 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         self._building = False
 
-        # --- Recalcular displays ---
-        self._update_permanent_totals()
+        # --- Render from current computed results (if any) ---
         self._rebuild_momentary_scenarios()
-        self._update_momentary_summary_display()
-        self._update_aleatory_totals()
+        self.refresh_display_only()
         self._apply_debug_tooltips()
 
-        # --- Derived totals for other screens/reports (best-effort) ---
-        # Keep behavior identical by using CalcService (domain-backed).
-        try:
-            svc = getattr(self.data_model, "calc_service", None)
-            if svc is not None:
-                svc.recalc_cc()
-        except Exception:
-            log.debug("Failed to recalc CC via CalcService (best-effort).", exc_info=True)
+        # Trigger compute via EventBus (debounced orchestrator).
+        self._emit_cc_input_changed(reason="reload")
 
     # =========================================================
     # Permanentes
@@ -599,14 +666,31 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         self._apply_global_pct_mode()
 
+    def _on_global_pct_changed(self, value: float):
+        if getattr(self, "_building", False):
+            return
+        try:
+            # Persist input via controller (emits InputChanged(CC))
+            self._controller.set_pct_global(float(value))
+            if hasattr(self.data_model, "mark_dirty"):
+                self.data_model.mark_dirty(True)
+            # If global mode is active, update UI-only state
+            if getattr(self, "chk_usar_global", None) is not None and self.chk_usar_global.isChecked():
+                try:
+                    self._apply_global_pct_mode()
+                except Exception:
+                    pass
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to handle global pct change")
+
     def commit_pending_edits(self):
         """Solo fuerza commit del editor activo (NO recalcula ni llama totales)."""
         self._commit_table_edits()
-        self._persist_scenario_descs_from_table()
 
     def _commit_table_edits(self):
         """
-        Fuerza commit REAL de cualquier celda en edición.
+        Fuerza commit REAL de cualquier celda en ediciÃ³n.
         Sin esto, el texto puede quedar en el editor y NO en el QTableWidgetItem,
         por lo que al guardar se va el valor antiguo.
         """
@@ -617,7 +701,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         for tbl in (
             getattr(self, "tbl_perm", None),
             getattr(self, "tbl_mom", None),
-            getattr(self, "tbl_mom_resumen", None),  # ✅ OJO: este es el nombre correcto
+            getattr(self, "tbl_mom_resumen", None),  # â OJO: este es el nombre correcto
             getattr(self, "tbl_ale", None),
         ):
             if tbl is None:
@@ -648,7 +732,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
     def _save_section_as_image(self, container, table, default_name: str):
         """
-        Captura una sección completa (el QGroupBox 'container'),
+        Captura una secciÃ³n completa (el QGroupBox 'container'),
         expandiendo antes la tabla 'table' para que se vea completa.
         """
         if container is None or table is None:
@@ -656,24 +740,34 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Guardar sección como imagen",
+            "Guardar secciÃ³n como imagen",
             default_name,
             "PNG (*.png)"
         )
         if not path:
             return
 
-        # ---------- 1) Tamaño total de la tabla (todas las filas/columnas) ----------
+        # ---------- 1) TamaÃ±o total de la tabla (todas las filas/columnas) ----------
         vh = table.verticalHeader()
         hh = table.horizontalHeader()
         frame = table.frameWidth() * 2
 
         width_table = vh.width() + frame
-        for col in range(table.columnCount()):
+        if hasattr(table, "columnCount"):
+            col_count = table.columnCount()
+        else:
+            model = table.model()
+            col_count = model.columnCount() if model is not None else 0
+        for col in range(col_count):
             width_table += table.columnWidth(col)
 
         height_table = hh.height() + frame
-        for row in range(table.rowCount()):
+        if hasattr(table, "rowCount"):
+            row_count = table.rowCount()
+        else:
+            model = table.model()
+            row_count = model.rowCount() if model is not None else 0
+        for row in range(row_count):
             height_table += table.rowHeight(row)
 
         # ---------- 2) Guardar estado original de tabla y contenedor ----------
@@ -702,7 +796,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         pix: QPixmap = container.grab()
         pix.save(path, "PNG")
 
-        # Copiar también al portapapeles
+        # Copiar tambiÃ©n al portapapeles
         try:
             QGuiApplication.clipboard().setPixmap(pix)
         except Exception:

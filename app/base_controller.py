@@ -103,6 +103,7 @@ class BaseController:
         sec = section or self._section
         if sec is None:
             return
+        # Deprecated: prefer EventBus events to avoid duplicate refresh paths.
         if hasattr(dm, "notify_section_changed"):
             try:
                 dm.notify_section_changed(sec)

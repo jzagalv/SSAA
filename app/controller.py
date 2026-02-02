@@ -9,13 +9,14 @@ NOTE: This module intentionally contains PyQt5 imports and screen wiring.
 from __future__ import annotations
 
 
-from app.sections import Section
-import os
 import json
+import logging
+import os
 from pathlib import Path
 
+from app.sections import Section
 from PyQt5.QtWidgets import (
-    QTabWidget, QMessageBox, QMainWindow, QAction, QFileDialog,
+    QTabWidget, QMessageBox, QMainWindow, QAction, QActionGroup, QFileDialog,
     QProgressDialog, QApplication,
 )
 from PyQt5.QtCore import pyqtSignal, QTimer
@@ -26,6 +27,8 @@ from data_model import DataModel
 from services.calc_service import CalcService
 from services.validation_service import ValidationService
 from services.section_orchestrator import SectionOrchestrator
+from services.compute.qt_compute_orchestrator import QtComputeOrchestrator
+from app.events import EventBus
 from screens.project.main_screen import MainScreen
 from screens.project.location_screen import LocationScreen
 from screens.project.component_database_screen import ComponentDatabaseScreen
@@ -39,11 +42,14 @@ from screens.load_tables.load_tables_screen import LoadTablesScreen
 from screens.ssaa_designer.ssaa_designer_screen import SSAADesignerScreen
 from screens.cc_consumption.cc_consumption_screen import CCConsumptionScreen
 from screens.bank_charger.bank_charger_screen import BankChargerSizingScreen
+from ui.common.state import get_ui_theme, set_ui_theme
+from ui.theme import apply_named_theme
 
 # Guardrails / ownership catalog (kept in app layer to avoid UI cross-coupling)
 from app.section_catalog import validate_catalog
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+log = logging.getLogger(__name__)
 
 class BatteryBankCalculatorApp(QTabWidget):
     project_loaded = pyqtSignal(str)
@@ -56,6 +62,8 @@ class BatteryBankCalculatorApp(QTabWidget):
         """
         super().__init__()
         self.data_model = data_model if data_model is not None else DataModel()
+        self.event_bus = EventBus()
+        setattr(self.data_model, "event_bus", self.event_bus)
 
         # Services (no UI dependencies)
         self.calc_service = CalcService(self.data_model)
@@ -72,7 +80,18 @@ class BatteryBankCalculatorApp(QTabWidget):
             data_model=self.data_model,
             calc_service=self.calc_service,
             validation_service=self.validation_service,
+            event_bus=self.event_bus,
         )
+        # Compute orchestrator (debounced auto-recalc, no UI coupling)
+        try:
+            self.compute_orchestrator = QtComputeOrchestrator(
+                event_bus=self.event_bus,
+                data_model=self.data_model,
+                debounce_ms=200,
+            )
+            setattr(self.data_model, "compute_orchestrator", self.compute_orchestrator)
+        except Exception:
+            self.compute_orchestrator = None
         # Subscribe to model-level events (observer pattern)
         if hasattr(self.data_model, "on"):
             self.data_model.on("section_changed", self._on_section_changed)
@@ -183,6 +202,14 @@ class BatteryBankCalculatorApp(QTabWidget):
                 import logging
                 logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
+            # Kick CC compute after load via EventBus.
+            try:
+                from app.events import InputChanged
+                self.event_bus.emit(InputChanged(section=Section.CC, fields={"reason": "project_loaded"}))
+            except Exception:
+                import logging
+                logging.getLogger(__name__).debug('compute trigger failed', exc_info=True)
+
             # Mantener estado limpio tras carga (no debe marcar dirty por refrescos UI)
             dm.mark_dirty(False)
         finally:
@@ -225,13 +252,17 @@ class BatteryBankCalculatorApp(QTabWidget):
                 dm.set_ui_refreshing(False)
 
     def _on_tab_changed(self, index: int):
-        # 1️⃣ Forzar commit de ediciones pendientes
-        if hasattr(self, "commit_pending_edits"):
-            try:
+        # 1) Forzar commit de ediciones pendientes (tab actual si es posible).
+        try:
+            current = self.currentWidget()
+            if current is not None and hasattr(current, "commit_pending_edits"):
+                current.commit_pending_edits()
+            elif hasattr(self, "commit_pending_edits"):
                 self.commit_pending_edits()
-            except Exception:
-                import logging
-                logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
 
         widget = self.widget(index)
 
@@ -373,6 +404,29 @@ class MainWindow(QMainWindow):
         lib_action.triggered.connect(self.open_library_manager)
         tools_menu.addAction(lib_action)
 
+        # Ver
+        view_menu = menubar.addMenu("Ver")
+        theme_menu = view_menu.addMenu("Tema")
+
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+
+        act_theme_light = QAction("Claro", self, checkable=True)
+        act_theme_dark = QAction("Oscuro", self, checkable=True)
+        theme_group.addAction(act_theme_light)
+        theme_group.addAction(act_theme_dark)
+        theme_menu.addAction(act_theme_light)
+        theme_menu.addAction(act_theme_dark)
+
+        current_theme = get_ui_theme()
+        if current_theme == "dark":
+            act_theme_dark.setChecked(True)
+        else:
+            act_theme_light.setChecked(True)
+
+        act_theme_light.triggered.connect(lambda: self._apply_ui_theme("light"))
+        act_theme_dark.triggered.connect(lambda: self._apply_ui_theme("dark"))
+
         # Ayuda
         help_menu = menubar.addMenu("Ayuda")
         help_action = QAction("Acerca de", self)
@@ -384,6 +438,13 @@ class MainWindow(QMainWindow):
         debug_action = QAction("Activar modo debug", self, checkable=True)
         debug_action.triggered.connect(self.toggle_debug_mode)
         debug_menu.addAction(debug_action)
+
+    def _apply_ui_theme(self, theme_name: str) -> None:
+        try:
+            set_ui_theme(theme_name)
+            apply_named_theme(QApplication.instance(), theme_name)
+        except Exception:
+            log.debug("Failed to apply UI theme '%s'", theme_name, exc_info=True)
 
     def toggle_debug_mode(self, checked):
         # Activa/desactiva etiquetas debug en la pantalla de Arquitectura SS/AA

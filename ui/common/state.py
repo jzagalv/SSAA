@@ -56,3 +56,25 @@ def restore_header_state(header: QHeaderView, key: str) -> None:
             header.restoreState(data)
     except Exception:
         log.debug("restore_header_state failed (%s)", key, exc_info=True)
+
+
+def get_ui_theme() -> str:
+    """Return the persisted UI theme name ('light' or 'dark')."""
+    try:
+        val = _settings().value("ui/theme", "light")
+        theme = str(val or "light").strip().lower()
+        return theme if theme in ("light", "dark") else "light"
+    except Exception:
+        log.debug("get_ui_theme failed", exc_info=True)
+        return "light"
+
+
+def set_ui_theme(theme: str) -> None:
+    """Persist the UI theme name."""
+    try:
+        theme_name = str(theme or "light").strip().lower()
+        if theme_name not in ("light", "dark"):
+            theme_name = "light"
+        _settings().setValue("ui/theme", theme_name)
+    except Exception:
+        log.debug("set_ui_theme failed", exc_info=True)

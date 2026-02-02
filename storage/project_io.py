@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import logging
 from typing import TYPE_CHECKING
 from storage.project_paths import PROJECT_EXT
 
@@ -41,8 +43,16 @@ def save_project(dm, file_path: str = "") -> bool:
         dm.file_path = file_path
         dm.project_folder = os.path.dirname(file_path)
         dm.project_filename = os.path.splitext(os.path.basename(file_path))[0]
+        t0 = time.perf_counter()
+        data = dm.to_dict()
+        payload = json.dumps(data, indent=2, ensure_ascii=False)
+        size_bytes = len(payload.encode("utf-8"))
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        logging.getLogger(__name__).debug(
+            "Project serialize: %.1f ms, %d bytes", elapsed_ms, size_bytes
+        )
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(dm.to_dict(), f, indent=2, ensure_ascii=False)
+            f.write(payload)
         dm.dirty = False
         if hasattr(dm, "notify_project_saved"):
             dm.notify_project_saved(file_path)

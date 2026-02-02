@@ -13,6 +13,11 @@ from typing import Dict, List
 
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QListWidgetItem
+from ui.theme import get_theme_token
+
+
+def _theme_color(token: str, fallback: str) -> QColor:
+    return QColor(get_theme_token(token, fallback))
 
 
 class IssuesPresenter:
@@ -35,14 +40,14 @@ class IssuesPresenter:
 
             # Colores por severidad (sobrio estilo CAD)
             if lvl == "error":
-                item.setForeground(QColor(180, 0, 0))
-                item.setBackground(QBrush(QColor(255, 235, 235)))
+                item.setForeground(_theme_color("ERROR_TEXT", "#B40000"))
+                item.setBackground(QBrush(_theme_color("ERROR_BG", "#FFEBEB")))
             elif lvl == "warn":
-                item.setForeground(QColor(140, 90, 0))
-                item.setBackground(QBrush(QColor(255, 249, 230)))
+                item.setForeground(_theme_color("WARN_TEXT", "#8C5A00"))
+                item.setBackground(QBrush(_theme_color("WARN_BG", "#FFF9E6")))
             else:
-                item.setForeground(QColor(30, 70, 140))
-                item.setBackground(QBrush(QColor(235, 243, 255)))
+                item.setForeground(_theme_color("INFO_TEXT", "#1E468C"))
+                item.setBackground(QBrush(_theme_color("INFO_BG", "#EBF3FF")))
 
             scr.lst_issues.addItem(item)
 

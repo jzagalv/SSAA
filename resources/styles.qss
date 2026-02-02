@@ -57,9 +57,9 @@ QPushButton:pressed {
 }
 
 QPushButton:disabled {
-    background: #CFE6C7;
+    background: {{BUTTON_DISABLED_BG}};
     color: {{TEXT_MUTED}};
-    border-color: #CFE6C7;
+    border-color: {{BUTTON_DISABLED_BG}};
 }
 
 /* Botones secundarios */
@@ -70,18 +70,18 @@ QPushButton[role="secondary"] {
 }
 
 QPushButton[role="secondary"]:hover {
-    background: #E9EEF3;
+    background: {{SECONDARY_HOVER_BG}};
 }
 
 /* Botones peligrosos */
 QPushButton[role="danger"] {
-    background: #C62828;
-    border-color: #C62828;
+    background: {{DANGER_BG}};
+    border-color: {{DANGER_BG}};
     color: {{ON_DARK}};
 }
 
 QPushButton[role="danger"]:hover {
-    background: #B71C1C;
+    background: {{DANGER_BG_HOVER}};
 }
 
 /* =========================================================
@@ -108,7 +108,7 @@ QComboBox:focus {
 }
 
 QComboBox:disabled {
-    background: #ECEFF3;
+    background: {{INPUT_DISABLED_BG}};
     color: {{TEXT_MUTED}};
 }
 
@@ -151,7 +151,7 @@ QTabWidget::pane {
 }
 
 QTabBar::tab {
-    background: #E6EBF0;
+    background: {{TAB_BG}};
     padding: 8px 14px;
     border: 1px solid {{BORDER}};
     border-bottom: none;
@@ -165,32 +165,35 @@ QTabBar::tab:selected {
 }
 
 QTabBar::tab:hover {
-    background: #EDF2F7;
+    background: {{TAB_HOVER_BG}};
 }
 
 /* =========================================================
    TABLAS
    ========================================================= */
-QTableWidget {
+QTableWidget,
+QTableView {
     background: {{SURFACE}};
     border: 1px solid {{BORDER}};
     gridline-color: {{BORDER}};
     /* Se activa vía make_table_sortable(...). Si alguna tabla no alterna,
        no afecta visualmente. */
-    alternate-background-color: #f7f9fb;
+    alternate-background-color: {{TABLE_ALT_BG}};
 }
 
-QTableWidget::item {
+QTableWidget::item,
+QTableView::item {
     /* Más compacto, estilo CAD */
     padding: 3px 6px;
     border: none;
     /* Evitar texto blanco sobre fondo claro */
-    color: #1F2937;
+    color: {{TABLE_TEXT}};
 }
 
 /* Celdas editables en tablas (user editable) */
-QTableWidget::item:editable {
-    background: #FFF9C4; /* amarillo muy tenue */
+QTableWidget::item:editable,
+QTableView::item:editable {
+    background: {{INPUT_EDIT_BG}}; /* amarillo muy tenue */
 }
 
 /* ---------------------------------------------------------
@@ -202,12 +205,12 @@ QTableWidget::item:editable {
 /* Inputs editables (no read-only) */
 QLineEdit:!read-only,
 QAbstractSpinBox:!read-only {
-    background: #FFF9C4; /* amarillo muy tenue */
+    background: {{INPUT_EDIT_BG}}; /* amarillo muy tenue */
 }
 
 /* Combobox habilitado (selección del usuario) */
 QComboBox:enabled {
-    background: #FFF9C4; /* amarillo muy tenue */
+    background: {{INPUT_EDIT_BG}}; /* amarillo muy tenue */
 }
 
 /* Overrides explícitos desde código */
@@ -215,7 +218,7 @@ QLineEdit[userField="true"],
 QComboBox[userField="true"],
 QDoubleSpinBox[userField="true"],
 QSpinBox[userField="true"] {
-    background: #FFF9C4; /* amarillo muy tenue */
+    background: {{INPUT_EDIT_BG}}; /* amarillo muy tenue */
 }
 
 QHeaderView::section {
@@ -226,14 +229,16 @@ QHeaderView::section {
     font-weight: 600;
 }
 
-QTableWidget::item:selected {
+QTableWidget::item:selected,
+QTableView::item:selected {
     background: {{PRIMARY}};
     color: {{ON_DARK}};
 }
 
 /* Resalte suave al pasar el mouse (útil cuando las tablas no tienen selección) */
-QTableWidget::item:hover {
-    background: #eef5ff;
+QTableWidget::item:hover,
+QTableView::item:hover {
+    background: {{TABLE_HOVER_BG}};
 }
 
 QTableCornerButton::section {
@@ -267,7 +272,7 @@ QMenu::item:selected {
    SCROLLBARS
    ========================================================= */
 QScrollBar:vertical {
-    background: #E6EBF0;
+    background: {{SCROLLBAR_BG}};
     width: 12px;
 }
 
@@ -322,13 +327,13 @@ QMessageBox QPushButton:pressed {
 
 /* Botones secundarios dentro de QMessageBox */
 QMessageBox QPushButton:!default {
-    background: #E6E6E6;
+    background: {{MSGBOX_SECONDARY_BG}};
     color: {{TEXT}};
     border: 1px solid {{BORDER}};
 }
 
 QMessageBox QPushButton:!default:hover {
-    background: #DADADA;
+    background: {{MSGBOX_SECONDARY_HOVER_BG}};
 }
 
 
@@ -391,7 +396,8 @@ QComboBox::down-arrow {
 }
 
 /* Combos dentro de tablas: sin margen, calce compacto */
-QTableWidget QComboBox {
+QTableWidget QComboBox,
+QTableView QComboBox {
     margin: 0px;
     border-radius: 6px;
     min-height: 18px;
@@ -399,7 +405,8 @@ QTableWidget QComboBox {
     padding-bottom: 0px;
 }
 
-QTableWidget QCheckBox {
+QTableWidget QCheckBox,
+QTableView QCheckBox {
     padding: 0px;
 }
 
@@ -414,7 +421,7 @@ QComboBox QAbstractItemView {
 }
 
 QComboBox:disabled {
-    background: #ECEFF3;
+    background: {{INPUT_DISABLED_BG}};
     color: {{TEXT_MUTED}};
     border: 1px solid {{BORDER}};
 }
@@ -425,14 +432,16 @@ QComboBox:disabled {
    ========================================================= */
 
 /* Celdas editables (texto) */
-QTableWidget::item[editable="true"] {
-    background: #FFF9DB;           /* amarillo muy tenue */
+QTableWidget::item[editable="true"],
+QTableView::item[editable="true"] {
+    background: {{TABLE_EDIT_BG}};           /* amarillo muy tenue */
     color: {{TEXT}};
 }
 
 /* Hover para reforzar interacción */
-QTableWidget::item[editable="true"]:hover {
-    background: #FFF3BF;
+QTableWidget::item[editable="true"]:hover,
+QTableView::item[editable="true"]:hover {
+    background: {{TABLE_EDIT_BG_HOVER}};
 }
 
 /* Widgets editables dentro de tablas */
@@ -440,8 +449,8 @@ QLineEdit[editable="true"],
 QComboBox[editable="true"],
 QSpinBox[editable="true"],
 QDoubleSpinBox[editable="true"] {
-    background: #FFF9DB;
-    border: 1px solid #E0C97F;
+    background: {{TABLE_EDIT_BG}};
+    border: 1px solid {{TABLE_EDIT_BORDER}};
 }
 
 /* Focus */
@@ -483,7 +492,7 @@ QCheckBox[centeredCell="true"] {
 
 /* Bank & Charger: pantalla negra (migrado desde screen.py) */
 QWidget#bank_black_screen {
-    background-color: #000000;
+    background-color: {{BLACK_SCREEN_BG}};
 }
 
 QWidget#bank_black_screen QGroupBox {

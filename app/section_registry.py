@@ -22,6 +22,13 @@ def build_recalc_actions(*, app, calc_service) -> Dict[Section, Callable[[], Non
     """Return mapping: Section -> callable (best-effort executed by orchestrator)."""
 
     def recalc_cc():
+        orch = getattr(app, "compute_orchestrator", None)
+        if orch is not None and hasattr(orch, "force_compute"):
+            try:
+                orch.force_compute(Section.CC, reason="recalc")
+                return
+            except Exception:
+                log.debug("compute orchestrator recalc failed (best-effort).", exc_info=True)
         calc_service.recalc_cc()
 
     def recalc_bank_charger():
@@ -74,7 +81,11 @@ def build_refresh_actions(*, app) -> Dict[Refresh, Callable[[], None]]:
 
     def refresh_cc():
         scr = getattr(app, "cc_screen", None)
-        if scr is not None and hasattr(scr, "reload_data"):
+        if scr is None:
+            return
+        if hasattr(scr, "refresh_from_model"):
+            scr.refresh_from_model()
+        elif hasattr(scr, "reload_data"):
             scr.reload_data()
 
     def refresh_bank_charger():

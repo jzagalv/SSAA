@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssaa-designer"
-version = "1.4.0-alpha.62"
+version = "1.4.0-alpha.106"
 description = "SSAA Designer - Stage1 Step 4A.7"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -14,6 +14,9 @@ authors = [{name = "I-SEP"}]
 # Keep runtime deps minimal here; deployments may pin via requirements.txt
 dependencies = [
   "PyQt5>=5.15",
+  "PyJWT>=2.8.0",
+  "matplotlib>=3.7",
+  "cryptography>=41.0",
 ]
 
 [project.optional-dependencies]

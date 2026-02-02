@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import Optional
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
+from ui.theme import get_theme_token
 
 
 class SelectionTablesPresenter:
@@ -50,8 +52,8 @@ class SelectionTablesPresenter:
         it.setFont(font)
 
         # Estilo tipo Excel (azul y texto blanco)
-        it.setBackground(Qt.darkBlue)
-        it.setForeground(Qt.white)
+        it.setBackground(QColor(get_theme_token("BRAND", "#204058")))
+        it.setForeground(QColor(get_theme_token("ON_DARK", "#FFFFFF")))
 
         table.setItem(r, 0, it)
         return r

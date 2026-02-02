@@ -29,6 +29,7 @@ from typing import Any, Dict, List
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
+from ui.theme import get_theme_token
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -456,8 +457,8 @@ class ComponentDatabaseScreen(QDialog):
     # ----------------- reglas visuales -----------------
     def _apply_all_rules(self):
         """Aplica reglas W/VA y C.C./C.A. a todas las filas."""
-        disabled_brush = QBrush(QColor(235, 235, 235))
-        normal_brush = QBrush(QColor(255, 255, 255))
+        disabled_brush = QBrush(QColor(get_theme_token("INPUT_DISABLED_BG", "#EBEBEB")))
+        normal_brush = QBrush(QColor(get_theme_token("SURFACE", "#FFFFFF")))
 
         for r in range(self.table.rowCount()):
             tipo = self._combo_at(r, COL_TIPO)

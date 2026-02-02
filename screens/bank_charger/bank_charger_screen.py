@@ -54,12 +54,17 @@ from domain.cc_consumption import (
 )
 
 import logging
+from ui.theme import get_theme_token
 
 DURACION_MIN_GRAFICA_MIN = 10.0
 CODE_L1 = "L1"
 CODE_LAL = "L(al)"
 CODE_LMOM_AUTO = "L2"
 DESC_LMOM_AUTO = "Carga Momentáneas Equipos C&P"
+
+
+def _theme_color(token: str, fallback: str) -> QColor:
+    return QColor(get_theme_token(token, fallback))
 
 
 class BankChargerSizingScreen(ScreenBase):
@@ -727,7 +732,7 @@ class BankChargerSizingScreen(ScreenBase):
         if editable:
             item.setFlags(flags | Qt.ItemIsEditable)
             # Resaltar campos modificables (amarillo tenue)
-            item.setBackground(QColor(255, 249, 196))
+            item.setBackground(_theme_color("INPUT_EDIT_BG", "#FFF9C4"))
         else:
             item.setFlags(flags & ~Qt.ItemIsEditable)
             # limpiar background si venía de antes
@@ -1416,11 +1421,11 @@ class BankChargerSizingScreen(ScreenBase):
         if item is None:
             return
         if kind == "editable":
-            item.setBackground(QColor(255, 255, 220))
+            item.setBackground(_theme_color("EDITABLE_BG_STRONG", "#FFFFDC"))
         elif kind == "invalid":
-            item.setBackground(QColor(255, 210, 210))
+            item.setBackground(_theme_color("INVALID_BG", "#FFD2D2"))
         else:
-            item.setBackground(QColor(255, 255, 255))
+            item.setBackground(_theme_color("SURFACE", "#FFFFFF"))
 
     def _on_sel_bank_item_changed(self, item: QTableWidgetItem):
         if item is None or item.column() != 1:

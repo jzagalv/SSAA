@@ -33,6 +33,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ui.common.state import save_header_state, restore_header_state
+from ui.theme import get_theme_token
 
 from PyQt5.QtCore import Qt, QPointF, QRectF, QMimeData, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen, QDrag, QFont
@@ -927,8 +928,8 @@ class CabinetComponentsScreen(ScreenBase):
         origen = self._combo_text_at(row, COL_ORIGEN)
         is_user_origin = (origen == "Por Usuario")
 
-        disabled_brush = QBrush(QColor(230, 230, 230))
-        normal_brush = QBrush(QColor(255, 255, 255))
+        disabled_brush = QBrush(QColor(get_theme_token("INPUT_DISABLED_BG", "#E6E6E6")))
+        normal_brush = QBrush(QColor(get_theme_token("SURFACE", "#FFFFFF")))
 
         # Reset visual básico
         item_w.setBackground(normal_brush)
@@ -1053,8 +1054,35 @@ class CabinetComponentsScreen(ScreenBase):
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
+    def commit_pending_edits(self):
+        """Force commit of the active editor to avoid losing edits on tab switch."""
+        if not hasattr(self, "table") or self.table is None:
+            return
+        try:
+            from PyQt5.QtWidgets import QApplication, QAbstractItemDelegate, QAbstractItemView
+
+            app = QApplication.instance()
+            if app is None:
+                return
+            if self.table.state() == QAbstractItemView.EditingState:
+                editor = app.focusWidget()
+                try:
+                    self.table.closeEditor(editor, QAbstractItemDelegate.SubmitModelCache)
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+            try:
+                app.processEvents()
+            except Exception:
+                import logging
+                logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
     def save_to_model(self):
         # This screen writes changes through table/drag handlers.
+        self.commit_pending_edits()
         return
 
     def closeEvent(self, event):
