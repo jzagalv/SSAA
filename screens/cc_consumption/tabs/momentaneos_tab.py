@@ -9,7 +9,7 @@ Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict 
 
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
-from domain.cc_consumption import get_vcc_for_currents
+from domain.cc_consumption import get_vcc_for_currents, momentary_state_signature
 
 from screens.cc_consumption.models.momentaneos_loads_table_model import (
     MomentaneosLoadsTableModel,
@@ -118,7 +118,45 @@ class MomentaneosTabMixin:
         by_scenario = {}
         vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
         force = bool(getattr(self, "_mom_force_recalc", False))
-        if force:
+
+        model = getattr(self, "_mom_model", None)
+        rows = []
+        if model is not None:
+            for r in range(model.rowCount()):
+                row = model.get_row(r)
+                if row is None:
+                    continue
+                rows.append({
+                    "comp_id": row.comp_id,
+                    "incluir": bool(row.incluir),
+                    "escenario": int(row.escenario or 1),
+                    "p_efectiva_w": float(row.p_eff or 0.0),
+                    "i_a": float(row.i_eff or 0.0),
+                })
+
+        sig_now = momentary_state_signature(rows, vmin=float(vmin), n_scenarios=int(n_esc))
+
+        calc = proj.get("calculated")
+        if not isinstance(calc, dict):
+            calc = {}
+            proj["calculated"] = calc
+        cc_calc = calc.get("cc")
+        if not isinstance(cc_calc, dict):
+            cc_calc = {}
+            calc["cc"] = cc_calc
+
+        cached_totals = cc_calc.get("scenarios_totals")
+        cached_sig = cc_calc.get("momentary_signature")
+        use_cache = (
+            isinstance(cached_totals, dict)
+            and cached_totals
+            and cached_sig == sig_now
+            and not force
+        )
+
+        if use_cache:
+            by_scenario = cached_totals
+        else:
             computed = self._controller.compute_momentary(vmin=float(vmin))
             if isinstance(computed, dict):
                 by_scenario = {}
@@ -127,50 +165,11 @@ class MomentaneosTabMixin:
                         by_scenario[str(int(k))] = v
                     except Exception:
                         continue
+                cc_calc["scenarios_totals"] = by_scenario
+                cc_calc["momentary_signature"] = sig_now
+                if hasattr(self.data_model, "mark_dirty"):
+                    self.data_model.mark_dirty(True)
             self._mom_force_recalc = False
-        else:
-            calc = proj.get("calculated") if isinstance(proj, dict) else {}
-            cc_calc = calc.get("cc") if isinstance(calc, dict) else {}
-            scenarios_totals = cc_calc.get("scenarios_totals") if isinstance(cc_calc, dict) else {}
-            if isinstance(scenarios_totals, dict) and scenarios_totals:
-                suma_cache = 0.0
-                for v in scenarios_totals.values():
-                    try:
-                        suma_cache += float((v or {}).get("p_total", 0.0) or 0.0)
-                    except Exception:
-                        continue
-                suma_incluidos = 0.0
-                model = getattr(self, "_mom_model", None)
-                if model is not None:
-                    for r in range(model.rowCount()):
-                        row = model.get_row(r)
-                        if row is None:
-                            continue
-                        if bool(row.incluir):
-                            try:
-                                suma_incluidos += float(row.p_eff or 0.0)
-                            except Exception:
-                                pass
-                if suma_cache == 0.0 and suma_incluidos > 0.0:
-                    computed = self._controller.compute_momentary(vmin=float(vmin))
-                    if isinstance(computed, dict):
-                        by_scenario = {}
-                        for k, v in (computed or {}).items():
-                            try:
-                                by_scenario[str(int(k))] = v
-                            except Exception:
-                                continue
-                else:
-                    by_scenario = scenarios_totals
-            else:
-                computed = self._controller.compute_momentary(vmin=float(vmin))
-                if isinstance(computed, dict):
-                    by_scenario = {}
-                    for k, v in (computed or {}).items():
-                        try:
-                            by_scenario[str(int(k))] = v
-                        except Exception:
-                            continue
 
         # actualizar tabla resumen
         self._ensure_mom_scenarios_model()
@@ -202,15 +201,6 @@ class MomentaneosTabMixin:
                 "p_total": float(d.get("p_total", 0.0) or 0.0),
                 "i_total": float(d.get("i_total", 0.0) or 0.0),
             }
-
-        calc = proj.get("calculated")
-        if not isinstance(calc, dict):
-            calc = {}
-            proj["calculated"] = calc
-        cc_calc = calc.get("cc")
-        if not isinstance(cc_calc, dict):
-            cc_calc = {}
-            calc["cc"] = cc_calc
 
         if cc_calc.get("scenarios_totals") != scenarios_totals:
             cc_calc["scenarios_totals"] = scenarios_totals
@@ -246,6 +236,11 @@ class MomentaneosTabMixin:
             MOM_COL_INCLUIR: 85,
             MOM_COL_ESC: 90,
         })
+        try:
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(0, self._update_momentary_summary_display)
+        except Exception:
+            self._update_momentary_summary_display()
 
     def _rebuild_momentary_scenarios(self):
         if self._building:

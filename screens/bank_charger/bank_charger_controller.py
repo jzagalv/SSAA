@@ -184,11 +184,22 @@ class BankChargerController(BaseController):
     def reload_from_project(self):
         s = self.screen
         """Recarga datos desde data_model.proyecto (incluye Perfil de cargas guardado)."""
+        s._perfil_loaded = False
+        s._ieee_loaded = False
+        s._seleccion_loaded = False
+        s._resumen_loaded = False
+
+        idx = 0
+        if getattr(s, "inner_tabs", None) is not None:
+            idx = s.inner_tabs.currentIndex()
+        self.refresh_bank_charger_inner_tab(idx)
+
+    def _refresh_datos_y_comprobacion(self):
+        s = self.screen
         s._updating = True
         try:
             s._fill_datos_sistema()
             s._fill_comprobacion()
-
             s._install_vcell_combo()
 
             stored = s._proj_value("v_celda_sel_usuario")
@@ -201,17 +212,70 @@ class BankChargerController(BaseController):
                     s._user_vcell_sel = float(str(stored).replace(",", "."))
                 except ValueError:
                     s._user_vcell_sel = None
-
-            s._fill_perfil_cargas(save_to_model=False)
-            s._load_perfil_cargas_from_model()
-            # Asegurar carga automática L2 (momentáneas derivadas de permanentes), si aplica
-            s._ensure_auto_momentary_load_in_profile(save_to_model=False)
-
         finally:
             s._updating = False
 
-        s.recalculate_all()
-        s._schedule_updates()
+        if hasattr(s, "_refresh_datos_comp_derived"):
+            try:
+                s._refresh_datos_comp_derived()
+            except Exception:
+                import logging
+                logging.getLogger(__name__).debug("refresh_datos_comp_derived failed", exc_info=True)
+
+    def _refresh_perfil(self):
+        s = self.screen
+        s._fill_perfil_cargas(save_to_model=False)
+        s._load_perfil_cargas_from_model()
+        # Asegurar carga automática L2 (momentáneas derivadas de permanentes), si aplica
+        s._ensure_auto_momentary_load_in_profile(save_to_model=False)
+        s._refresh_perfil_autocalc()
+        s._update_cycle_table()
+        s._perfil_loaded = True
+
+    def _refresh_ieee(self):
+        s = self.screen
+        s._refresh_perfil_autocalc()
+        s._update_cycle_table()
+        s._build_ieee485_table_structure()
+        s._update_ieee485_table()
+        s._ieee_loaded = True
+
+    def _refresh_seleccion(self):
+        s = self.screen
+        s._update_selection_tables()
+        s._seleccion_loaded = True
+
+    def _refresh_resumen(self):
+        s = self.screen
+        s._update_summary_table()
+        s._resumen_loaded = True
+
+    def refresh_bank_charger_inner_tab(self, idx: int):
+        s = self.screen
+        if idx == 0:
+            self._refresh_datos_y_comprobacion()
+            s._schedule_updates()
+            return
+        if idx == 1:
+            if not getattr(s, "_perfil_loaded", False):
+                self._refresh_perfil()
+            s._schedule_updates()
+            return
+        if idx == 2:
+            if not getattr(s, "_ieee_loaded", False):
+                self._refresh_ieee()
+            s._schedule_updates()
+            return
+        if idx == 3:
+            if not getattr(s, "_seleccion_loaded", False):
+                self._refresh_seleccion()
+            s._schedule_updates()
+            return
+        if idx == 4:
+            if not getattr(s, "_resumen_loaded", False):
+                self._refresh_resumen()
+            s._schedule_updates()
+            return
 
 
     def ensure_auto_momentary_load_in_profile(self, save_to_model: bool = True):

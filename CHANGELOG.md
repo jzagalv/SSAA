@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.109] - 2026-02-02
+### Fixed
+- CC Momentáneos: el resumen por escenarios ya no queda desactualizado al cargar proyectos; se valida/invalida cache con firma del estado y se recalcula automáticamente.
+
+## [1.4.0-alpha.108] - 2026-02-02
+### Fixed
+- Perf: Banco y cargador ahora refresca por sub-tab (lazy refresh); elimina freeze de ~3.5s al entrar a "Datos y comprobación".
+
+## [1.4.0-alpha.107] - 2026-02-02
+### Fixed
+- Banco y cargador: refresh ya no ejecuta recálculo completo (evita freeze ~3s); se muestran derivados livianos al cargar.
+
 ## [1.4.0-alpha.106] - 2026-02-02
 ### Added
 - Selector de tema Claro/Oscuro en menÃº Ver > Tema con cambio en caliente y persistencia.

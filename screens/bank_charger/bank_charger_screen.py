@@ -83,6 +83,12 @@ class BankChargerSizingScreen(ScreenBase):
 
         self._build_ui()
         self._controller = BankChargerController(self)
+        self._perfil_loaded = False
+        self._ieee_loaded = False
+        self._seleccion_loaded = False
+        self._resumen_loaded = False
+        if getattr(self, "inner_tabs", None) is not None:
+            self.inner_tabs.currentChanged.connect(self._on_inner_tab_changed)
         self._fill_datos_sistema()
         self._fill_comprobacion()
         # 1) Si existe perfil en proyecto, lo cargamos. Si no, creamos defaults.
@@ -1027,6 +1033,56 @@ class BankChargerSizingScreen(ScreenBase):
             self._set_table_row_ro(self.tbl_comp, r, [label, value])
         self.tbl_comp.resizeRowsToContents()
 
+    def _refresh_datos_comp_derived(self) -> None:
+        """Render derived values without running engine calculations."""
+        if getattr(self, "_updating", False):
+            return
+
+        def _to_float(val) -> float:
+            try:
+                return float(str(val).replace(",", "."))
+            except Exception:
+                return 0.0
+
+        def _cell_text(table, r, c) -> str:
+            it = table.item(r, c)
+            return it.text().strip() if it else ""
+
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+
+        v_float = _to_float(proyecto.get("tension_flotacion_celda", ""))
+        v_max = _to_float(proyecto.get("v_max", "")) or _to_float(_cell_text(self.tbl_datos, 3, 1))
+        v_min = _to_float(proyecto.get("v_min", "")) or _to_float(_cell_text(self.tbl_datos, 4, 1))
+
+        n_user = _to_float(proyecto.get("num_celdas_usuario", "")) or _to_float(_cell_text(self.tbl_comp, 0, 1))
+        n_cells = int(math.ceil(n_user)) if n_user > 0 else 0
+
+        v_sel = self._user_vcell_sel
+        if not v_sel:
+            v_sel = _to_float(proyecto.get("v_celda_sel_usuario", "")) or _to_float(_cell_text(self.tbl_datos, 6, 1))
+
+        n_sys = (v_max / v_float) if (v_max > 0 and v_float > 0) else 0.0
+        vpc_min_calc = (v_min / n_cells) if (v_min > 0 and n_cells > 0) else 0.0
+        comp_vmax = (n_cells * v_float) if (n_cells > 0 and v_float > 0) else 0.0
+        comp_vmin = (n_cells * v_sel) if (n_cells > 0 and v_sel > 0) else 0.0
+
+        self._updating = True
+        try:
+            self.tbl_datos.blockSignals(True)
+            self.tbl_comp.blockSignals(True)
+
+            self._set_text_cell(self.tbl_datos, 5, 1, f"{vpc_min_calc:.3f}" if vpc_min_calc > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_datos, 6, 1, f"{v_sel:.3f}" if v_sel and v_sel > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_datos, 7, 1, f"{n_sys:.2f}" if n_sys > 0 else "—", editable=False)
+
+            self._set_text_cell(self.tbl_comp, 0, 1, f"{n_cells:d}" if n_cells > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_comp, 1, 1, f"{comp_vmax:.2f}" if comp_vmax > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_comp, 2, 1, f"{comp_vmin:.2f}" if comp_vmin > 0 else "—", editable=False)
+        finally:
+            self.tbl_comp.blockSignals(False)
+            self.tbl_datos.blockSignals(False)
+            self._updating = False
+
     # ===================== Vmin / Autonomía ======================
     def _get_vmin_cc(self) -> float:
         p = getattr(self.data_model, "proyecto", {}) or {}
@@ -1307,7 +1363,18 @@ class BankChargerSizingScreen(ScreenBase):
 
     # ===================== Gráfico =====================
     def _update_profile_chart(self):
+        if getattr(self, "inner_tabs", None) is not None and self.inner_tabs.currentIndex() != 1:
+            return None
         return self._controller.update_profile_chart()
+
+    def _on_inner_tab_changed(self, idx: int):
+        if getattr(self, "_updating", False):
+            return
+        try:
+            self._controller.refresh_bank_charger_inner_tab(idx)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("inner tab refresh failed", exc_info=True)
 
     def _build_ieee485_table_structure(self):
         return self._controller.build_ieee485_table_structure()

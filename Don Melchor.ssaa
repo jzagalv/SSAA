@@ -63,14 +63,6 @@
         "duracion": 1.0
       },
       {
-        "item": "L3",
-        "desc": "Escenario 1 – fdsf",
-        "p": 4939.5,
-        "i": 52.83,
-        "t_inicio": 479.0,
-        "duracion": 1.0
-      },
-      {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
         "p": 738.0,
@@ -103,14 +95,6 @@
         "t_inicio": 479.0,
         "duracion": 1.0
       },
-      "L3": {
-        "item": "L3",
-        "desc": "Escenario 1 – fdsf",
-        "p": 4939.5,
-        "i": 52.83,
-        "t_inicio": 479.0,
-        "duracion": 1.0
-      },
       "L(AL)": {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
@@ -132,14 +116,14 @@
         "missing_kt_keys": [],
         "warnings": [],
         "bank": {
-          "base_ah": 299.6313,
+          "base_ah": 298.5747,
           "critical_section": 2,
           "k2": 1.0,
           "margen": 1.15,
           "enve": 1.25,
           "factor_total": 1.4375,
-          "ah_required": 430.71999375,
-          "ah_commercial": 440.0
+          "ah_required": 429.20113125,
+          "ah_commercial": 430.0
         },
         "charger": {
           "i_perm": 37.33,
@@ -148,7 +132,7 @@
           "k_alt": 1.0,
           "k_temp": 1.0,
           "k_seg": 1.25,
-          "i_calc": 109.9125,
+          "i_calc": 108.475,
           "i_commercial": 110.0,
           "v_nom": 110.0,
           "eff": 0.9,
@@ -217,7 +201,7 @@
     "v_celda_sel_usuario": "1.81",
     "bc_overrides": {
       "bb_factor_envejec": 1.25,
-      "bank_commercial_ah": 440.0,
+      "bank_commercial_ah": 430.0,
       "charger_k_loss": 1.15,
       "charger_k_alt": 1.0
     },

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Optional
+import hashlib
+import json
 
 from .parse import to_float
 
@@ -88,6 +90,36 @@ def _normalize_comp_data(data: Dict[str, Any]) -> Dict[str, Any]:
     d.setdefault("fase", "1F")
     d.setdefault("origen", "Genérico")
     return d
+
+
+def momentary_state_signature(rows: List[Dict[str, Any]], vmin: float, n_scenarios: int) -> str:
+    """Deterministic signature for momentary rows + context."""
+    items: List[Tuple[str, bool, int, float, float]] = []
+    for row in rows or []:
+        comp_id = str(row.get("comp_id") or row.get("id") or "")
+        incluir = bool(row.get("incluir", False))
+        try:
+            esc = int(row.get("escenario") or 1)
+        except Exception:
+            esc = 1
+        try:
+            p_eff = float(row.get("p_efectiva_w") or row.get("p_eff") or row.get("p_w") or 0.0)
+        except Exception:
+            p_eff = 0.0
+        try:
+            i_a = float(row.get("i_a") or row.get("i_eff") or 0.0)
+        except Exception:
+            i_a = 0.0
+        items.append((comp_id, incluir, esc, round(p_eff, 6), round(i_a, 6)))
+
+    items.sort(key=lambda x: x[0])
+    payload = {
+        "vmin": float(vmin or 0.0),
+        "n_scenarios": int(n_scenarios or 0),
+        "rows": items,
+    }
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
 # -------------------------
