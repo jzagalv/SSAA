@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QListWidget
 
 
 class FeedListWidget(QListWidget):
-"""Lista de cargas disponibles (Tag + Descripción) con drag&drop."""
+    """Lista de cargas disponibles (Tag + Descripción) con drag&drop."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

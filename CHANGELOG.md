@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.130] - 2026-02-08
+### Fixed
+- ssaa_designer: imports seguros y corrección de indentación en FeedListWidget.
+### Added
+- `tools/smoke_imports.py` para validar imports sin inicializar UI.
+
+## [1.4.0-alpha.131] - 2026-02-08
+### Fixed
+- Arquitectura SS/AA: layout estable de puertos; selección no recalcula; puertos equidistantes deterministas.
+### Changed
+- Tableros: ancho automático por cantidad de puertos IN/OUT con persistencia en meta.ui.
+
+## [1.4.0-alpha.129] - 2026-02-08
+### Fixed
+- IndentationError en FeedListWidget (ssaa_designer/widgets).
+### Added
+- Script `scripts/check_syntax.py` para verificación de sintaxis con compileall.
+
 ## [1.4.0-alpha.128] - 2026-02-08
 ### Added
 - Arquitectura SS/AA: etiquetas en conexiones con variables calculadas (placeholders listos para actualización).

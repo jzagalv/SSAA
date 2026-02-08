@@ -62,7 +62,7 @@ from PyQt5.QtWidgets import (
 )
 
 
-from .widgets import LoadTableDialog, FeedListWidget, build_issues_panel, build_feeders_panel, build_sources_panel, build_boards_panel
+from .widgets.exports import LoadTableDialog, FeedListWidget, build_issues_panel, build_feeders_panel, build_sources_panel, build_boards_panel
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
@@ -648,6 +648,10 @@ class SSAADesignerScreen(ScreenBase):
         for e in self._edge_items.values():
             e.rebuild()
 
+    def _rebuild_edges_only(self):
+        for e in self._edge_items.values():
+            e.rebuild()
+
     # ---------------- load/persist ----------------
 
 
@@ -780,8 +784,6 @@ class SSAADesignerScreen(ScreenBase):
 
     @safe_slot
     def _on_selection_changed(self):
-        self._rebuild_all_edges()
-
         if not self._connect_mode:
             return
 
@@ -812,7 +814,7 @@ class SSAADesignerScreen(ScreenBase):
     @safe_slot
     def _on_node_moved(self, _nid: str, _pos):
         self._persist()
-        self._rebuild_all_edges()
+        self._rebuild_edges_only()
 
     # ---------------- capa/issue helpers ----------------
     @safe_slot

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssaa-designer"
-version = "1.4.0-alpha.128"
+version = "1.4.0-alpha.131"
 description = "SSAA Designer - Stage1 Step 4A.7"
 readme = "README.md"
 requires-python = ">=3.9"

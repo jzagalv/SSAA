@@ -29,6 +29,25 @@ from .constants import GRID
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
+
+def compute_port_x_positions(n: int, width: float, pad: float, min_pitch: float) -> List[float]:
+    """Return relative x positions (0..1) for ports."""
+    if n <= 0:
+        return []
+    if n == 1:
+        return [0.5]
+    w = max(1.0, float(width))
+    usable = max(0.0, w - 2.0 * pad)
+    step = usable / float(n - 1) if n > 1 else 0.0
+    if step < min_pitch:
+        step = min_pitch
+        start = (w - step * float(n - 1)) / 2.0
+        start = max(pad, start)
+    else:
+        start = pad
+    xs = [start + i * step for i in range(n)]
+    return [max(0.0, min(1.0, x / w)) for x in xs]
+
 class TopoNodeItem(QGraphicsItem):
     """Nodo arrastrable con snap a grilla."""
 
@@ -217,27 +236,24 @@ class TopoNodeItem(QGraphicsItem):
         ports = meta.get("ports", []) or []
 
         Z = 20.0  # margen en px (ajustable)
+        min_pitch = 40.0
 
         def _positions_x(n: int) -> List[float]:
-            if n <= 0:
-                return []
-            if n == 1:
-                return [w / 2.0]
-            usable = max(0.0, w - 2.0 * Z)
-            step = usable / float(n - 1) if n > 1 else 0.0
-            return [Z + i * step for i in range(n)]
+            rel = compute_port_x_positions(n, w, Z, min_pitch)
+            return [x * w for x in rel]
 
         kind = (self.node.kind or "").upper()
         is_board = kind.startswith(("TG", "TD", "TDA"))
 
-        if not is_board:
-            # recalcular posiciones por lado
-            for side in ("top", "bottom"):
-                group = [pd for pd in ports if str(pd.get("side") or "").lower() == side]
-                xs = _positions_x(len(group))
-                for pd, x in zip(group, xs):
-                    # guardamos x relativa por persistencia
-                    pd["x"] = (x / w) if w else 0.5
+        # recalcular posiciones solo cuando falta x o es inválido
+        for side in ("top", "bottom"):
+            group = [pd for pd in ports if str(pd.get("side") or "").lower() == side]
+            need = any(pd.get("x") is None or not isinstance(pd.get("x"), (int, float)) for pd in group)
+            if not need:
+                continue
+            xs = _positions_x(len(group))
+            for pd, x in zip(group, xs):
+                pd["x"] = (x / w) if w else 0.5
 
         # aplicar posición a items
         for pid, pit in self._port_items.items():

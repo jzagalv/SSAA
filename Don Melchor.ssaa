@@ -75,340 +75,9 @@
         "used_feeders": []
       },
       "CA_NOES": {
-        "nodes": [
-          {
-            "id": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b:CA_NOES",
-            "kind": "FUENTE",
-            "name": "TSA1",
-            "pos": {
-              "x": 520.0,
-              "y": 40.0
-            },
-            "size": {
-              "w": 220.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "TSA1",
-              "desc": "Transformador de SS/AA N°1",
-              "layer": "CA_NOES",
-              "source_key": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b",
-              "gabinete_id": "b125efa9-fa1e-433f-a11e-8037265c7f6b",
-              "source": "energy_source",
-              "ports": [
-                {
-                  "id": "p_151db43153",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                }
-              ],
-              "base_w": 220.0
-            }
-          },
-          {
-            "id": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
-            "kind": "TGCA",
-            "name": "TGCA-01",
-            "pos": {
-              "x": 380.0,
-              "y": 220.0
-            },
-            "size": {
-              "w": 220.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "TGCA-01",
-              "desc": "Tablero General de C.A. - Servicios No Esenciales",
-              "layer": "CA_NOES",
-              "board_key": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64",
-              "gabinete_id": "b14cee41-9f08-4274-ac13-5b77bc7b8b64",
-              "source": "board_feed_root",
-              "root_board": true,
-              "ports": [
-                {
-                  "id": "p_b9a95350bb",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.09090909090909091
-                },
-                {
-                  "id": "p_44ee152b45",
-                  "name": "IN",
-                  "io": "IN",
-                  "side": "top",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_6c220a9d3a",
-                  "name": "OUT2",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_fec4e79e82",
-                  "name": "OUT3",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.9090909090909091
-                }
-              ],
-              "base_w": 220.0
-            }
-          },
-          {
-            "id": "CARGA_d3f99faa38",
-            "kind": "CARGA",
-            "name": "GSCADA",
-            "pos": {
-              "x": 260.0,
-              "y": 520.0
-            },
-            "size": {
-              "w": 220.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "GSCADA",
-              "desc": "Gabinete SCADA",
-              "load": "",
-              "circuit": "CA",
-              "dc_system": "",
-              "feed_req": "CA_NOES",
-              "layer": "CA_NOES",
-              "feeder_key": "gabinete:49b9087f-e86a-41e7-a965-748540417274:None:CA_NOES",
-              "gabinete_id": "49b9087f-e86a-41e7-a965-748540417274",
-              "source": "board_feed",
-              "ports": [
-                {
-                  "id": "p_2859842e2c",
-                  "name": "IN",
-                  "io": "IN",
-                  "side": "top",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_fbc284e9e6",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                }
-              ],
-              "base_w": 220.0
-            }
-          },
-          {
-            "id": "CARGA_bc7f2f6322",
-            "kind": "CARGA",
-            "name": "PC-GEST",
-            "pos": {
-              "x": 500.0,
-              "y": 520.0
-            },
-            "size": {
-              "w": 223.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "PC-GEST",
-              "desc": "Gabinete PC-Gestión",
-              "load": "",
-              "circuit": "CA",
-              "dc_system": "",
-              "feed_req": "CA_NOES",
-              "layer": "CA_NOES",
-              "feeder_key": "gabinete:64b009c4-27b6-4098-be88-fdadc1cea827:None:CA_NOES",
-              "gabinete_id": "64b009c4-27b6-4098-be88-fdadc1cea827",
-              "source": "board_feed",
-              "ports": [
-                {
-                  "id": "p_67e6f8a38f",
-                  "name": "IN",
-                  "io": "IN",
-                  "side": "top",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_e0b3567601",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                }
-              ],
-              "base_w": 220.0
-            }
-          },
-          {
-            "id": "CARGA_c62367c043",
-            "kind": "CARGA",
-            "name": "RHT1",
-            "pos": {
-              "x": 800.0,
-              "y": 440.0
-            },
-            "size": {
-              "w": 403.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "RHT1",
-              "desc": "Armario de Control, Protección y Medida Paño HT1",
-              "load": "",
-              "circuit": "CA",
-              "dc_system": "",
-              "feed_req": "CA_NOES",
-              "layer": "CA_NOES",
-              "feeder_key": "gabinete:653753d6-d8f5-4eba-9d2a-3ff4d4784465:None:CA_NOES",
-              "gabinete_id": "653753d6-d8f5-4eba-9d2a-3ff4d4784465",
-              "source": "board_feed",
-              "ports": [
-                {
-                  "id": "p_1c44ce80d5",
-                  "name": "IN",
-                  "io": "IN",
-                  "side": "top",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_67fed43d68",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                }
-              ],
-              "base_w": 220.0
-            }
-          },
-          {
-            "id": "CARGA_e7a5de0437",
-            "kind": "CARGA",
-            "name": "RH1-H2",
-            "pos": {
-              "x": 780.0,
-              "y": 600.0
-            },
-            "size": {
-              "w": 432.0,
-              "h": 90.0
-            },
-            "dc_system": "B1",
-            "p_w": 0.0,
-            "meta": {
-              "tag": "RH1-H2",
-              "desc": "Armario de Control, Protección y Medida Paños H1 y H2",
-              "load": "",
-              "circuit": "CA",
-              "dc_system": "",
-              "feed_req": "CA_NOES",
-              "layer": "CA_NOES",
-              "feeder_key": "gabinete:8665353e-fdda-4a73-8b96-6a79017aeb64:None:CA_NOES",
-              "gabinete_id": "8665353e-fdda-4a73-8b96-6a79017aeb64",
-              "source": "board_feed",
-              "ports": [
-                {
-                  "id": "p_cb10e9e80e",
-                  "name": "IN",
-                  "io": "IN",
-                  "side": "top",
-                  "x": 0.5
-                },
-                {
-                  "id": "p_115ec13207",
-                  "name": "OUT",
-                  "io": "OUT",
-                  "side": "bottom",
-                  "x": 0.5
-                }
-              ],
-              "base_w": 220.0
-            }
-          }
-        ],
-        "edges": [
-          {
-            "id": "E_b146b706c8",
-            "src": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b:CA_NOES",
-            "dst": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
-            "circuit": "CA",
-            "dc_system": "",
-            "meta": {
-              "src_port": "p_151db43153",
-              "dst_port": "p_44ee152b45",
-              "layer": "CA_NOES"
-            }
-          },
-          {
-            "id": "E_5d90149d1f",
-            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
-            "dst": "CARGA_d3f99faa38",
-            "circuit": "CA",
-            "dc_system": "",
-            "meta": {
-              "src_port": "p_b9a95350bb",
-              "dst_port": "p_2859842e2c",
-              "layer": "CA_NOES"
-            }
-          },
-          {
-            "id": "E_371630eaaf",
-            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
-            "dst": "CARGA_bc7f2f6322",
-            "circuit": "CA",
-            "dc_system": "",
-            "meta": {
-              "src_port": "p_6c220a9d3a",
-              "dst_port": "p_67e6f8a38f",
-              "layer": "CA_NOES"
-            }
-          },
-          {
-            "id": "E_c33d426f87",
-            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
-            "dst": "CARGA_c62367c043",
-            "circuit": "CA",
-            "dc_system": "",
-            "meta": {
-              "src_port": "p_fec4e79e82",
-              "dst_port": "p_1c44ce80d5",
-              "layer": "CA_NOES"
-            }
-          },
-          {
-            "id": "E_3610afb697",
-            "src": "CARGA_c62367c043",
-            "dst": "CARGA_e7a5de0437",
-            "circuit": "CA",
-            "dc_system": "",
-            "meta": {
-              "src_port": "p_67fed43d68",
-              "dst_port": "p_cb10e9e80e",
-              "layer": "CA_NOES"
-            }
-          }
-        ],
-        "used_feeders": [
-          "gabinete:49b9087f-e86a-41e7-a965-748540417274:None:CA_NOES",
-          "gabinete:64b009c4-27b6-4098-be88-fdadc1cea827:None:CA_NOES",
-          "gabinete:653753d6-d8f5-4eba-9d2a-3ff4d4784465:None:CA_NOES",
-          "gabinete:8665353e-fdda-4a73-8b96-6a79017aeb64:None:CA_NOES"
-        ]
+        "nodes": [],
+        "edges": [],
+        "used_feeders": []
       },
       "CC_B2": {
         "nodes": [],
@@ -537,24 +206,79 @@
       "charger_k_alt": 1.0
     },
     "validation_issues_by_section": {
-      "cabinet": [
+      "project": [
         {
-          "code": "VALIDATOR_CRASH",
-          "msg": "Validador 'Section.CABINET' falló (ver logs).",
+          "code": "PROJ_MISSING_FIELD",
+          "msg": "Falta Nombre de proyecto en 'Proyecto'.",
           "level": "warn",
-          "context": "cabinet"
+          "context": "nombre_proyecto"
+        },
+        {
+          "code": "PROJ_MISSING_FIELD",
+          "msg": "Falta Cliente en 'Proyecto'.",
+          "level": "warn",
+          "context": "cliente"
+        },
+        {
+          "code": "PROJ_VCC_INVALID",
+          "msg": "La tensión C.C. (Vcc/V_CC) no está definida o es inválida.",
+          "level": "warn",
+          "context": "v_cc"
+        }
+      ],
+      "instalaciones": [],
+      "cabinet": [],
+      "cc": [
+        {
+          "code": "CC_VCC_INVALID",
+          "msg": "Vcc para cálculo C.C. no está definida o es inválida.",
+          "level": "error",
+          "context": "v_cc"
+        }
+      ],
+      "bank_charger": [
+        {
+          "code": "BC_VCC_INVALID",
+          "msg": "No se puede dimensionar banco/cargador sin Vcc válido.",
+          "level": "error",
+          "context": "v_cc"
         }
       ]
     },
     "validation_issues": [
       {
-        "code": "VALIDATOR_CRASH",
-        "msg": "Validador 'Section.CABINET' falló (ver logs).",
+        "code": "PROJ_MISSING_FIELD",
+        "msg": "Falta Nombre de proyecto en 'Proyecto'.",
         "level": "warn",
-        "context": "cabinet"
+        "context": "nombre_proyecto"
+      },
+      {
+        "code": "PROJ_MISSING_FIELD",
+        "msg": "Falta Cliente en 'Proyecto'.",
+        "level": "warn",
+        "context": "cliente"
+      },
+      {
+        "code": "PROJ_VCC_INVALID",
+        "msg": "La tensión C.C. (Vcc/V_CC) no está definida o es inválida.",
+        "level": "warn",
+        "context": "v_cc"
+      },
+      {
+        "code": "CC_VCC_INVALID",
+        "msg": "Vcc para cálculo C.C. no está definida o es inválida.",
+        "level": "error",
+        "context": "v_cc"
+      },
+      {
+        "code": "BC_VCC_INVALID",
+        "msg": "No se puede dimensionar banco/cargador sin Vcc válido.",
+        "level": "error",
+        "context": "v_cc"
       }
     ],
-    "load_table_balance_auto": {}
+    "load_table_balance_auto": {},
+    "load_table_user_fields": {}
   },
   "instalaciones": {
     "ubicaciones": [
