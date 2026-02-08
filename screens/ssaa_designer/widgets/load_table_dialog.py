@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView
 )
+from ui.utils.table_utils import configure_table_autoresize
 
 
 class LoadTableDialog(QDialog):
@@ -21,11 +22,7 @@ class LoadTableDialog(QDialog):
         self.tbl = QTableWidget()
         self.tbl.setColumnCount(5)
         self.tbl.setHorizontalHeaderLabels(["Tablero", "Tipo", "Circuito", "Sistema DC", "P total [W]"])
-        self.tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.tbl.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.tbl.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        configure_table_autoresize(self.tbl)
         self.tbl.verticalHeader().setVisible(False)
         lay.addWidget(self.tbl)
 

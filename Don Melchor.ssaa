@@ -24,11 +24,11 @@
     "tension_nominal": "110",
     "max_voltaje_cc": "10",
     "min_voltaje_cc": "15",
-    "num_cargadores": null,
-    "num_bancos": null,
+    "num_cargadores": "2",
+    "num_bancos": "2",
     "porcentaje_utilizacion": "85.00",
     "tension_flotacion_celda": 2.3,
-    "num_celdas_usuario": 50,
+    "num_celdas_usuario": 53,
     "cc_usar_pct_global": false,
     "cc_num_escenarios": 2,
     "cc_escenarios": {
@@ -49,24 +49,16 @@
       {
         "item": "L1",
         "desc": "Cargas Permanentes",
-        "p": 3490.5,
-        "i": 37.33,
+        "p": 0.0,
+        "i": 0.0,
         "t_inicio": 0.0,
         "duracion": ""
       },
       {
-        "item": "L2",
-        "desc": "Carga Momentáneas Equipos C&P",
-        "p": 1439.5,
-        "i": 15.4,
-        "t_inicio": 479.0,
-        "duracion": 1.0
-      },
-      {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
-        "p": 738.0,
-        "i": 7.89,
+        "p": 0.0,
+        "i": 0.0,
         "t_inicio": "",
         "duracion": ""
       }
@@ -76,30 +68,368 @@
         "nodes": [],
         "edges": [],
         "used_feeders": []
+      },
+      "CC_B1": {
+        "nodes": [],
+        "edges": [],
+        "used_feeders": []
+      },
+      "CA_NOES": {
+        "nodes": [
+          {
+            "id": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b:CA_NOES",
+            "kind": "FUENTE",
+            "name": "TSA1",
+            "pos": {
+              "x": 520.0,
+              "y": 40.0
+            },
+            "size": {
+              "w": 220.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "TSA1",
+              "desc": "Transformador de SS/AA N°1",
+              "layer": "CA_NOES",
+              "source_key": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b",
+              "gabinete_id": "b125efa9-fa1e-433f-a11e-8037265c7f6b",
+              "source": "energy_source",
+              "ports": [
+                {
+                  "id": "p_151db43153",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "base_w": 220.0
+            }
+          },
+          {
+            "id": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
+            "kind": "TGCA",
+            "name": "TGCA-01",
+            "pos": {
+              "x": 380.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 220.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "TGCA-01",
+              "desc": "Tablero General de C.A. - Servicios No Esenciales",
+              "layer": "CA_NOES",
+              "board_key": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64",
+              "gabinete_id": "b14cee41-9f08-4274-ac13-5b77bc7b8b64",
+              "source": "board_feed_root",
+              "root_board": true,
+              "ports": [
+                {
+                  "id": "p_b9a95350bb",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.09090909090909091
+                },
+                {
+                  "id": "p_44ee152b45",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_6c220a9d3a",
+                  "name": "OUT2",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_fec4e79e82",
+                  "name": "OUT3",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.9090909090909091
+                }
+              ],
+              "base_w": 220.0
+            }
+          },
+          {
+            "id": "CARGA_d3f99faa38",
+            "kind": "CARGA",
+            "name": "GSCADA",
+            "pos": {
+              "x": 260.0,
+              "y": 520.0
+            },
+            "size": {
+              "w": 220.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "GSCADA",
+              "desc": "Gabinete SCADA",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_NOES",
+              "layer": "CA_NOES",
+              "feeder_key": "gabinete:49b9087f-e86a-41e7-a965-748540417274:None:CA_NOES",
+              "gabinete_id": "49b9087f-e86a-41e7-a965-748540417274",
+              "source": "board_feed",
+              "ports": [
+                {
+                  "id": "p_2859842e2c",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_fbc284e9e6",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "base_w": 220.0
+            }
+          },
+          {
+            "id": "CARGA_bc7f2f6322",
+            "kind": "CARGA",
+            "name": "PC-GEST",
+            "pos": {
+              "x": 500.0,
+              "y": 520.0
+            },
+            "size": {
+              "w": 223.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "PC-GEST",
+              "desc": "Gabinete PC-Gestión",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_NOES",
+              "layer": "CA_NOES",
+              "feeder_key": "gabinete:64b009c4-27b6-4098-be88-fdadc1cea827:None:CA_NOES",
+              "gabinete_id": "64b009c4-27b6-4098-be88-fdadc1cea827",
+              "source": "board_feed",
+              "ports": [
+                {
+                  "id": "p_67e6f8a38f",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_e0b3567601",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "base_w": 220.0
+            }
+          },
+          {
+            "id": "CARGA_c62367c043",
+            "kind": "CARGA",
+            "name": "RHT1",
+            "pos": {
+              "x": 800.0,
+              "y": 440.0
+            },
+            "size": {
+              "w": 403.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "RHT1",
+              "desc": "Armario de Control, Protección y Medida Paño HT1",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_NOES",
+              "layer": "CA_NOES",
+              "feeder_key": "gabinete:653753d6-d8f5-4eba-9d2a-3ff4d4784465:None:CA_NOES",
+              "gabinete_id": "653753d6-d8f5-4eba-9d2a-3ff4d4784465",
+              "source": "board_feed",
+              "ports": [
+                {
+                  "id": "p_1c44ce80d5",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_67fed43d68",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "base_w": 220.0
+            }
+          },
+          {
+            "id": "CARGA_e7a5de0437",
+            "kind": "CARGA",
+            "name": "RH1-H2",
+            "pos": {
+              "x": 780.0,
+              "y": 600.0
+            },
+            "size": {
+              "w": 432.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "RH1-H2",
+              "desc": "Armario de Control, Protección y Medida Paños H1 y H2",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_NOES",
+              "layer": "CA_NOES",
+              "feeder_key": "gabinete:8665353e-fdda-4a73-8b96-6a79017aeb64:None:CA_NOES",
+              "gabinete_id": "8665353e-fdda-4a73-8b96-6a79017aeb64",
+              "source": "board_feed",
+              "ports": [
+                {
+                  "id": "p_cb10e9e80e",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_115ec13207",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "base_w": 220.0
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "E_b146b706c8",
+            "src": "src:b125efa9-fa1e-433f-a11e-8037265c7f6b:CA_NOES",
+            "dst": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_151db43153",
+              "dst_port": "p_44ee152b45",
+              "layer": "CA_NOES"
+            }
+          },
+          {
+            "id": "E_5d90149d1f",
+            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
+            "dst": "CARGA_d3f99faa38",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_b9a95350bb",
+              "dst_port": "p_2859842e2c",
+              "layer": "CA_NOES"
+            }
+          },
+          {
+            "id": "E_371630eaaf",
+            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
+            "dst": "CARGA_bc7f2f6322",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_6c220a9d3a",
+              "dst_port": "p_67e6f8a38f",
+              "layer": "CA_NOES"
+            }
+          },
+          {
+            "id": "E_c33d426f87",
+            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_NOES",
+            "dst": "CARGA_c62367c043",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_fec4e79e82",
+              "dst_port": "p_1c44ce80d5",
+              "layer": "CA_NOES"
+            }
+          },
+          {
+            "id": "E_3610afb697",
+            "src": "CARGA_c62367c043",
+            "dst": "CARGA_e7a5de0437",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_67fed43d68",
+              "dst_port": "p_cb10e9e80e",
+              "layer": "CA_NOES"
+            }
+          }
+        ],
+        "used_feeders": [
+          "gabinete:49b9087f-e86a-41e7-a965-748540417274:None:CA_NOES",
+          "gabinete:64b009c4-27b6-4098-be88-fdadc1cea827:None:CA_NOES",
+          "gabinete:653753d6-d8f5-4eba-9d2a-3ff4d4784465:None:CA_NOES",
+          "gabinete:8665353e-fdda-4a73-8b96-6a79017aeb64:None:CA_NOES"
+        ]
+      },
+      "CC_B2": {
+        "nodes": [],
+        "edges": [],
+        "used_feeders": []
       }
     },
     "perfil_cargas_idx": {
       "L1": {
         "item": "L1",
         "desc": "Cargas Permanentes",
-        "p": 3490.5,
-        "i": 37.33,
+        "p": 0.0,
+        "i": 0.0,
         "t_inicio": 0.0,
         "duracion": ""
-      },
-      "L2": {
-        "item": "L2",
-        "desc": "Carga Momentáneas Equipos C&P",
-        "p": 1439.5,
-        "i": 15.4,
-        "t_inicio": 479.0,
-        "duracion": 1.0
       },
       "L(AL)": {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
-        "p": 738.0,
-        "i": 7.89,
+        "p": 0.0,
+        "i": 0.0,
         "t_inicio": "",
         "duracion": ""
       }
@@ -116,28 +446,28 @@
         "missing_kt_keys": [],
         "warnings": [],
         "bank": {
-          "base_ah": 298.5747,
-          "critical_section": 2,
+          "base_ah": 0.0,
+          "critical_section": null,
           "k2": 1.0,
           "margen": 1.15,
           "enve": 1.25,
           "factor_total": 1.4375,
-          "ah_required": 429.20113125,
-          "ah_commercial": 430.0
+          "ah_required": 0.0,
+          "ah_commercial": null
         },
         "charger": {
-          "i_perm": 37.33,
+          "i_perm": 0.0,
           "t_rec_h": 10.0,
           "k_loss": 1.15,
           "k_alt": 1.0,
           "k_temp": 1.0,
           "k_seg": 1.25,
-          "i_calc": 108.475,
-          "i_commercial": 110.0,
+          "i_calc": 0.0,
+          "i_commercial": null,
           "v_nom": 110.0,
           "eff": 0.9,
-          "p_cc_w": 12100.0,
-          "p_ca_w": 13444.444444444443
+          "p_cc_w": 0.0,
+          "p_ca_w": 0.0
         }
       },
       "cc": {
@@ -199,17 +529,32 @@
     "charger_v_nom": 110.0,
     "v_max": 121.00000000000001,
     "v_min": 93.5,
-    "v_celda_sel_usuario": "1.81",
+    "v_celda_sel_usuario": "1.77",
     "bc_overrides": {
       "bb_factor_envejec": 1.25,
-      "bank_commercial_ah": 430.0,
+      "bank_commercial_ah": 440.0,
       "charger_k_loss": 1.15,
       "charger_k_alt": 1.0
     },
     "validation_issues_by_section": {
-      "instalaciones": []
+      "cabinet": [
+        {
+          "code": "VALIDATOR_CRASH",
+          "msg": "Validador 'Section.CABINET' falló (ver logs).",
+          "level": "warn",
+          "context": "cabinet"
+        }
+      ]
     },
-    "validation_issues": []
+    "validation_issues": [
+      {
+        "code": "VALIDATOR_CRASH",
+        "msg": "Validador 'Section.CABINET' falló (ver logs).",
+        "level": "warn",
+        "context": "cabinet"
+      }
+    ],
+    "load_table_balance_auto": {}
   },
   "instalaciones": {
     "ubicaciones": [
@@ -493,6 +838,46 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "f4e6fd0c-c42b-4411-bdbe-c174f6cbe505",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 40.0,
+              "y": 840.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
@@ -541,6 +926,46 @@
               "cc_mom_incluir": true,
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
+            }
+          },
+          {
+            "id": "821db618-2a91-46d8-a517-08783b10d187",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 80.0,
+              "y": 260.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
             }
           }
         ],
@@ -692,6 +1117,46 @@
               "cc_mom_incluir": true,
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
+            }
+          },
+          {
+            "id": "abcf1c4b-b0fa-4ab4-a0f4-35c1b9115272",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 400.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
             }
           }
         ],
@@ -912,6 +1377,46 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "25badaf4-4aed-4f72-abda-2e7f3652e2b5",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
@@ -1000,7 +1505,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1083,7 +1588,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1132,7 +1637,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1213,9 +1718,9 @@
           }
         ],
         "cc_b1": true,
-        "cc_b2": true,
+        "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1229,7 +1734,7 @@
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1278,7 +1783,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1292,7 +1797,7 @@
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1477,7 +1982,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1594,7 +2099,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1847,7 +2352,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1896,7 +2401,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1945,7 +2450,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -1994,7 +2499,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2043,7 +2548,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2092,7 +2597,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2103,10 +2608,10 @@
         "ubicacion_id": "d52d0a2e-132e-4a0e-890a-01335548d8ae",
         "is_board": false,
         "components": [],
-        "cc_b1": true,
-        "cc_b2": true,
+        "cc_b1": false,
+        "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2189,7 +2694,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2417,7 +2922,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -2460,7 +2965,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -2478,7 +2983,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2706,7 +3211,7 @@
               "feed_cc_b1": false,
               "feed_cc_b2": true,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": true,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -2749,7 +3254,7 @@
               "feed_cc_b1": false,
               "feed_cc_b2": true,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -2767,7 +3272,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -2995,7 +3500,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3038,7 +3543,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3056,7 +3561,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -3284,7 +3789,7 @@
               "feed_cc_b1": false,
               "feed_cc_b2": true,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3327,7 +3832,7 @@
               "feed_cc_b1": false,
               "feed_cc_b2": true,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3345,7 +3850,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -3573,7 +4078,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3616,7 +4121,7 @@
               "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
-              "feed_ca_no_esencial": true,
+              "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -3634,7 +4139,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -3647,7 +4152,7 @@
         "components": [],
         "cc_b1": false,
         "cc_b2": false,
-        "ca_esencial": true,
+        "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": true
       },
@@ -3661,7 +4166,7 @@
         "components": [],
         "cc_b1": false,
         "cc_b2": false,
-        "ca_esencial": true,
+        "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": true
       },
@@ -3888,7 +4393,7 @@
               "tag": "",
               "origen": "Genérico",
               "feed_cc_b1": false,
-              "feed_cc_b2": false,
+              "feed_cc_b2": true,
               "feed_ca_esencial": false,
               "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
@@ -3931,7 +4436,7 @@
               "tag": "",
               "origen": "Genérico",
               "feed_cc_b1": false,
-              "feed_cc_b2": false,
+              "feed_cc_b2": true,
               "feed_ca_esencial": false,
               "feed_ca_no_esencial": false,
               "cc_aleatorio_sel": false,
@@ -3948,8 +4453,8 @@
             }
           }
         ],
-        "cc_b1": false,
-        "cc_b2": false,
+        "cc_b1": true,
+        "cc_b2": true,
         "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": false
@@ -4176,7 +4681,7 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "feed_cc_b1": false,
+              "feed_cc_b1": true,
               "feed_cc_b2": false,
               "feed_ca_esencial": false,
               "feed_ca_no_esencial": false,
@@ -4237,9 +4742,9 @@
             }
           }
         ],
-        "cc_b1": false,
-        "cc_b2": false,
-        "ca_esencial": false,
+        "cc_b1": true,
+        "cc_b2": true,
+        "ca_esencial": true,
         "ca_no_esencial": false,
         "is_energy_source": false
       },
@@ -4286,9 +4791,9 @@
             }
           }
         ],
-        "cc_b1": false,
+        "cc_b1": true,
         "cc_b2": true,
-        "ca_esencial": true,
+        "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": false
       },
@@ -4452,8 +4957,8 @@
             }
           }
         ],
-        "cc_b1": false,
-        "cc_b2": false,
+        "cc_b1": true,
+        "cc_b2": true,
         "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": false
@@ -4569,7 +5074,7 @@
             }
           }
         ],
-        "cc_b1": false,
+        "cc_b1": true,
         "cc_b2": false,
         "ca_esencial": false,
         "ca_no_esencial": false,
@@ -4655,7 +5160,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -4738,7 +5243,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -4818,8 +5323,8 @@
             }
           }
         ],
-        "cc_b1": false,
-        "cc_b2": false,
+        "cc_b1": true,
+        "cc_b2": true,
         "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": false
@@ -4901,7 +5406,7 @@
             }
           }
         ],
-        "cc_b1": false,
+        "cc_b1": true,
         "cc_b2": false,
         "ca_esencial": false,
         "ca_no_esencial": false,
@@ -4987,7 +5492,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -5036,7 +5541,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -5085,7 +5590,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -5140,7 +5645,7 @@
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": true,
+        "ca_no_esencial": false,
         "is_energy_source": false
       },
       {
@@ -5169,7 +5674,7 @@
         "cc_b2": false,
         "ca_esencial": false,
         "ca_no_esencial": false,
-        "is_energy_source": false
+        "is_energy_source": true
       },
       {
         "id": "a4a3bf15-2ac8-4811-9979-ce3d12472b91",
@@ -5183,7 +5688,35 @@
         "cc_b2": false,
         "ca_esencial": false,
         "ca_no_esencial": false,
-        "is_energy_source": false
+        "is_energy_source": true
+      },
+      {
+        "id": "b125efa9-fa1e-433f-a11e-8037265c7f6b",
+        "tag": "TSA1",
+        "nombre": "Transformador de SS/AA N°1",
+        "sala": "Patio Subestación - Patio Subestación",
+        "ubicacion_id": "87a5e493-20da-41fe-a73f-19aaae57cab5",
+        "is_board": false,
+        "components": [],
+        "cc_b1": false,
+        "cc_b2": false,
+        "ca_esencial": false,
+        "ca_no_esencial": false,
+        "is_energy_source": true
+      },
+      {
+        "id": "b2707e8b-2866-44fc-9635-f85bb59c7c25",
+        "tag": "GEN1",
+        "nombre": "Generador de Emergencia",
+        "sala": "Patio Subestación - Patio Subestación",
+        "ubicacion_id": "87a5e493-20da-41fe-a73f-19aaae57cab5",
+        "is_board": false,
+        "components": [],
+        "cc_b1": false,
+        "cc_b2": false,
+        "ca_esencial": false,
+        "ca_no_esencial": false,
+        "is_energy_source": true
       }
     ]
   },

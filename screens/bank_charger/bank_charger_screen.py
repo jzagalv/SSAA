@@ -26,6 +26,7 @@ con filas de encabezado por sección, filas de datos, y filas Sub Tot/Total (con
 """
 
 import math
+import re
 
 from screens.base import ScreenBase
 from app.sections import Section
@@ -34,9 +35,11 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QTableWidget, QTableWidgetItem, QHeaderView,
-    QComboBox, QPushButton, QInputDialog, QMessageBox,
+    QComboBox, QPushButton, QInputDialog, QMessageBox, QLabel,
     QTabWidget, QSplitter
 )
+from ui.utils.table_utils import configure_table_autoresize
+from ui.delegates.editable_bg_delegate import EditableBgDelegate
 
 from PyQt5.QtGui import QColor
 from .widgets.duty_cycle_plot_widget import DutyCyclePlotWidget
@@ -110,6 +113,7 @@ class BankChargerSizingScreen(ScreenBase):
                 self._user_vcell_sel = None
 
         self._install_vcell_combo()
+        self._load_modes_from_project()
 
         self._connect_signals()
         # Startup policy: NEVER run heavy calculations nor show blocking dialogs during __init__.
@@ -167,29 +171,43 @@ class BankChargerSizingScreen(ScreenBase):
 
         self.grp_datos = QGroupBox("Datos del Sistema")
         v_datos = QVBoxLayout()
+        vpc_mode_row = QHBoxLayout()
+        vpc_mode_row.addWidget(QLabel("Vpc final"))
+        self.cmb_vpc_mode = QComboBox()
+        self.cmb_vpc_mode.addItems(["Auto", "Manual"])
+        vpc_mode_row.addWidget(self.cmb_vpc_mode)
+        vpc_mode_row.addStretch()
         self.tbl_datos = QTableWidget()
         self.tbl_datos.setColumnCount(2)
         self.tbl_datos.setHorizontalHeaderLabels(["Característica", "Valor"])
-        self.tbl_datos.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_datos.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tbl_datos.verticalHeader().setVisible(False)
+        self.tbl_datos.setItemDelegate(EditableBgDelegate(self.tbl_datos))
+        configure_table_autoresize(self.tbl_datos)
         self.btn_cap_tbl_datos = QPushButton("Guardar captura")
         self.btn_cap_tbl_datos.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_datos, "tabla_datos_del_sistema"))
         v_datos.addWidget(self.btn_cap_tbl_datos)
+        v_datos.addLayout(vpc_mode_row)
         v_datos.addWidget(self.tbl_datos)
         self.grp_datos.setLayout(v_datos)
 
         self.grp_comp = QGroupBox("Comprobación")
         v_comp = QVBoxLayout()
+        cells_mode_row = QHBoxLayout()
+        cells_mode_row.addWidget(QLabel("N° celdas"))
+        self.cmb_cells_mode = QComboBox()
+        self.cmb_cells_mode.addItems(["Auto", "Manual"])
+        cells_mode_row.addWidget(self.cmb_cells_mode)
+        cells_mode_row.addStretch()
         self.tbl_comp = QTableWidget()
         self.tbl_comp.setColumnCount(2)
         self.tbl_comp.setHorizontalHeaderLabels(["Parámetro", "Valor"])
-        self.tbl_comp.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_comp.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.tbl_comp.setItemDelegate(EditableBgDelegate(self.tbl_comp))
+        configure_table_autoresize(self.tbl_comp)
         self.tbl_comp.verticalHeader().setVisible(False)
         self.btn_cap_tbl_comp = QPushButton("Guardar captura")
         self.btn_cap_tbl_comp.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_comp, "tabla_comprobacion"))
         v_comp.addWidget(self.btn_cap_tbl_comp)
+        v_comp.addLayout(cells_mode_row)
         v_comp.addWidget(self.tbl_comp)
         self.grp_comp.setLayout(v_comp)
 
@@ -227,7 +245,7 @@ class BankChargerSizingScreen(ScreenBase):
         self.tbl_cargas.setHorizontalHeaderLabels(
             ["Ítem", "Descripción", "P [W]", "I [A]", "Inicio [min]", "Duración [min]"]
         )
-        self.tbl_cargas.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        configure_table_autoresize(self.tbl_cargas)
         self.tbl_cargas.verticalHeader().setVisible(False)
         self.btn_cap_tbl_cargas = QPushButton("Guardar captura de tabla")
         self.btn_cap_tbl_cargas.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_cargas, "tabla_perfil_de_cargas"))
@@ -241,10 +259,7 @@ class BankChargerSizingScreen(ScreenBase):
         self.tbl_cycle = QTableWidget()
         self.tbl_cycle.setColumnCount(4)
         self.tbl_cycle.setHorizontalHeaderLabels(["Periodo", "Cargas", "Corriente Total", "Duración [min]"])
-        self.tbl_cycle.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_cycle.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.tbl_cycle.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.tbl_cycle.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        configure_table_autoresize(self.tbl_cycle)
         self.tbl_cycle.verticalHeader().setVisible(False)
         self.btn_cap_tbl_cycle = QPushButton("Guardar captura de tabla")
         self.btn_cap_tbl_cycle.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_cycle, "tabla_ciclo_de_trabajo"))
@@ -295,14 +310,7 @@ class BankChargerSizingScreen(ScreenBase):
             "Pos Values",
             "Neg Values",
         ])
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
-        self.tbl_ieee.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        configure_table_autoresize(self.tbl_ieee)
         self.tbl_ieee.verticalHeader().setVisible(False)
 
         self.btn_cap_tbl_ieee = QPushButton("Guardar captura de tabla")
@@ -324,8 +332,7 @@ class BankChargerSizingScreen(ScreenBase):
         self.tbl_sel_bank = QTableWidget()
         self.tbl_sel_bank.setColumnCount(2)
         self.tbl_sel_bank.setHorizontalHeaderLabels(["Parámetro", "Valor"])
-        self.tbl_sel_bank.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_sel_bank.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        configure_table_autoresize(self.tbl_sel_bank)
         self.tbl_sel_bank.verticalHeader().setVisible(False)
         self.btn_cap_tbl_sel_bank = QPushButton("Guardar captura de tabla")
         self.btn_cap_tbl_sel_bank.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_sel_bank, "tabla_seleccion_banco"))
@@ -338,8 +345,7 @@ class BankChargerSizingScreen(ScreenBase):
         self.tbl_sel_charger = QTableWidget()
         self.tbl_sel_charger.setColumnCount(2)
         self.tbl_sel_charger.setHorizontalHeaderLabels(["Parámetro", "Valor"])
-        self.tbl_sel_charger.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tbl_sel_charger.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        configure_table_autoresize(self.tbl_sel_charger)
         self.tbl_sel_charger.verticalHeader().setVisible(False)
         self.btn_cap_tbl_sel_charger = QPushButton("Guardar captura de tabla")
         self.btn_cap_tbl_sel_charger.clicked.connect(lambda: self._save_widget_screenshot(self.tbl_sel_charger, "tabla_seleccion_cargador"))
@@ -383,10 +389,7 @@ class BankChargerSizingScreen(ScreenBase):
             "Capacidad calculada",
             "Capacidad comercial recomendada"
         ])
-        self.tbl_summary.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tbl_summary.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.tbl_summary.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.tbl_summary.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        configure_table_autoresize(self.tbl_summary)
         self.tbl_summary.verticalHeader().setVisible(False)
 
         self.btn_cap_tbl_summary = QPushButton("Guardar captura de tabla")
@@ -404,6 +407,10 @@ class BankChargerSizingScreen(ScreenBase):
         self.tbl_comp.itemChanged.connect(self._on_comp_changed)
         self.tbl_cargas.itemChanged.connect(self._on_cargas_changed)
         self.tbl_ieee.itemChanged.connect(self._on_ieee_changed)
+        if getattr(self, "cmb_vpc_mode", None) is not None:
+            self.cmb_vpc_mode.currentTextChanged.connect(self._on_vpc_mode_changed)
+        if getattr(self, "cmb_cells_mode", None) is not None:
+            self.cmb_cells_mode.currentTextChanged.connect(self._on_cells_mode_changed)
 
         self.btn_add_area.clicked.connect(self._add_area_row)
         self.btn_add_from_scenario.clicked.connect(self._add_area_from_scenario)
@@ -560,6 +567,94 @@ class BankChargerSizingScreen(ScreenBase):
                     w.blockSignals(False)
             return
         self._set_cell(table, row, col, text, editable=False)
+
+    def _load_modes_from_project(self) -> None:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        vpc_mode = str(proyecto.get("vpc_final_mode", "auto") or "auto").strip().lower()
+        cells_mode = str(proyecto.get("num_celdas_mode", "auto") or "auto").strip().lower()
+
+        if getattr(self, "cmb_vpc_mode", None) is not None:
+            self.cmb_vpc_mode.blockSignals(True)
+            self.cmb_vpc_mode.setCurrentIndex(0 if vpc_mode != "manual" else 1)
+            self.cmb_vpc_mode.blockSignals(False)
+        if getattr(self, "cmb_cells_mode", None) is not None:
+            self.cmb_cells_mode.blockSignals(True)
+            self.cmb_cells_mode.setCurrentIndex(0 if cells_mode != "manual" else 1)
+            self.cmb_cells_mode.blockSignals(False)
+
+    def _get_vpc_mode(self) -> str:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        if getattr(self, "cmb_vpc_mode", None) is not None:
+            mode = str(self.cmb_vpc_mode.currentText() or "").strip().lower()
+            return "manual" if mode == "manual" else "auto"
+        return str(proyecto.get("vpc_final_mode", "auto") or "auto").strip().lower()
+
+    def _get_cells_mode(self) -> str:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        if getattr(self, "cmb_cells_mode", None) is not None:
+            mode = str(self.cmb_cells_mode.currentText() or "").strip().lower()
+            return "manual" if mode == "manual" else "auto"
+        return str(proyecto.get("num_celdas_mode", "auto") or "auto").strip().lower()
+
+    def _on_vpc_mode_changed(self, text: str):
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        mode = "manual" if str(text or "").strip().lower() == "manual" else "auto"
+        proyecto["vpc_final_mode"] = mode
+        if hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        self._apply_combo_edit_style(getattr(self, "vcell_combo", None), editable=(mode == "manual"))
+        self._refresh_datos_comp_derived()
+
+    def _on_cells_mode_changed(self, text: str):
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        mode = "manual" if str(text or "").strip().lower() == "manual" else "auto"
+        proyecto["num_celdas_mode"] = mode
+        if hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        self._refresh_datos_comp_derived()
+
+    def _vpc_list(self) -> list:
+        vals = []
+        if getattr(self, "vcell_combo", None) is None:
+            return vals
+        for i in range(self.vcell_combo.count()):
+            txt = str(self.vcell_combo.itemText(i) or "").strip()
+            try:
+                vals.append(float(txt.replace(",", ".")))
+            except Exception:
+                continue
+        vals = [v for v in vals if v > 0]
+        vals.sort()
+        return vals
+
+    def _ceil_to_vpc_list(self, raw: float) -> float:
+        vals = self._vpc_list()
+        if not vals:
+            return float(raw or 0.0)
+        try:
+            raw_v = float(raw or 0.0)
+        except Exception:
+            raw_v = 0.0
+        for v in vals:
+            if v >= raw_v:
+                return v
+        return vals[-1]
+
+    def _apply_combo_edit_style(self, combo: QComboBox, editable: bool) -> None:
+        if combo is None:
+            return
+        if editable:
+            combo.setEnabled(True)
+            combo.setStyleSheet(
+                "QComboBox { background: #FFF9C4; }"
+            )
+        else:
+            combo.setEnabled(False)
+            combo.setStyleSheet(
+                "QComboBox { background: transparent; }"
+                "QComboBox:disabled { background: transparent; color: #000000; }"
+                "QComboBox::drop-down:disabled { background: transparent; border: 0px; }"
+            )
 
     def _read_float_from_combo_cell(self, table: QTableWidget, row: int, col: int) -> float:
         w = table.cellWidget(row, col)
@@ -758,8 +853,10 @@ class BankChargerSizingScreen(ScreenBase):
         it.setText(str(text))
         if editable:
             it.setFlags(it.flags() | Qt.ItemIsEditable)
+            it.setBackground(_theme_color("INPUT_EDIT_BG", "#FFF9C4"))
         else:
             it.setFlags(it.flags() & ~Qt.ItemIsEditable)
+            it.setBackground(QColor(0, 0, 0, 0))
 
     def _row_index_of_lal(self) -> int:
         for r in range(self.tbl_cargas.rowCount()):
@@ -896,6 +993,8 @@ class BankChargerSizingScreen(ScreenBase):
             # 5) Elegir Vpc seleccionada: usuario > cálculo
             # (tu domain aún no calcula "v_cell_sel", así que dejamos la combo como "selección visual")
             v_cell_sel = self._user_vcell_sel  # puede ser None
+            vpc_mode = self._get_vpc_mode()
+            cells_mode = self._get_cells_mode()
 
             def fnum(x, nd=2):
                 try:
@@ -921,33 +1020,43 @@ class BankChargerSizingScreen(ScreenBase):
             except Exception:
                 n_cells_sys = ""
 
-            # (1.4) Número de celdas (Comprobación) = ceil(N sys). Editable.
-            # Si el usuario ya puso uno, lo mantenemos; si no, ponemos el ceil.
+            # (1.4) Número de celdas (Comprobación) = ceil(N sys).
+            n_req = int(math.ceil(float(n_cells_sys))) if n_cells_sys != "" else 0
             n_user_in = self._read_float_cell(self.tbl_comp, 0, 1)
-            if n_user_in and n_user_in > 0:
-                n_user = int(math.ceil(float(n_user_in)))
+            if cells_mode != "manual":
+                n_user = int(n_req) if n_req > 0 else 0
             else:
-                n_user = int(math.ceil(float(n_cells_sys))) if n_cells_sys != "" else 0
+                if n_user_in and n_user_in > 0:
+                    n_user = int(math.ceil(float(n_user_in)))
+                else:
+                    n_user = int(n_req) if n_req > 0 else 0
 
             # Pintar N sys en tabla datos (fila 7)
             self._set_cell(self.tbl_datos, 7, 1, fnum(n_cells_sys, 2) if n_cells_sys != "" else "", editable=False)
 
-            # (1.5) Tensión final por celda calculada = Vmin / N_user
-            v_cell_min_calc = ""
+            # (1.5) Tensión final por celda calculada = Vmin / N_user (ceil a lista)
+            v_cell_min_raw = ""
             try:
                 if res.v_min is not None and n_user:
-                    v_cell_min_calc = float(res.v_min) / float(n_user)
+                    v_cell_min_raw = float(res.v_min) / float(n_user)
             except Exception:
-                v_cell_min_calc = ""
+                v_cell_min_raw = ""
 
+            v_cell_min_calc = self._ceil_to_vpc_list(v_cell_min_raw) if v_cell_min_raw != "" else ""
             self._set_cell(self.tbl_datos, 5, 1, fnum(v_cell_min_calc, 2) if v_cell_min_calc != "" else "", editable=False)
 
             # “Seleccionada” = combo (si existe)
-            #self._set_cell(self.tbl_datos, 5, 1, fnum(v_cell_sel, 3) if v_cell_sel is not None else "", editable=False)
-            self._set_table_value_or_widget(self.tbl_datos, 6, 1, fnum(v_cell_sel, 3) if v_cell_sel is not None else "")
+            if vpc_mode != "manual" and v_cell_min_calc != "":
+                self._set_table_value_or_widget(self.tbl_datos, 6, 1, fnum(v_cell_min_calc, 2))
+                proyecto["v_celda_sel_usuario"] = fnum(v_cell_min_calc, 2)
+                v_cell_sel = v_cell_min_calc
+            else:
+                self._set_table_value_or_widget(self.tbl_datos, 6, 1, fnum(v_cell_sel, 2) if v_cell_sel is not None else "")
+
+            self._apply_combo_edit_style(getattr(self, "vcell_combo", None), editable=(vpc_mode == "manual"))
 
             # 7) Pintar TABLA COMPROBACIÓN (user)
-            self._set_cell(self.tbl_comp, 0, 1, fnum(n_user, 2) if n_user else "", editable=True)
+            self._set_cell(self.tbl_comp, 0, 1, f"{int(n_user):d}" if n_user else "", editable=(cells_mode == "manual"))
 
             comp_vmax = ""
             comp_vmin = ""
@@ -964,6 +1073,24 @@ class BankChargerSizingScreen(ScreenBase):
 
             self._set_cell(self.tbl_comp, 1, 1, fnum(comp_vmax, 2) if comp_vmax != "" else "", editable=False)
             self._set_cell(self.tbl_comp, 2, 1, fnum(comp_vmin, 2) if comp_vmin != "" else "", editable=False)
+
+            # Warnings for manual modes
+            try:
+                if cells_mode == "manual" and n_req > 0 and n_user < n_req:
+                    QMessageBox.warning(
+                        self,
+                        "Comprobación",
+                        f"El número de celdas es menor al mínimo recomendado ({n_req}).",
+                    )
+                if vpc_mode == "manual" and v_cell_min_calc != "" and v_cell_sel is not None:
+                    if float(v_cell_sel) < float(v_cell_min_calc):
+                        QMessageBox.warning(
+                            self,
+                            "Vpc seleccionada",
+                            "La Vpc seleccionada es menor al mínimo recomendado.",
+                        )
+            except Exception:
+                pass
 
             # 8) Si hay errores del domain, mostrarlos (sin cerrar app)
             if not res.ok:
@@ -1003,7 +1130,7 @@ class BankChargerSizingScreen(ScreenBase):
             ("Tensión Nominal [V]", batt_nom),
             ("Tensión de carga en flotación [V]", v_float),
             ("Tensión nominal sistema [V]", v_nom),
-            (f"Tensión máxima (+{v_max_pct} %) [V]", v_max_val),
+            (f"Tensión máxima (+{v_max_pct} %) [V]", f"{float(v_max_val):.2f}" if v_max_val not in (None, "", "—") else ""),
             (f"Tensión mínima (-{v_min_pct} %) [V]", v_min_val),
             ("Tensión final por celda calculada [Vpc]", "—"),
             ("Tensión final por celda seleccionada [Vpc]", "—"),
@@ -1062,7 +1189,20 @@ class BankChargerSizingScreen(ScreenBase):
             v_sel = _to_float(proyecto.get("v_celda_sel_usuario", "")) or _to_float(_cell_text(self.tbl_datos, 6, 1))
 
         n_sys = (v_max / v_float) if (v_max > 0 and v_float > 0) else 0.0
-        vpc_min_calc = (v_min / n_cells) if (v_min > 0 and n_cells > 0) else 0.0
+        n_req = int(math.ceil(n_sys)) if n_sys > 0 else 0
+        cells_mode = self._get_cells_mode()
+        if cells_mode != "manual":
+            n_cells = n_req
+            if n_cells > 0:
+                proyecto["num_celdas_usuario"] = n_cells
+
+        vpc_min_raw = (v_min / n_cells) if (v_min > 0 and n_cells > 0) else 0.0
+        vpc_min_calc = self._ceil_to_vpc_list(vpc_min_raw) if vpc_min_raw > 0 else 0.0
+        vpc_mode = self._get_vpc_mode()
+        if vpc_mode != "manual" and vpc_min_calc > 0:
+            v_sel = vpc_min_calc
+            proyecto["v_celda_sel_usuario"] = f"{v_sel:.2f}"
+
         comp_vmax = (n_cells * v_float) if (n_cells > 0 and v_float > 0) else 0.0
         comp_vmin = (n_cells * v_sel) if (n_cells > 0 and v_sel > 0) else 0.0
 
@@ -1071,11 +1211,14 @@ class BankChargerSizingScreen(ScreenBase):
             self.tbl_datos.blockSignals(True)
             self.tbl_comp.blockSignals(True)
 
-            self._set_text_cell(self.tbl_datos, 5, 1, f"{vpc_min_calc:.3f}" if vpc_min_calc > 0 else "—", editable=False)
-            self._set_text_cell(self.tbl_datos, 6, 1, f"{v_sel:.3f}" if v_sel and v_sel > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_datos, 5, 1, f"{vpc_min_calc:.2f}" if vpc_min_calc > 0 else "—", editable=False)
+            if v_sel and v_sel > 0:
+                self._set_table_value_or_widget(self.tbl_datos, 6, 1, f"{v_sel:.2f}")
+            else:
+                self._set_text_cell(self.tbl_datos, 6, 1, "—", editable=False)
             self._set_text_cell(self.tbl_datos, 7, 1, f"{n_sys:.2f}" if n_sys > 0 else "—", editable=False)
 
-            self._set_text_cell(self.tbl_comp, 0, 1, f"{n_cells:d}" if n_cells > 0 else "—", editable=False)
+            self._set_text_cell(self.tbl_comp, 0, 1, f"{n_cells:d}" if n_cells > 0 else "—", editable=(cells_mode == "manual"))
             self._set_text_cell(self.tbl_comp, 1, 1, f"{comp_vmax:.2f}" if comp_vmax > 0 else "—", editable=False)
             self._set_text_cell(self.tbl_comp, 2, 1, f"{comp_vmin:.2f}" if comp_vmin > 0 else "—", editable=False)
         finally:
@@ -1148,6 +1291,36 @@ class BankChargerSizingScreen(ScreenBase):
             vmin = 1.0
 
         return compute_momentary_scenarios(proyecto=proyecto, gabinetes=gabinetes, vmin=vmin)
+
+    def _extract_scenario_id(self, desc: str) -> int | None:
+        text = (desc or "").strip()
+        if not text:
+            return None
+        match = re.search(r"Escenario\\s+(\\d+)", text)
+        if not match:
+            return None
+        try:
+            return int(match.group(1))
+        except Exception:
+            return None
+
+    def _get_used_scenario_ids(self) -> set[int]:
+        used: set[int] = set()
+        for r in range(self.tbl_cargas.rowCount()):
+            it_desc = self.tbl_cargas.item(r, 1)
+            if it_desc is None:
+                continue
+            sid = it_desc.data(Qt.UserRole)
+            if isinstance(sid, int):
+                used.add(sid)
+                continue
+            if isinstance(sid, str) and sid.isdigit():
+                used.add(int(sid))
+                continue
+            parsed = self._extract_scenario_id(it_desc.text() if it_desc else "")
+            if parsed is not None:
+                used.add(parsed)
+        return used
 
     def _load_perfil_cargas_from_model(self):
         return self._controller.profile_presenter.load_from_model()
@@ -1245,15 +1418,26 @@ class BankChargerSizingScreen(ScreenBase):
                                     "No hay escenarios momentáneos con datos.\n"
                                     "Revisa Consumos C.C. (Momentáneos) y marca 'Incluir'.")
             return
+        used_ids = self._get_used_scenario_ids()
 
         opciones = []
         for esc in sorted(escenarios.keys()):
+            if int(esc) in used_ids:
+                continue
             data = escenarios[esc]
             p = float(data.get("p_total", 0.0))
             i = float(data.get("i_total", 0.0))
             d = descs.get(str(esc), "")
             label = f"Escenario {esc} – {d} (P={p:.1f} W, I={i:.2f} A)"
             opciones.append((label, esc, p, i, d))
+
+        if not opciones:
+            QMessageBox.information(
+                self,
+                "No hay escenarios disponibles",
+                "Ya fueron usados todos los escenarios de C.C. en el Perfil de cargas.",
+            )
+            return
 
         labels = [o[0] for o in opciones]
         sel_label, ok = QInputDialog.getItem(
@@ -1272,6 +1456,13 @@ class BankChargerSizingScreen(ScreenBase):
         if sel is None:
             return
         esc_num, p_tot, i_tot, desc = sel
+        if int(esc_num) in self._get_used_scenario_ids():
+            QMessageBox.warning(
+                self,
+                "Escenario no disponible",
+                "Ese escenario ya fue agregado al Perfil de cargas.",
+            )
+            return
 
         row_lal = self._row_index_of_lal()
         row = row_lal if row_lal >= 0 else self.tbl_cargas.rowCount()
@@ -1296,6 +1487,9 @@ class BankChargerSizingScreen(ScreenBase):
             ]
             for c, v in enumerate(valores):
                 self.tbl_cargas.setItem(row, c, QTableWidgetItem(str(v)))
+            it_desc = self.tbl_cargas.item(row, 1)
+            if it_desc is not None:
+                it_desc.setData(Qt.UserRole, int(esc_num))
         finally:
             self._updating = False
 

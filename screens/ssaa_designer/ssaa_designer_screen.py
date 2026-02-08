@@ -19,6 +19,8 @@ from __future__ import annotations
 from .context_actions import connect_nodes_checked, auto_connect_orphans_interactive, connect_from_context
 from .workspace_tabs import rebuild_workspace_tabs, available_workspaces, on_workspace_tab_changed, sync_layer_label
 from .feeders import iter_feed_rows, refresh_feeders, refresh_feeders_table, drop_feeder_on_canvas
+from .sources import iter_source_rows, refresh_sources_table, drop_source_on_canvas
+from .boards import iter_board_rows, refresh_boards_table, drop_board_on_canvas
 
 
 
@@ -60,7 +62,7 @@ from PyQt5.QtWidgets import (
 )
 
 
-from .widgets import LoadTableDialog, FeedListWidget, build_issues_panel, build_feeders_panel
+from .widgets import LoadTableDialog, FeedListWidget, build_issues_panel, build_feeders_panel, build_sources_panel, build_boards_panel
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
@@ -87,6 +89,10 @@ class SSAADesignerScreen(ScreenBase):
         # Controller (orquestación + persistencia). Se crea temprano para que
         # cualquier llamada a _persist/_topo_store durante init no falle.
         self._controller = SSaaDesignerController(self)
+        from PyQt5.QtCore import QTimer
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.timeout.connect(self._refresh_on_external_change)
 
         self._connect_mode = False
         self._connect_first: Optional[str] = None
@@ -111,6 +117,8 @@ class SSAADesignerScreen(ScreenBase):
             self.enter_safe_state()
         except Exception:
             pass
+        if hasattr(self.data_model, "on"):
+            self.data_model.on("section_changed", self._on_section_changed)
 
     def load_from_model(self):
         """Populate UI from current DataModel (ScreenBase hook)."""
@@ -134,6 +142,8 @@ class SSAADesignerScreen(ScreenBase):
             self._rebuild_workspace_tabs()
             # Refrescar alimentadores (incluye consumos con alimentador 'Individual')
             self._refresh_feeders_table()
+            self._refresh_boards_table()
+            self._refresh_sources_table()
         except Exception:
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
@@ -179,7 +189,13 @@ class SSAADesignerScreen(ScreenBase):
 
         # Canvas
         self.scene = QGraphicsScene(self)
-        self.view = TopoView(self.scene, on_delete_selected=self._delete_selected, on_drop_feeder=self._drop_feeder_on_canvas)
+        self.view = TopoView(
+            self.scene,
+            on_delete_selected=self._delete_selected,
+            on_drop_feeder=self._drop_feeder_on_canvas,
+            on_drop_source=self._drop_source_on_canvas,
+            on_drop_board=self._drop_board_on_canvas,
+        )
         self.view.setSceneRect(0, 0, 2400, 1400)
         left_split.addWidget(self.view)
         left_split.setStretchFactor(0, 1)
@@ -187,8 +203,13 @@ class SSAADesignerScreen(ScreenBase):
 
         split.addWidget(left_split)
 
-        # RIGHT: Alimentadores disponibles (drag&drop)
-        split.addWidget(build_feeders_panel(self))
+        # RIGHT: Alimentadores, Tableros/Fuentes y Fuentes disponibles (drag&drop)
+        right = QWidget()
+        vright = QVBoxLayout(right)
+        vright.addWidget(build_feeders_panel(self), 1)
+        vright.addWidget(build_boards_panel(self), 1)
+        vright.addWidget(build_sources_panel(self), 1)
+        split.addWidget(right)
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 2)
 
@@ -199,6 +220,10 @@ class SSAADesignerScreen(ScreenBase):
         # inicial
         self._sync_layer_label()
         self._refresh_feeders_table()
+        self._refresh_boards_table()
+        self._refresh_sources_table()
+        self._refresh_boards_table()
+        self._refresh_sources_table()
     def _refresh_dc_systems_combo(self, *args, **kwargs):
         return
 
@@ -221,14 +246,38 @@ class SSAADesignerScreen(ScreenBase):
     def _iter_feed_rows(self):
         return iter_feed_rows(self)
 
+    def _iter_source_rows(self):
+        return iter_source_rows(self)
+
+    def _iter_board_rows(self):
+        return iter_board_rows(self)
+
     def _refresh_feeders(self):
         return refresh_feeders(self)
 
     def _refresh_feeders_table(self):
         return refresh_feeders_table(self)
 
+    def _refresh_sources(self):
+        return refresh_sources_table(self)
+
+    def _refresh_sources_table(self):
+        return refresh_sources_table(self)
+
+    def _refresh_boards(self):
+        return refresh_boards_table(self)
+
+    def _refresh_boards_table(self):
+        return refresh_boards_table(self)
+
+    def _drop_source_on_canvas(self, scene_pos: QPointF, source: Dict):
+        return drop_source_on_canvas(self, scene_pos, source)
+
+    def _drop_board_on_canvas(self, scene_pos: QPointF, board: Dict):
+        return drop_board_on_canvas(self, scene_pos, board)
+
     def _add_selected_feeders_as_nodes(self):
-        QMessageBox.information(self, "Alimentadores", "Usa drag & drop desde la lista para crear nodos de carga.")
+        QMessageBox.information(self, "Cargas", "Usa drag & drop desde la lista para crear nodos de carga.")
 
 
     # ======================================================
@@ -254,6 +303,259 @@ class SSAADesignerScreen(ScreenBase):
             return self._refresh_feeders()
         return None
 
+    def refresh_sources(self):
+        """Stable public API to refresh sources list."""
+        if hasattr(self, "_refresh_sources") and callable(getattr(self, "_refresh_sources")):
+            return self._refresh_sources()
+        return None
+
+    def refresh_boards(self):
+        """Stable public API to refresh boards list."""
+        if hasattr(self, "_refresh_boards") and callable(getattr(self, "_refresh_boards")):
+            return self._refresh_boards()
+        return None
+
+    def order_diagram(self):
+        """Stable public API to auto-order current layer."""
+        if hasattr(self, "_order_diagram") and callable(getattr(self, "_order_diagram")):
+            return self._order_diagram()
+        return None
+
+    def _on_section_changed(self, section):
+        if section in (Section.BOARD_FEED, Section.CABINET, Section.INSTALACIONES):
+            if self._refresh_timer.isActive():
+                self._refresh_timer.start(250)
+            else:
+                self._refresh_timer.start(250)
+
+    def _refresh_on_external_change(self):
+        try:
+            self._refresh_feeders_table()
+            self._refresh_boards_table()
+            self._refresh_sources_table()
+            self._refresh_issues_panel()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+    def _order_diagram(self):
+        """Auto-order nodes in the current layer (deterministic BFS layout)."""
+        if not self._node_items:
+            return
+
+        nodes = list(self._node_items.values())
+        edges = [it.edge for it in self._edge_items.values()]
+
+        indeg: Dict[str, int] = {n.node.id: 0 for n in nodes}
+        adj: Dict[str, List[str]] = {n.node.id: [] for n in nodes}
+        for e in edges:
+            if e.src in adj and e.dst in indeg:
+                adj[e.src].append(e.dst)
+                indeg[e.dst] += 1
+
+        def _is_root(nit: TopoNodeItem) -> bool:
+            k = (nit.node.kind or "").upper()
+            if k == "FUENTE":
+                return True
+            if (nit.node.meta or {}).get("root_board"):
+                return True
+            return indeg.get(nit.node.id, 0) == 0
+
+        roots = [n for n in nodes if _is_root(n)]
+        rest = [n for n in nodes if n not in roots]
+
+        level: Dict[str, int] = {}
+        queue = [n.node.id for n in roots]
+        for rid in queue:
+            level[rid] = 0
+
+        while queue:
+            u = queue.pop(0)
+            for v in adj.get(u, []):
+                if v not in level:
+                    level[v] = level[u] + 1
+                    queue.append(v)
+
+        # Unreachable nodes -> append after last level
+        max_level = max(level.values()) if level else 0
+        for n in rest:
+            if n.node.id not in level:
+                max_level += 1
+                level[n.node.id] = max_level
+
+        # Group by level, stable order by tag/name
+        by_level: Dict[int, List[TopoNodeItem]] = {}
+        for nit in nodes:
+            lvl = level.get(nit.node.id, 0)
+            by_level.setdefault(lvl, []).append(nit)
+
+        for lvl in by_level:
+            by_level[lvl].sort(key=lambda it: ((it.node.meta or {}).get("tag") or it.node.name or it.node.id))
+
+        dx = 340.0
+        dy = 140.0
+        start_x = 60.0
+        start_y = 60.0
+
+        self.scene.blockSignals(True)
+        try:
+            self._sync_board_ports(align_children=False)
+            for lvl in sorted(by_level.keys()):
+                col = by_level[lvl]
+                for idx, nit in enumerate(col):
+                    x = start_x + lvl * dx
+                    y = start_y + idx * dy
+                    x = round(x / GRID) * GRID
+                    y = round(y / GRID) * GRID
+                    nit.setPos(QPointF(x, y))
+                    nit.node.pos = (float(x), float(y))
+        finally:
+            self.scene.blockSignals(False)
+
+        self._persist()
+        self._rebuild_all_edges()
+
+        # Align children to board output ports (straight edges)
+        self._sync_board_ports(align_children=True)
+        self._persist()
+        self._rebuild_all_edges()
+
+    def _sync_board_ports(self, align_children: bool) -> None:
+        """Ensure dynamic IN/OUT ports for boards and (optionally) align children to port columns."""
+        board_w_min = 260.0
+        port_pitch = 60.0
+        pad_l = 20.0
+        pad_r = 20.0
+
+        nodes = list(self._node_items.values())
+        edges = [it.edge for it in self._edge_items.values()]
+
+        adj_out: Dict[str, List[str]] = {}
+        adj_in: Dict[str, List[str]] = {}
+        for e in edges:
+            adj_out.setdefault(e.src, []).append(e.dst)
+            adj_in.setdefault(e.dst, []).append(e.src)
+
+        changed = False
+        for nit in nodes:
+            kind = (nit.node.kind or "").upper()
+            if not kind.startswith(("TG", "TD", "TDA")):
+                continue
+
+            meta = nit.node.meta or {}
+            ui = meta.get("ui")
+            if not isinstance(ui, dict):
+                ui = {}
+            out_map = ui.get("out_port_map")
+            in_map = ui.get("in_port_map")
+            if not isinstance(out_map, dict):
+                out_map = {}
+            if not isinstance(in_map, dict):
+                in_map = {}
+
+            def _next_free_index(m: dict) -> int:
+                used = {int(v) for v in m.values() if isinstance(v, int) or str(v).isdigit()}
+                i = 0
+                while i in used:
+                    i += 1
+                return i
+
+            for child_id in adj_out.get(nit.node.id, []):
+                if str(child_id) not in out_map:
+                    out_map[str(child_id)] = _next_free_index(out_map)
+                    changed = True
+            for parent_id in adj_in.get(nit.node.id, []):
+                if str(parent_id) not in in_map:
+                    in_map[str(parent_id)] = _next_free_index(in_map)
+                    changed = True
+
+            n_out = (max(out_map.values()) + 1) if out_map else 1
+            n_in = (max(in_map.values()) + 1) if in_map else 1
+            n_ports = max(n_out, n_in, 1)
+
+            board_w = max(board_w_min, pad_l + n_ports * port_pitch + pad_r)
+            if ui.get("w") != int(board_w):
+                ui["w"] = int(board_w)
+                changed = True
+            ui.setdefault("expanded", True)
+            ui["out_port_map"] = out_map
+            ui["in_port_map"] = in_map
+            meta["ui"] = ui
+            nit.node.meta = meta
+            if abs(nit.node.size[0] - board_w) > 0.5:
+                nit.node.size = (float(board_w), float(nit.node.size[1]))
+
+            ports = meta.get("ports", []) or []
+            out_port_ids: Dict[int, str] = {}
+            in_port_ids: Dict[int, str] = {}
+            for e in edges:
+                if e.src == nit.node.id:
+                    idx = out_map.get(str(e.dst))
+                    if idx is not None:
+                        pid = (e.meta or {}).get("src_port")
+                        if pid:
+                            out_port_ids[int(idx)] = str(pid)
+                if e.dst == nit.node.id:
+                    idx = in_map.get(str(e.src))
+                    if idx is not None:
+                        pid = (e.meta or {}).get("dst_port")
+                        if pid:
+                            in_port_ids[int(idx)] = str(pid)
+
+            def _find_port_id(io: str, idx: int) -> str:
+                name = io if idx == 0 else f"{io}{idx+1}"
+                for p in ports:
+                    if (p.get("io") or "").upper() == io and str(p.get("name") or "") == name:
+                        return str(p.get("id") or "")
+                return ""
+
+            new_ports = []
+            for i in range(n_in):
+                pid = in_port_ids.get(i) or _find_port_id("IN", i) or _new_id("p")
+                name = "IN" if i == 0 else f"IN{i+1}"
+                x = (pad_l + i * port_pitch + (port_pitch / 2.0)) / float(board_w)
+                new_ports.append({"id": pid, "name": name, "io": "IN", "side": "top", "x": x})
+            for i in range(n_out):
+                pid = out_port_ids.get(i) or _find_port_id("OUT", i) or _new_id("p")
+                name = "OUT" if i == 0 else f"OUT{i+1}"
+                x = (pad_l + i * port_pitch + (port_pitch / 2.0)) / float(board_w)
+                new_ports.append({"id": pid, "name": name, "io": "OUT", "side": "bottom", "x": x})
+
+            meta["ports"] = new_ports
+            nit.node.meta = meta
+            nit._rebuild_ports()
+
+            # Update edges to use current port ids for stable attachment
+            out_port_ids = {int(i): p["id"] for i, p in enumerate([p for p in new_ports if p["io"] == "OUT"])}
+            in_port_ids = {int(i): p["id"] for i, p in enumerate([p for p in new_ports if p["io"] == "IN"])}
+            for e in edges:
+                if e.src == nit.node.id:
+                    idx = out_map.get(str(e.dst))
+                    if idx is not None:
+                        e.meta = dict(e.meta or {})
+                        e.meta["src_port"] = out_port_ids.get(int(idx))
+                if e.dst == nit.node.id:
+                    idx = in_map.get(str(e.src))
+                    if idx is not None:
+                        e.meta = dict(e.meta or {})
+                        e.meta["dst_port"] = in_port_ids.get(int(idx))
+
+            if align_children:
+                base_x = nit.node.pos[0]
+                for child_id, idx in out_map.items():
+                    child_item = self._node_items.get(child_id)
+                    if child_item is None:
+                        continue
+                    port_x = base_x + pad_l + idx * port_pitch + (port_pitch / 2.0)
+                    child_w = float(child_item.node.size[0])
+                    child_x = port_x - (child_w / 2.0)
+                    child_x = round(child_x / GRID) * GRID
+                    child_item.setPos(QPointF(child_x, child_item.pos().y()))
+                    child_item.node.pos = (float(child_x), float(child_item.pos().y()))
+
+        if changed:
+            self._ports_migrated = True
+
 
     def on_selection_changed(self):
         """Stable public handler for scene selection changes."""
@@ -278,6 +580,10 @@ class SSAADesignerScreen(ScreenBase):
         item = TopoNodeItem(node, on_moved=self._on_node_moved, on_connect_from=self._connect_from_context, on_port_clicked=self._on_port_clicked, on_port_added=self._on_ports_changed)
         self._node_items[node.id] = item
         self.scene.addItem(item)
+        if getattr(item, "_ports_changed", False):
+            self._ports_migrated = True
+        if getattr(item, "_ui_changed", False):
+            self._ui_migrated = True
         return item
 
     def _add_edge_item(self, edge: TopoEdge):
@@ -338,6 +644,7 @@ class SSAADesignerScreen(ScreenBase):
         )
 
     def _rebuild_all_edges(self):
+        self._sync_board_ports(align_children=False)
         for e in self._edge_items.values():
             e.rebuild()
 
@@ -359,6 +666,8 @@ class SSAADesignerScreen(ScreenBase):
 
         self.scene.blockSignals(True)
         try:
+            self._ports_migrated = False
+            self._ui_migrated = False
             self.scene.clear()
             self._node_items.clear()
             self._edge_items.clear()
@@ -377,6 +686,9 @@ class SSAADesignerScreen(ScreenBase):
 
         self._sync_layer_label()
         self._refresh_feeders_table()
+        self._sync_board_ports(align_children=False)
+        if getattr(self, "_ports_migrated", False) or getattr(self, "_ui_migrated", False):
+            self._persist()
 
     def _add_node(self):
         kind_u = (self.cbo_kind.currentText() or "CARGA").upper()
@@ -723,6 +1035,40 @@ class SSAADesignerScreen(ScreenBase):
             if incoming.get(n.id, 0) == 0:
                 issues.append({"level": "warn", "code": "NODE_ORPHAN", "msg": f"Carga huérfana: {n.name}", "node_id": n.id})
 
+        for n in nodes:
+            if not (n.meta or {}).get("root_board"):
+                continue
+            if incoming.get(n.id, 0) > 0:
+                issues.append({
+                    "level": "error",
+                    "code": "ROOT_BOARD_HAS_INCOMING_EDGE",
+                    "msg": f"Tablero raíz con entrada: {n.name}",
+                    "node_id": n.id,
+                })
+
+        # Fuentes: no deben tener aristas entrantes y no deben duplicarse por capa
+        source_ids_by_key: Dict[str, List[str]] = {}
+        for n in nodes:
+            if (n.kind or "").upper() != "FUENTE":
+                continue
+            if incoming.get(n.id, 0) > 0:
+                issues.append({
+                    "level": "error",
+                    "code": "SOURCE_HAS_INCOMING_EDGE",
+                    "msg": f"Fuente con entrada: {n.name}",
+                    "node_id": n.id,
+                })
+            key = (n.meta or {}).get("source_key") or (n.meta or {}).get("gabinete_id") or n.name
+            source_ids_by_key.setdefault(str(key), []).append(n.id)
+
+        for key, ids in source_ids_by_key.items():
+            if len(ids) > 1:
+                issues.append({
+                    "level": "warn",
+                    "code": "SOURCE_DUPLICATE_IN_LAYER",
+                    "msg": f"Fuente duplicada en la capa (key={key}).",
+                    "node_id": ids[0],
+                })
 
         # ------------------------------------------------------
         # Regla crítica: discrepancia entre arquitectura dibujada
@@ -917,17 +1263,52 @@ class SSAADesignerScreen(ScreenBase):
         except Exception:
             used = set()
 
-        for fk in sorted(current_keys):
-            if fk in used or fk in node_keys:
-                continue
+        unused = [fk for fk in sorted(current_keys) if fk not in used and fk not in node_keys]
+        if unused:
+            preview = ", ".join(unused[:10])
+            more = "" if len(unused) <= 10 else f" (+{len(unused) - 10} más)"
             issues.append({
-                "level": "warn",
+                "level": "info",
                 "code": "FEED_SELECTED_NOT_USED",
                 "msg": (
-                    "Existe una alimentación seleccionada en 'Alimentación Tableros' "
-                    "que aún no se ha dibujado/usado en 'Arquitectura SS/AA' "
-                    f"(key={fk})."
+                    "Hay alimentaciones seleccionadas en 'Alimentación Tableros' "
+                    "que aún no se han dibujado en 'Arquitectura SS/AA'. "
+                    f"({len(unused)}): {preview}{more}"
                 ),
+            })
+
+        # --------------------------------------------------
+        # A2) Fuentes de energía (Instalaciones) vs Arquitectura
+        # --------------------------------------------------
+        sources_defined: set[str] = set()
+        for g in getattr(self.data_model, "gabinetes", []) or []:
+            if bool(g.get("is_energy_source", False)):
+                gid = str(g.get("id") or "").strip()
+                gtag = str(g.get("tag") or "").strip()
+                if gid:
+                    sources_defined.add(gid)
+                if gtag:
+                    sources_defined.add(gtag)
+
+        source_nodes = [n for n in (nodes or []) if (n.kind or "").upper() == "FUENTE"]
+        for n in source_nodes:
+            gid = (n.meta or {}).get("gabinete_id") or ""
+            if gid and gid not in sources_defined:
+                issues.append({
+                    "level": "error",
+                    "code": "SOURCE_REMOVED",
+                    "msg": (
+                        f"Fuente '{getattr(n, 'tag', '') or getattr(n, 'name', '')}' "
+                        "refiere a un gabinete que ya no es fuente de energía o no existe."
+                    ),
+                    "node_id": getattr(n, "id", None),
+                })
+
+        if sources_defined and not source_nodes:
+            issues.append({
+                "level": "warn",
+                "code": "SOURCE_SELECTED_NOT_USED",
+                "msg": "Hay fuentes de energía definidas en Instalaciones, pero ninguna fue dibujada en Arquitectura SS/AA.",
             })
 
         # --------------------------------------------------

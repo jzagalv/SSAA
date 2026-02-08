@@ -18,6 +18,7 @@ import json
 import uuid
 import copy
 from pathlib import Path
+from contextlib import contextmanager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,10 +36,11 @@ from PyQt5.QtWidgets import (
 from ui.common.state import save_header_state, restore_header_state
 from ui.theme import get_theme_token
 
-from PyQt5.QtCore import Qt, QPointF, QRectF, QMimeData, pyqtSignal
+from PyQt5.QtCore import Qt, QPointF, QRectF, QMimeData, pyqtSignal, QTimer, QSignalBlocker
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen, QDrag, QFont
 from ui.table_utils import make_table_sortable
 from ui.table_utils import center_in_cell
+from ui.utils.table_utils import configure_table_autoresize
 
 from .graphics import (
     GRID_SIZE, CABINET_MARGIN, CABINET_WIDTH, CABINET_HEIGHT, EXTRA_SCROLL, DEFAULT_SIZE,
@@ -89,6 +91,9 @@ class CabinetComponentsScreen(ScreenBase):
         self.row_by_id = {}
         self.cards_by_id = {}
         self._loading = False
+        self._in_user_edit = False
+        self._pending_refresh = False
+        self._ui_updating_depth = 0
         self._copied_cabinet_components = None
         self._copied_cabinet_info = None
 
@@ -115,6 +120,55 @@ class CabinetComponentsScreen(ScreenBase):
 
         item = self.table.item(row, col)
         return item.text() if item is not None else ""
+
+    @contextmanager
+    def _ui_update(self):
+        self._ui_updating_depth += 1
+        try:
+            with QSignalBlocker(self.table):
+                yield
+        finally:
+            self._ui_updating_depth -= 1
+
+    def _ui_updating(self) -> bool:
+        return self._ui_updating_depth > 0
+
+    def _ensure_item(self, row: int, col: int, text: str = "") -> QTableWidgetItem:
+        item = self.table.item(row, col)
+        if item is None:
+            item = QTableWidgetItem(text)
+            self.table.setItem(row, col, item)
+        return item
+
+    def _set_cell_editable(self, row: int, col: int, editable: bool) -> None:
+        item = self._ensure_item(row, col, "")
+        flags = item.flags()
+        if editable:
+            item.setFlags(flags | Qt.ItemIsEditable)
+            item.setBackground(QBrush(QColor(get_theme_token("INPUT_EDIT_BG", "#FFF9C4"))))
+        else:
+            item.setFlags(flags & ~Qt.ItemIsEditable)
+            item.setBackground(QBrush(QColor(get_theme_token("SURFACE", "#FFFFFF"))))
+
+    def _begin_user_edit(self):
+        self._in_user_edit = True
+
+    def _end_user_edit(self):
+        self._in_user_edit = False
+        if self._pending_refresh:
+            self._pending_refresh = False
+            QTimer.singleShot(0, self._safe_refresh)
+
+    def _safe_refresh(self):
+        if self._in_user_edit:
+            self._pending_refresh = True
+            return
+        try:
+            with QSignalBlocker(self.table):
+                self.update_design_view()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
 
     # --------------------------------------------------------
@@ -157,8 +211,7 @@ class CabinetComponentsScreen(ScreenBase):
             "Origen",
         ])
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Interactive)   # columnas ajustables
-        header.setStretchLastSection(True)                     # que no quede espacio vacío
+        configure_table_autoresize(self.table)
 
         # ---> activar ordenamiento
         make_table_sortable(self.table)
@@ -417,6 +470,9 @@ class CabinetComponentsScreen(ScreenBase):
         return float(DEFAULT_SIZE[0]), float(DEFAULT_SIZE[1])
 
     def update_design_view(self):
+        if getattr(self, "_in_user_edit", False):
+            self._pending_refresh = True
+            return
         self._loading = True
         self.scene.clear()
         self.row_by_id.clear()
@@ -629,7 +685,8 @@ class CabinetComponentsScreen(ScreenBase):
         # Alimentador
         alimentador_combo = QComboBox()
         alimentador_combo.addItems(["General", "Individual", "Indirecta"])
-        alimentador_combo.setCurrentText(d.get("alimentador", "General"))
+        with QSignalBlocker(alimentador_combo):
+            alimentador_combo.setCurrentText(d.get("alimentador", "General"))
         alimentador_combo.currentTextChanged.connect(
             lambda val, cid=comp_id: self._sync_from_table(cid, "alimentador", val)
         )
@@ -644,7 +701,8 @@ class CabinetComponentsScreen(ScreenBase):
             "C.A. Esencial",
             "C.A. No Esencial",
         ])
-        tipo_combo.setCurrentText(d.get("tipo_consumo", "C.C. permanente"))
+        with QSignalBlocker(tipo_combo):
+            tipo_combo.setCurrentText(d.get("tipo_consumo", "C.C. permanente"))
         tipo_combo.currentTextChanged.connect(
             lambda val, cid=comp_id: self._sync_from_table(cid, "tipo_consumo", val)
         )
@@ -653,7 +711,8 @@ class CabinetComponentsScreen(ScreenBase):
         # Fase
         fase_combo = QComboBox()
         fase_combo.addItems(["1F", "3F"])
-        fase_combo.setCurrentText(d.get("fase", "1F"))
+        with QSignalBlocker(fase_combo):
+            fase_combo.setCurrentText(d.get("fase", "1F"))
         fase_combo.currentTextChanged.connect(
             lambda val, cid=comp_id: self._sync_from_table(cid, "fase", val)
         )
@@ -662,10 +721,12 @@ class CabinetComponentsScreen(ScreenBase):
         # Origen
         origen_combo = QComboBox()
         origen_combo.addItems(["Genérico", "Según Fabricante", "Por Usuario"])
-        origen_combo.setCurrentText(d.get("origen", "Genérico"))
-        origen_combo.currentTextChanged.connect(
-            lambda val, cid=comp_id: self._sync_from_table(cid, "origen", val)
-        )
+        with QSignalBlocker(origen_combo):
+            origen_combo.setCurrentText(d.get("origen", "Genérico"))
+        origen_combo.setProperty("row", row)
+        origen_combo.setProperty("comp_id", comp_id)
+        origen_combo.setProperty("key", "origen")
+        origen_combo.currentIndexChanged.connect(self._on_origin_changed)
         self.table.setCellWidget(row, COL_ORIGEN, origen_combo)
 
         self.row_by_id[comp_id] = row
@@ -737,7 +798,8 @@ class CabinetComponentsScreen(ScreenBase):
             if isinstance(tipo_combo, QComboBox):
                 if tipo_combo.findText(tipo) < 0:
                     tipo_combo.addItem(tipo)
-                tipo_combo.setCurrentText(tipo)
+                with QSignalBlocker(tipo_combo):
+                    tipo_combo.setCurrentText(tipo)
 
             # Fase
             fase = str(d.get("fase", "1F"))
@@ -745,7 +807,8 @@ class CabinetComponentsScreen(ScreenBase):
             if isinstance(fase_combo, QComboBox):
                 if fase_combo.findText(fase) < 0:
                     fase_combo.addItem(fase)
-                fase_combo.setCurrentText(fase)
+                with QSignalBlocker(fase_combo):
+                    fase_combo.setCurrentText(fase)
 
             usar_va = bool(d.get("usar_va"))
             self._apply_power_mode_to_row(row, usar_va, tipo)
@@ -766,234 +829,211 @@ class CabinetComponentsScreen(ScreenBase):
         chk.blockSignals(prev)
 
     def _apply_origin_to_row(self, row: int, origen: str):
-        # Localizar componente y sus datos
-        comp_id = self._get_comp_id_by_row(row)
-        comp = None
-        if comp_id and self.current_cabinet:
-            for c in self.current_cabinet.get("components", []):
-                if c.get("id") == comp_id:
-                    comp = c
-                    break
+        with self._ui_update():
+            # Localizar componente y sus datos
+            comp_id = self._get_comp_id_by_row(row)
+            comp = None
+            if comp_id and self.current_cabinet:
+                for c in self.current_cabinet.get("components", []):
+                    if c.get("id") == comp_id:
+                        comp = c
+                        break
 
-        data = self._normalize_comp_data(comp.get("data", {})) if comp else {}
-        base_name = comp.get("base", "") if comp else ""
+            data = self._normalize_comp_data(comp.get("data", {})) if comp else {}
+            base_name = comp.get("base", "") if comp else ""
 
-        # Habilitar "Alimentador" solo cuando el origen sea "Por Usuario"
-        alimentador_combo = self.table.cellWidget(row, COL_ALIMENTADOR)
-        if isinstance(alimentador_combo, QComboBox):
-            alimentador_combo.setEnabled(origen == "Por Usuario")
+            # Habilitar "Alimentador" solo cuando el origen sea "Por Usuario"
+            alimentador_combo = self.table.cellWidget(row, COL_ALIMENTADOR)
+            if isinstance(alimentador_combo, QComboBox):
+                alimentador_combo.setEnabled(origen == "Por Usuario")
 
-        # Limpiar cualquier widget previo en Marca/Modelo
-        for col in (COL_MARCA, COL_MODELO):
-            widget = self.table.cellWidget(row, col)
-            if widget is not None:
-                widget.deleteLater()
-                self.table.setCellWidget(row, col, None)
+            # Limpiar cualquier widget previo en Marca/Modelo
+            for col in (COL_MARCA, COL_MODELO):
+                widget = self.table.cellWidget(row, col)
+                if widget is not None:
+                    widget.deleteLater()
+                    self.table.setCellWidget(row, col, None)
 
-        # ---------- ORIGEN: POR USUARIO (marca y modelo editables) ----------
-        if origen == "Por Usuario":
-            for col, key in ((COL_MARCA, "marca"), (COL_MODELO, "modelo")):
-                item = self.table.item(row, col)
-                if item is None:
-                    item = QTableWidgetItem("")
-                    self.table.setItem(row, col, item)
-                flags = item.flags()
-                item.setFlags(flags | Qt.ItemIsEditable)
-                txt = data.get(key, "")
-                item.setText("" if not txt else txt)
-
-        # ---------- ORIGEN: SEGÚN FABRICANTE (combos filtrados) ----------
-        elif origen == "Según Fabricante":
-            variants = self._get_db_variants_for(base_name)
-            if not variants:
-                origen = "Genérico"  # sin base -> tratamos como genérico
-            else:
-                brand_combo = QComboBox(self.table)
-                model_combo = QComboBox(self.table)
-
-                marcas = sorted(
-                    {v.get("marca", "") for v in variants if v.get("marca", "")}
-                )
-                brand_combo.addItem("")
-                for m in marcas:
-                    brand_combo.addItem(m)
-
-                self.table.setCellWidget(row, COL_MARCA, brand_combo)
-                self.table.setCellWidget(row, COL_MODELO, model_combo)
-
-                # Items "fantasma" para mostrar texto pero no editar
+            # ---------- ORIGEN: POR USUARIO (marca y modelo editables) ----------
+            if origen == "Por Usuario":
                 for col, key in ((COL_MARCA, "marca"), (COL_MODELO, "modelo")):
-                    item = self.table.item(row, col)
-                    if item is None:
-                        item = QTableWidgetItem("")
-                        self.table.setItem(row, col, item)
-                    flags = item.flags() & ~Qt.ItemIsEditable
-                    item.setFlags(flags)
+                    self._set_cell_editable(row, col, True)
+                    item = self._ensure_item(row, col, "")
                     txt = data.get(key, "")
                     item.setText("" if not txt else txt)
 
-                def refresh_models(selected_brand: str, keep_model: str = ""):
-                    model_combo.blockSignals(True)
-                    model_combo.clear()
-                    models = [
-                        v for v in variants
-                        if v.get("marca", "") == selected_brand
-                    ]
-                    model_combo.addItem("")
-                    for v in models:
-                        model_text = v.get("modelo", "")
-                        model_combo.addItem(model_text, userData=v)
-                    if keep_model:
-                        idx = model_combo.findText(keep_model)
-                        if idx >= 0:
-                            model_combo.setCurrentIndex(idx)
-                    model_combo.blockSignals(False)
-
-                marca_ini = data.get("marca", "")
-                modelo_ini = data.get("modelo", "")
-                if marca_ini and marca_ini in marcas:
-                    brand_combo.setCurrentText(marca_ini)
-                    refresh_models(marca_ini, modelo_ini)
+            # ---------- ORIGEN: SEGÚN FABRICANTE (combos filtrados) ----------
+            elif origen == "Según Fabricante":
+                variants = self._get_db_variants_for(base_name)
+                if not variants:
+                    origen = "Genérico"  # sin base -> tratamos como genérico
                 else:
-                    refresh_models("")
+                    brand_combo = QComboBox(self.table)
+                    model_combo = QComboBox(self.table)
 
-                def on_brand_changed(text: str, cid=comp_id):
-                    self._sync_from_table(cid, "marca", text)
-                    item_marca = self.table.item(row, COL_MARCA)
-                    if item_marca is not None:
-                        prev = self._loading
-                        self._loading = True
+                    marcas = sorted(
+                        {v.get("marca", "") for v in variants if v.get("marca", "")}
+                    )
+                    brand_combo.addItem("")
+                    for m in marcas:
+                        brand_combo.addItem(m)
+
+                    self.table.setCellWidget(row, COL_MARCA, brand_combo)
+                    self.table.setCellWidget(row, COL_MODELO, model_combo)
+
+                    # Items "fantasma" para mostrar texto pero no editar
+                    for col, key in ((COL_MARCA, "marca"), (COL_MODELO, "modelo")):
+                        self._set_cell_editable(row, col, False)
+                        item = self._ensure_item(row, col, "")
+                        txt = data.get(key, "")
+                        item.setText("" if not txt else txt)
+
+                    def refresh_models(selected_brand: str, keep_model: str = ""):
+                        with QSignalBlocker(model_combo):
+                            model_combo.clear()
+                            models = [
+                                v for v in variants
+                                if v.get("marca", "") == selected_brand
+                            ]
+                            model_combo.addItem("")
+                            for v in models:
+                                model_text = v.get("modelo", "")
+                                model_combo.addItem(model_text, userData=v)
+                            if keep_model:
+                                idx = model_combo.findText(keep_model)
+                                if idx >= 0:
+                                    model_combo.setCurrentIndex(idx)
+
+                    marca_ini = data.get("marca", "")
+                    modelo_ini = data.get("modelo", "")
+                    if marca_ini and marca_ini in marcas:
+                        with QSignalBlocker(brand_combo):
+                            brand_combo.setCurrentText(marca_ini)
+                        refresh_models(marca_ini, modelo_ini)
+                    else:
+                        refresh_models("")
+
+                    def on_brand_changed(text: str, cid=comp_id):
+                        if self._ui_updating():
+                            return
+                        self._sync_from_table(cid, "marca", text)
+                        item_marca = self._ensure_item(row, COL_MARCA, "")
                         item_marca.setText(text or "")
-                        self._loading = prev
-                    refresh_models(text)
+                        refresh_models(text)
 
-                def on_model_changed(index: int, cid=comp_id):
-                    comp_data = model_combo.itemData(index)
-                    model_text = model_combo.currentText()
-                    self._sync_from_table(cid, "modelo", model_text)
-                    item_modelo = self.table.item(row, COL_MODELO)
-                    if item_modelo is not None:
-                        prev = self._loading
-                        self._loading = True
+                    def on_model_changed(index: int, cid=comp_id):
+                        if self._ui_updating():
+                            return
+                        comp_data = model_combo.itemData(index)
+                        model_text = model_combo.currentText()
+                        self._sync_from_table(cid, "modelo", model_text)
+                        item_modelo = self._ensure_item(row, COL_MODELO, "")
                         item_modelo.setText(model_text or "")
-                        self._loading = prev
 
-                    # Completar datos desde base (potencias, tipo, fase, etc.)
-                    if isinstance(comp_data, dict):
-                        for k in ("potencia_w", "potencia_va",
-                                  "usar_va", "tipo_consumo", "fase"):
-                            if k in comp_data:
-                                self._sync_from_table(cid, k, comp_data[k])
-                        row_idx = self.row_by_id.get(cid)
-                        if row_idx is not None:
-                            self._update_row_from_data(row_idx, comp_data)
+                        # Completar datos desde base (potencias, tipo, fase, etc.)
+                        if isinstance(comp_data, dict):
+                            for k in ("potencia_w", "potencia_va",
+                                      "usar_va", "tipo_consumo", "fase"):
+                                if k in comp_data:
+                                    self._sync_from_table(cid, k, comp_data[k])
+                            row_idx = self.row_by_id.get(cid)
+                            if row_idx is not None:
+                                self._update_row_from_data(row_idx, comp_data)
 
-                brand_combo.currentTextChanged.connect(on_brand_changed)
-                model_combo.currentIndexChanged.connect(on_model_changed)
+                    brand_combo.currentTextChanged.connect(on_brand_changed)
+                    model_combo.currentIndexChanged.connect(on_model_changed)
 
-        # ---------- ORIGEN: GENÉRICO (marca/modelo bloqueados "----") ----------
-        if origen == "Genérico":
-            for col in (COL_MARCA, COL_MODELO):
-                item = self.table.item(row, col)
-                if item is None:
-                    item = QTableWidgetItem("")
-                    self.table.setItem(row, col, item)
-                flags = item.flags()
-                item.setText("----")
-                item.setFlags(flags & ~Qt.ItemIsEditable)
+            # ---------- ORIGEN: GENÉRICO (marca/modelo bloqueados "----") ----------
+            if origen == "Genérico":
+                for col in (COL_MARCA, COL_MODELO):
+                    self._set_cell_editable(row, col, False)
+                    item = self._ensure_item(row, col, "")
+                    item.setText("----")
 
-        # ---------- SIEMPRE: volver a aplicar reglas de potencia ----------
-        chk = self._get_checkbox_at(row, COL_USAR_VA)
-        usar_va = bool(chk.isChecked()) if chk is not None else False
-        tipo = self._combo_text_at(row, COL_TIPO)
-        self._apply_power_mode_to_row(row, usar_va, tipo)
+            # ---------- SIEMPRE: volver a aplicar reglas de potencia ----------
+            chk = self._get_checkbox_at(row, COL_USAR_VA)
+            usar_va = bool(chk.isChecked()) if chk is not None else False
+            tipo = self._combo_text_at(row, COL_TIPO)
+            self._apply_power_mode_to_row(row, usar_va, tipo)
 
     def _apply_power_mode_to_row(self, row: int, usar_va: bool, tipo_consumo: str):
-        item_w = self.table.item(row, COL_P_W)
-        item_va = self.table.item(row, COL_P_VA)
-        if item_w is None:
-            item_w = QTableWidgetItem("")
-            self.table.setItem(row, COL_P_W, item_w)
-        if item_va is None:
-            item_va = QTableWidgetItem("")
-            self.table.setItem(row, COL_P_VA, item_va)
+        with self._ui_update():
+            item_w = self._ensure_item(row, COL_P_W, "")
+            item_va = self._ensure_item(row, COL_P_VA, "")
 
-        flags_w = item_w.flags()
-        flags_va = item_va.flags()
+            flags_w = item_w.flags()
+            flags_va = item_va.flags()
 
-        chk = self._get_checkbox_at(row, COL_USAR_VA)
+            chk = self._get_checkbox_at(row, COL_USAR_VA)
+            fase_combo = self.table.cellWidget(row, COL_FASE)
 
-        fase_combo = self.table.cellWidget(row, COL_FASE)
+            origen = self._combo_text_at(row, COL_ORIGEN)
+            is_user_origin = (origen == "Por Usuario")
 
-        origen = self._combo_text_at(row, COL_ORIGEN)
-        is_user_origin = (origen == "Por Usuario")
+            disabled_brush = QBrush(QColor(get_theme_token("INPUT_DISABLED_BG", "#E6E6E6")))
+            normal_brush = QBrush(QColor(get_theme_token("SURFACE", "#FFFFFF")))
 
-        disabled_brush = QBrush(QColor(get_theme_token("INPUT_DISABLED_BG", "#E6E6E6")))
-        normal_brush = QBrush(QColor(get_theme_token("SURFACE", "#FFFFFF")))
+            # Reset visual básico
+            item_w.setBackground(normal_brush)
+            item_va.setBackground(normal_brush)
 
-        # Reset visual básico
-        item_w.setBackground(normal_brush)
-        item_va.setBackground(normal_brush)
-        if fase_combo:
-            pass
+            # =====================================================
+            # 1) ORIGEN ≠ "POR USUARIO"  -> POTENCIAS SIEMPRE FIJAS
+            # =====================================================
+            if not is_user_origin:
+                if chk is not None:
+                    self._set_checkbox_checked_safely(chk, False)
+                    chk.setEnabled(False)
 
-        # =====================================================
-        # 1) ORIGEN ≠ "POR USUARIO"  -> POTENCIAS SIEMPRE FIJAS
-        # =====================================================
-        if not is_user_origin:
+                # Fase sólo deshabilitada para C.C.
+                if tipo_consumo.startswith("C.C."):
+                    if fase_combo:
+                        fase_combo.setEnabled(False)
+                else:
+                    if fase_combo:
+                        fase_combo.setEnabled(True)
+
+                item_w.setFlags(flags_w & ~Qt.ItemIsEditable)
+                item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
+                item_w.setBackground(disabled_brush)
+                item_va.setBackground(disabled_brush)
+                return
+
+            # =====================================================
+            # 2) ORIGEN "POR USUARIO" -> reglas normales
+            # =====================================================
             if chk is not None:
-                self._set_checkbox_checked_safely(chk, False)
-                chk.setEnabled(False)
+                chk.setEnabled(True)
 
-            # Fase sólo deshabilitada para C.C.
+            # Helper local para leer valor numérico si existe
+            def _num(text):
+                text = (text or "").strip()
+                if text in ("", "----"):
+                    return None
+                try:
+                    return float(text)
+                except ValueError:
+                    return None
+
+            # ----- Consumo C.C. -----
             if tipo_consumo.startswith("C.C."):
+                if chk is not None:
+                    self._set_checkbox_checked_safely(chk, False)
+
                 if fase_combo:
                     fase_combo.setEnabled(False)
-            else:
-                if fase_combo:
-                    fase_combo.setEnabled(True)
 
-            item_w.setFlags(flags_w & ~Qt.ItemIsEditable)
-            item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
-            item_w.setBackground(disabled_brush)
-            item_va.setBackground(disabled_brush)
-            return
+                item_va.setText("----")
+                item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
+                item_va.setBackground(disabled_brush)
 
-        # =====================================================
-        # 2) ORIGEN "POR USUARIO" -> reglas normales
-        # =====================================================
-        if chk is not None:
-            chk.setEnabled(True)
+                item_w.setFlags(flags_w | Qt.ItemIsEditable)
+                item_w.setBackground(normal_brush)
+                if item_w.text() == "----":
+                    item_w.setText("")
+                return
 
-        # Helper local para leer valor numérico si existe
-        def _num(text):
-            text = (text or "").strip()
-            if text in ("", "----"):
-                return None
-            try:
-                return float(text)
-            except ValueError:
-                return None
-
-        # ----- Consumo C.C. -----
-        if tipo_consumo.startswith("C.C."):
-            if chk is not None:
-                self._set_checkbox_checked_safely(chk, False)
-
-            if fase_combo:
-                fase_combo.setEnabled(False)
-
-            item_va.setText("----")
-            item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
-            item_va.setBackground(disabled_brush)
-
-            item_w.setFlags(flags_w | Qt.ItemIsEditable)
-            item_w.setBackground(normal_brush)
-            if item_w.text() == "----":
-                item_w.setText("")
-
-        # ----- Consumo C.A. -----
-        else:
+            # ----- Consumo C.A. -----
             if fase_combo:
                 fase_combo.setEnabled(True)
 
@@ -1013,24 +1053,53 @@ class CabinetComponentsScreen(ScreenBase):
 
                 item_w.setText("----")
                 item_w.setFlags(flags_w & ~Qt.ItemIsEditable)
-            else:
-                # Queremos dejar W activo. Si W no tiene valor, usamos el de VA.
-                value = val_w if val_w is not None else val_va
+                return
 
-                item_w.setFlags(flags_w | Qt.ItemIsEditable)
-                if value is not None:
-                    item_w.setText(str(value))
-                elif item_w.text() == "----":
-                    item_w.setText("")
+            # Queremos dejar W activo. Si W no tiene valor, usamos el de VA.
+            value = val_w if val_w is not None else val_va
 
-                item_va.setText("----")
-                item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
+            item_w.setFlags(flags_w | Qt.ItemIsEditable)
+            if value is not None:
+                item_w.setText(str(value))
+            elif item_w.text() == "----":
+                item_w.setText("")
+
+            item_va.setText("----")
+            item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
+
+    def _on_origin_changed(self, _index: int):
+        if self._ui_updating() or getattr(self, "_loading", False):
+            return
+        combo = self.sender()
+        if not isinstance(combo, QComboBox):
+            return
+        comp_id = combo.property("comp_id")
+        if not comp_id:
+            return
+        value = combo.currentText()
+        self._begin_user_edit()
+        try:
+            self._controller.sync_from_table(comp_id, "origen", value)
+        finally:
+            self._end_user_edit()
 
     def _on_table_item_changed(self, item: QTableWidgetItem):
-        return self._controller.on_table_item_changed(item)
+        if getattr(self, "_loading", False) or self._ui_updating():
+            return
+        self._begin_user_edit()
+        try:
+            return self._controller.on_table_item_changed(item)
+        finally:
+            self._end_user_edit()
 
     def _sync_from_table(self, comp_id: str, key: str, value):
-        return self._controller.sync_from_table(comp_id, key, value)
+        if getattr(self, "_loading", False) or self._ui_updating():
+            return
+        self._begin_user_edit()
+        try:
+            return self._controller.sync_from_table(comp_id, key, value)
+        finally:
+            self._end_user_edit()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete and self.current_cabinet:

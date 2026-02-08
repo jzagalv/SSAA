@@ -81,24 +81,31 @@ def _phase_kind_from_components(components: List[Dict]) -> str:
     return "1F"
 
 
-def _calc_i_ac(p_w: float, *, fase: str, v_mono: Optional[float], v_tri: Optional[float], fp: float = 0.9) -> Tuple[float, float, float]:
-    """Retorna (IR, IS, IT) estimadas. Si no hay tensión, retorna (0,0,0)."""
-    p_w = max(0.0, float(p_w))
-    fp = fp if fp and fp > 0 else 1.0
+def _is_three_phase(fase: str) -> bool:
+    f = (fase or "").strip().upper()
+    return "3" in f or f in ("R-S-T", "R/S/T", "RST")
+
+
+def _calc_i_ac_from_va(va: float, *, fase: str, v_mono: Optional[float], v_tri: Optional[float]) -> Tuple[float, float, float]:
+    """Retorna (IR, IS, IT) desde VA. Si no hay tensión, retorna (0,0,0)."""
+    va = max(0.0, float(va))
     fase = (fase or "1F").upper()
 
-    if "3" in fase:
+    if _is_three_phase(fase):
         v = v_tri
         if not v:
             return (0.0, 0.0, 0.0)
-        i = p_w / (math.sqrt(3.0) * float(v) * fp) if v else 0.0
+        i = va / (math.sqrt(3.0) * float(v)) if v else 0.0
         return (i, i, i)
     else:
         v = v_mono
         if not v:
             return (0.0, 0.0, 0.0)
-        i = p_w / (float(v) * fp) if v else 0.0
-        # Sin datos de fase R/S/T, asignamos por defecto a R.
+        i = va / float(v) if v else 0.0
+        if fase == "S":
+            return (0.0, i, 0.0)
+        if fase == "T":
+            return (0.0, 0.0, i)
         return (i, 0.0, 0.0)
 
 
@@ -398,6 +405,10 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
 
     rows: List[ACRow] = []
     req = "CA_ES" if workspace == "CA_ES" else "CA_NOES"
+    user_map = p.get(K.LOAD_TABLE_USER_FIELDS, {}) if isinstance(p, dict) else {}
+    balance_map = p.get(K.LOAD_TABLE_BALANCE_AUTO, {}) if isinstance(p, dict) else {}
+    val = balance_map.get(workspace, True) if isinstance(balance_map, dict) else True
+    balance_auto = True if val is None else bool(val)
 
     # Cada fila = salida directa del tablero (subalimentador). Si hay cascada, se suma.
     groups = _subfeeder_groups(topo, board_node_id)
@@ -444,10 +455,16 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
 
         meta_root = dict(root_node.get("meta", {}) or {})
 
-        fp = 0.90
-        fd = 1.00
-        consumo_va = p_sum / fp if fp else p_sum
-        ir, is_, it_ = _calc_i_ac(p_sum, fase=fase_kind, v_mono=v_mono, v_tri=v_tri, fp=fp)
+        uf_key = f"{workspace}:{str(root_node.get('id') or '')}"
+        fields = user_map.get(uf_key, {}) if isinstance(user_map, dict) else {}
+        fp = float(fields.get("fp", 0.90) or 0.90)
+        fd = float(fields.get("fd", 1.00) or 1.00)
+        if fp <= 0:
+            fp = 1.0
+        consumo_va = (p_sum / fp) * fd
+        phase_manual = str(fields.get("phase") or "").strip().upper()
+        fase = "R-S-T" if "3" in fase_kind else (phase_manual or "R")
+        ir, is_, it_ = _calc_i_ac_from_va(consumo_va, fase=fase, v_mono=v_mono, v_tri=v_tri)
 
         rows.append(ACRow(
             node_id=str(root_node.get("id") or ""),
@@ -457,7 +474,7 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
             n_itm=str(meta_root.get("load") or "").strip() or "-",
             capacidad_itm="-",
             cap_dif="-",
-            fases=("R-S-T" if "3" in fase_kind else "R"),
+            fases=fase,
             p_total_w=p_sum,
             fp=fp,
             fd=fd,
@@ -466,6 +483,38 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
             i_s=is_,
             i_t=it_,
         ))
+
+    if not rows:
+        return rows
+
+    if not balance_auto:
+        return rows
+
+    sum_r = sum(r.i_r for r in rows if _is_three_phase(str(r.fases)))
+    sum_s = sum(r.i_s for r in rows if _is_three_phase(str(r.fases)))
+    sum_t = sum(r.i_t for r in rows if _is_three_phase(str(r.fases)))
+
+    for r in rows:
+        if _is_three_phase(str(r.fases)):
+            continue
+        uf_key = f"{workspace}:{r.node_id}"
+        fields = user_map.get(uf_key, {}) if isinstance(user_map, dict) else {}
+        phase_manual = str(fields.get("phase") or "").strip().upper()
+        if phase_manual in ("R", "S", "T"):
+            phase = phase_manual
+        else:
+            if sum_r <= sum_s and sum_r <= sum_t:
+                phase = "R"
+            elif sum_s <= sum_t:
+                phase = "S"
+            else:
+                phase = "T"
+        r.fases = phase
+        ir, is_, it_ = _calc_i_ac_from_va(r.consumo_va, fase=phase, v_mono=v_mono, v_tri=v_tri)
+        r.i_r, r.i_s, r.i_t = ir, is_, it_
+        sum_r += ir
+        sum_s += is_
+        sum_t += it_
 
     return rows
 
@@ -619,4 +668,3 @@ def list_board_nodes(data_model, *, workspace: str) -> List[Tuple[str, str]]:
     # orden estable por etiqueta
     out.sort(key=lambda x: x[1].lower())
     return out
-

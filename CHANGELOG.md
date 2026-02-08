@@ -3,6 +3,102 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.128] - 2026-02-08
+### Added
+- Arquitectura SS/AA: etiquetas en conexiones con variables calculadas (placeholders listos para actualización).
+- Arquitectura SS/AA: botón “Ordenar diagrama” para la capa actual.
+### Changed
+- Arquitectura SS/AA: tarjetas de ancho fijo con wrap + tooltip; tamaños persistidos en meta.ui.
+- Tableros: puerto de entrada agregado y migración suave en carga.
+- UI: “Alimentadores disponibles” renombrado a “Cargas disponibles”.
+### Fixed
+- Diagramas más estables al navegar entre capas (tamaños consistentes).
+
+## [1.4.0-alpha.127] - 2026-02-08
+### Added
+- Alimentación tableros: botón “Asignación automática…” con vista previa y opción “solo inconsistencias”.
+### Changed
+- Reglas de asignación automática basadas en consumos reales por gabinete/componente.
+### Fixed
+- Alimentación tableros: aplicación de cambios sin refresco total ni pérdida de scroll.
+
+## [1.4.0-alpha.126] - 2026-02-06
+### Added
+- Toggle “Balance automático por fases (usa VA)” en cuadros de carga CA.
+### Changed
+- Motor de cuadros de carga CA usa fp/fd del usuario para VA y corrientes.
+- Balanceo automático por fases en CA respeta fase manual si existe.
+### Fixed
+- Corrientes CA calculadas desde VA (no W) para consistencia con ingeniería.
+
+## [1.4.0-alpha.125] - 2026-02-03
+### Changed
+- Alimentación tableros: validaciones basadas en consumos reales (CC/CA esencial/no esencial) y menor ruido.
+### Fixed
+- Versionado unificado: `app/version.py` lee desde `version.json` (SSOT).
+
+## [1.4.0-alpha.124] - 2026-02-03
+### Fixed
+- Board Feed: marcar/desmarcar checkboxes ya no resetea el scroll de la tabla; se evita el refresh circular.
+
+## [1.4.0-alpha.123] - 2026-02-03
+### Changed
+- Se eliminan acciones masivas de asignación en Alimentación tableros; se vuelve a asignación directa por checkbox.
+
+## [1.4.0-alpha.122] - 2026-02-03
+### Added
+- Arquitectura SS/AA: panel de “Tableros/Fuentes disponibles” desde Alimentación tableros (no consumible, root sin entrada).
+### Changed
+- Alimentación tableros: contador de inconsistencias en el botón y acciones masivas de marcado/limpieza.
+- Issues: validaciones con menos ruido (FEED_SELECTED_NOT_USED agrupado/“info”, reglas más relevantes).
+### Fixed
+- Sincronización automática entre Consumos (gabinetes) ↔ Alimentación tableros ↔ Arquitectura SS/AA (debounced refresh).
+
+## [1.4.0-alpha.121] - 2026-02-03
+### Added
+- Panel “Fuentes disponibles” en Arquitectura SS/AA (global, no consumible).
+### Changed
+- Validaciones/Issues ajustadas: fuentes inválidas, fuentes sin uso global y warning de alimentadores agrupado.
+
+## [1.4.0-alpha.120] - 2026-02-03
+### Fixed
+- Loop infinito de logging ante excepciones no controladas.
+- Edición segura de tablas: refresh diferido y sin re-entrancia (evita QTableWidgetItem destruido).
+
+## [1.4.0-alpha.119] - 2026-02-02
+### Fixed
+- Fix(UI): resaltado amarillo de celdas editables en tablas (delegate compatible con QSS), incluye Comprobación N° celdas en Manual.
+
+## [1.4.0-alpha.118] - 2026-02-02
+### Fixed
+- Fix: estandarización UTF-8 en I/O y corrección de textos con tildes al cargar proyectos/librerías.
+
+## [1.4.0-alpha.117] - 2026-02-02
+### Fixed
+- Fix(UI): fondo amarillo en “Número de celdas” (Comprobación) cuando modo Manual.
+
+## [1.4.0-alpha.116] - 2026-02-02
+### Fixed
+- Fix(UI): 2 decimales en tensión máxima.
+- UX: combo Vpc Auto no se ve gris; Manual se ve amarillo.
+
+## [1.4.0-alpha.115] - 2026-02-02
+### Fixed
+- Fix(UI): eliminado auto_resize legacy y estandarizado auto-fit debounced en todas las tablas.
+- Perf: reducción de tiempos de refresh en tablas grandes (especialmente CC).
+
+## [1.4.0-alpha.113] - 2026-02-02
+### Fixed
+- UI: autoajuste de columnas optimizado (debounce) para evitar lentitud severa en tablas grandes (CC).
+
+## [1.4.0-alpha.112] - 2026-02-02
+### Changed
+- UI: auto-fit real de columnas por contenido más extenso en todas las tablas; resize manual habilitado.
+
+## [1.4.0-alpha.110] - 2026-02-02
+### Fixed
+- Banco y cargador: formato a 2 decimales y modos Auto/Manual para Vpc final y número de celdas, con validaciones.
+
 ## [1.4.0-alpha.109] - 2026-02-02
 ### Fixed
 - CC Momentáneos: el resumen por escenarios ya no queda desactualizado al cargar proyectos; se valida/invalida cache con firma del estado y se recalcula automáticamente.

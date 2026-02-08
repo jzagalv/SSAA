@@ -132,12 +132,16 @@ def refresh_feeders(scr):
         scr._rebuild_workspace_tabs()
         # Refrescar alimentadores (incluye consumos con alimentador 'Individual')
         scr._refresh_feeders_table()
+        if hasattr(scr, "_refresh_sources_table"):
+            scr._refresh_sources_table()
     except Exception:
         import logging
         logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
     # Recargar escena del workspace actual por si hubo cambios en las capas
     scr.reload_from_project()
     scr._refresh_feeders_table()
+    if hasattr(scr, "_refresh_sources_table"):
+        scr._refresh_sources_table()
     scr._refresh_issues_panel()
 
 def refresh_feeders_table(scr):

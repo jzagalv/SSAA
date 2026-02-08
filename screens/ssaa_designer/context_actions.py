@@ -110,7 +110,7 @@ def connect_from_context(scr, dst_node_id: str):
         ids.append(nid)
 
     if not items:
-        QMessageBox.information(scr, "Conectar", "No hay nodos alimentadores disponibles en esta capa.")
+        QMessageBox.information(scr, "Conectar", "No hay nodos de carga disponibles en esta capa.")
         return
 
     name, ok = QInputDialog.getItem(scr, "Conectar desde…", "Selecciona alimentador:", items, 0, False)

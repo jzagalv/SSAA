@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QTableWidget,
 )
+from ui.utils.table_utils import configure_table_autoresize
 
 
 def grab_table_full(table: QTableWidget) -> Optional[QImage]:
@@ -29,7 +30,7 @@ def grab_table_full(table: QTableWidget) -> Optional[QImage]:
 
     # Asegurar tamaños calculados
     try:
-        table.resizeColumnsToContents()
+        configure_table_autoresize(table)
         table.resizeRowsToContents()
     except Exception:
         import logging

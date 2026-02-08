@@ -19,8 +19,8 @@ class CabinetRepository:
             "cabinet_type": cabinet.cabinet_type,
             "state": cabinet.state.value,
         }
-        with open(self._path(cabinet.id), "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        with open(self._path(cabinet.id), "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     def load(self, cabinet_id) -> Cabinet:
         with open(self._path(cabinet_id), "r", encoding="utf-8") as f:

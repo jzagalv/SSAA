@@ -8,6 +8,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from screens.base import ScreenBase
 from app.sections import Section
 from ui.table_utils import make_table_sortable
+from ui.utils.table_utils import configure_table_autoresize
 
 class LocationScreen(ScreenBase):
     SECTION = Section.INSTALACIONES
@@ -89,9 +90,7 @@ class LocationScreen(ScreenBase):
         self.tabla_salas.setColumnCount(2)
         self.tabla_salas.setHorizontalHeaderLabels(["TAG", "Nombre"])
 
-        header_salas = self.tabla_salas.horizontalHeader()
-        header_salas.setSectionResizeMode(QHeaderView.Interactive)   # el usuario puede arrastrar
-        header_salas.setStretchLastSection(True)                     # usa todo el ancho disponible
+        configure_table_autoresize(self.tabla_salas)
 
         make_table_sortable(self.tabla_salas)
 
@@ -104,9 +103,7 @@ class LocationScreen(ScreenBase):
         self.tabla_gabinetes.setColumnCount(5)
         self.tabla_gabinetes.setHorizontalHeaderLabels(["TAG", "Nombre", "Ubicación", "TD/TG", "Fuente de Alimentación"])
 
-        header_gab = self.tabla_gabinetes.horizontalHeader()
-        header_gab.setSectionResizeMode(QHeaderView.Interactive)
-        header_gab.setStretchLastSection(True)
+        configure_table_autoresize(self.tabla_gabinetes)
 
         # ===== Gabinetes =====
         gabinete_layout = QVBoxLayout()
@@ -147,7 +144,7 @@ class LocationScreen(ScreenBase):
         self.tabla_gabinetes = QTableWidget()
         self.tabla_gabinetes.setColumnCount(5)
         self.tabla_gabinetes.setHorizontalHeaderLabels(["TAG", "Nombre", "Ubicación", "TD/TG", "Fuente de Alimentación"])
-        self.tabla_gabinetes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        configure_table_autoresize(self.tabla_gabinetes)
         self.tabla_gabinetes.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_gabinetes.setSelectionMode(QTableWidget.SingleSelection)
         

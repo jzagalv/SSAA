@@ -17,14 +17,16 @@ from __future__ import annotations
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget,
-    QComboBox, QTableWidget, QTableWidgetItem, QGroupBox, QSizePolicy
+    QComboBox, QTableWidget, QTableWidgetItem, QGroupBox, QSizePolicy, QCheckBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLineEdit, QDoubleSpinBox
 import re
 from screens.base import ScreenBase
 from app.sections import Section
+from core.keys import ProjectKeys as K
 from ui.common.state import save_header_state, restore_header_state
+from ui.utils.table_utils import configure_table_autoresize
 
 
 from services.load_tables_engine import (
@@ -44,10 +46,10 @@ PHASE_OPTIONS = ["R", "S", "T", "R-S-T"]
 
 def _get_user_fields_map(data_model) -> dict:
     p = getattr(data_model, "proyecto", {}) or {}
-    m = p.setdefault("load_table_user_fields", {})
+    m = p.setdefault(K.LOAD_TABLE_USER_FIELDS, {})
     if not isinstance(m, dict):
-        p["load_table_user_fields"] = {}
-        m = p["load_table_user_fields"]
+        p[K.LOAD_TABLE_USER_FIELDS] = {}
+        m = p[K.LOAD_TABLE_USER_FIELDS]
     return m
 
 
@@ -56,7 +58,7 @@ def _uf_key(workspace: str, node_id: str) -> str:
 
 
 def _set_header_style(table: QTableWidget):
-    table.horizontalHeader().setStretchLastSection(True)
+    configure_table_autoresize(table)
     table.setAlternatingRowColors(True)
     table.setSortingEnabled(False)
     table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -135,10 +137,10 @@ class LoadTablesScreen(ScreenBase):
     def _user_fields_map(self) -> dict:
         """Almacena campos manuales asociados a filas (por node_id)."""
         p = getattr(self.data_model, "proyecto", {}) or {}
-        m = p.setdefault("load_table_user_fields", {})
+        m = p.setdefault(K.LOAD_TABLE_USER_FIELDS, {})
         if not isinstance(m, dict):
-            p["load_table_user_fields"] = {}
-            m = p["load_table_user_fields"]
+            p[K.LOAD_TABLE_USER_FIELDS] = {}
+            m = p[K.LOAD_TABLE_USER_FIELDS]
         return m
 
     def _get_row_fields(self, workspace: str, node_id: str) -> dict:
@@ -155,6 +157,24 @@ class LoadTablesScreen(ScreenBase):
             d = {}
             m[key] = d
         d[k] = v
+        self.data_model.mark_dirty(True)
+
+    def _balance_auto_map(self) -> dict:
+        p = getattr(self.data_model, "proyecto", {}) or {}
+        m = p.setdefault(K.LOAD_TABLE_BALANCE_AUTO, {})
+        if not isinstance(m, dict):
+            p[K.LOAD_TABLE_BALANCE_AUTO] = {}
+            m = p[K.LOAD_TABLE_BALANCE_AUTO]
+        return m
+
+    def _get_balance_auto(self, workspace: str) -> bool:
+        m = self._balance_auto_map()
+        v = m.get((workspace or "").upper())
+        return True if v is None else bool(v)
+
+    def _set_balance_auto(self, workspace: str, value: bool) -> None:
+        m = self._balance_auto_map()
+        m[(workspace or "").upper()] = bool(value)
         self.data_model.mark_dirty(True)
 
     # ------------------------- CA -------------------------
@@ -177,6 +197,10 @@ class LoadTablesScreen(ScreenBase):
         self.cmb_ca_es = QComboBox()
         self.cmb_ca_es.currentIndexChanged.connect(self._refresh_ca_es_table)
         sel.addWidget(self.cmb_ca_es, 1)
+        self.chk_balance_ca_es = QCheckBox("Balance automático por fases (usa VA)")
+        self.chk_balance_ca_es.setChecked(True)
+        self.chk_balance_ca_es.toggled.connect(lambda v: self._on_balance_toggle("CA_ES", v))
+        sel.addWidget(self.chk_balance_ca_es)
         gl.addLayout(sel)
 
         self.tbl_ca_es = QTableWidget()
@@ -192,6 +216,10 @@ class LoadTablesScreen(ScreenBase):
         self.cmb_ca_no = QComboBox()
         self.cmb_ca_no.currentIndexChanged.connect(self._refresh_ca_no_table)
         sel2.addWidget(self.cmb_ca_no, 1)
+        self.chk_balance_ca_no = QCheckBox("Balance automático por fases (usa VA)")
+        self.chk_balance_ca_no.setChecked(True)
+        self.chk_balance_ca_no.toggled.connect(lambda v: self._on_balance_toggle("CA_NOES", v))
+        sel2.addWidget(self.chk_balance_ca_no)
         gl2.addLayout(sel2)
 
         self.tbl_ca_no = QTableWidget()
@@ -215,12 +243,20 @@ class LoadTablesScreen(ScreenBase):
 
     def _refresh_ca_es_table(self):
         node_id = self._combo_node_id(self.cmb_ca_es)
+        if hasattr(self, "chk_balance_ca_es"):
+            self.chk_balance_ca_es.blockSignals(True)
+            self.chk_balance_ca_es.setChecked(self._get_balance_auto("CA_ES"))
+            self.chk_balance_ca_es.blockSignals(False)
         rows = build_ac_table(self.data_model, workspace="CA_ES", board_node_id=node_id) if node_id else []
         self._render_ac_table(self.tbl_ca_es, rows)
         self.grp_ca_es.setVisible(len(rows) > 0)
 
     def _refresh_ca_no_table(self):
         node_id = self._combo_node_id(self.cmb_ca_no)
+        if hasattr(self, "chk_balance_ca_no"):
+            self.chk_balance_ca_no.blockSignals(True)
+            self.chk_balance_ca_no.setChecked(self._get_balance_auto("CA_NOES"))
+            self.chk_balance_ca_no.blockSignals(False)
         rows = build_ac_table(self.data_model, workspace="CA_NOES", board_node_id=node_id) if node_id else []
         self._render_ac_table(self.tbl_ca_no, rows)
         self.grp_ca_no.setVisible(len(rows) > 0)
@@ -248,6 +284,7 @@ class LoadTablesScreen(ScreenBase):
         table.setRowCount(0)
 
         table.setProperty("_lt_workspace", "CA_ES" if table is self.tbl_ca_es else "CA_NOES")
+        balance_auto = self._get_balance_auto(table.property("_lt_workspace"))
 
         for r in rows:
             fields = self._get_row_fields(table.property("_lt_workspace"), r.node_id)
@@ -262,7 +299,7 @@ class LoadTablesScreen(ScreenBase):
             self._set_mcb_no_widget(table, i, 3, table.property("_lt_workspace"), r.node_id, fields.get("mcb_no", r.n_itm if r.n_itm != "-" else ""))
             self._set_combo_widget(table, i, 4, table.property("_lt_workspace"), r.node_id, "mcb_type", fields.get("mcb_type", ""), MCB_OPTIONS, editable=True)
             table.setItem(i, 5, _item(r.cap_dif))
-            self._set_combo_widget(table, i, 6, table.property("_lt_workspace"), r.node_id, "phase", fields.get("phase", r.fases), PHASE_OPTIONS, editable=False)
+            self._set_combo_widget(table, i, 6, table.property("_lt_workspace"), r.node_id, "phase", fields.get("phase", r.fases), PHASE_OPTIONS, editable=(not balance_auto), enabled=(not balance_auto))
             table.setItem(i, 7, _item(f"{r.p_total_w:.2f}"))
             self._set_spin_widget(table, i, 8, table.property("_lt_workspace"), r.node_id, "fp", float(fields.get("fp", r.fp)), default=0.90)
             self._set_spin_widget(table, i, 9, table.property("_lt_workspace"), r.node_id, "fd", float(fields.get("fd", r.fd)), default=1.00)
@@ -271,7 +308,7 @@ class LoadTablesScreen(ScreenBase):
             table.setItem(i, 12, _item(f"{r.i_s:.2f}"))
             table.setItem(i, 13, _item(f"{r.i_t:.2f}"))
 
-        table.resizeColumnsToContents()
+        configure_table_autoresize(table)
 
     # ------------------------- CC -------------------------
 
@@ -386,7 +423,7 @@ class LoadTablesScreen(ScreenBase):
             table.setItem(i, 13, _item(f"{r.i_mom_a:.2f}"))
             table.setItem(i, 14, _item(r.obs))
 
-        table.resizeColumnsToContents()
+        configure_table_autoresize(table)
 
     # ------------------------- helpers -------------------------
 
@@ -415,7 +452,7 @@ class LoadTablesScreen(ScreenBase):
     # ------------------------- widgets helpers (editable) -------------------------
 
     def _set_combo_widget(self, table: QTableWidget, row: int, col: int, workspace: str, node_id: str,
-                          key: str, value: str, options, editable: bool = True):
+                          key: str, value: str, options, editable: bool = True, enabled: bool = True):
         cb = QComboBox()
         cb.setEditable(editable)
         cb.addItems(list(options or []))
@@ -424,6 +461,15 @@ class LoadTablesScreen(ScreenBase):
             if cb.findText(v) < 0:
                 cb.addItem(v)
             cb.setCurrentText(v)
+        cb.setEnabled(bool(enabled))
+        if not enabled:
+            cb.setStyleSheet(
+                "QComboBox { background: transparent; }"
+                "QComboBox:disabled { background: transparent; color: #000000; }"
+                "QComboBox::drop-down:disabled { background: transparent; border: 0px; }"
+            )
+        else:
+            cb.setStyleSheet("QComboBox { background: #FFF9C4; }")
         cb.currentTextChanged.connect(lambda _t: self._on_combo_changed(table, row, workspace, node_id, key, cb))
         table.setCellWidget(row, col, cb)
 
@@ -452,11 +498,23 @@ class LoadTablesScreen(ScreenBase):
 
     def _on_spin_changed(self, workspace: str, node_id: str, key: str, val: float):
         self._set_row_field(workspace, node_id, key, float(val))
+        if key in ("fp", "fd"):
+            if workspace == "CA_ES":
+                self._refresh_ca_es_table()
+            elif workspace == "CA_NOES":
+                self._refresh_ca_no_table()
 
     def _on_mcb_no_changed(self, table: QTableWidget, workspace: str, node_id: str, ed: QLineEdit):
         txt = ed.text().strip()
         self._set_row_field(workspace, node_id, "mcb_no", txt)
         self._autofill_mcb_numbers(table)
+
+    def _on_balance_toggle(self, workspace: str, value: bool):
+        self._set_balance_auto(workspace, bool(value))
+        if workspace == "CA_ES":
+            self._refresh_ca_es_table()
+        elif workspace == "CA_NOES":
+            self._refresh_ca_no_table()
 
     def _autofill_mcb_numbers(self, table: QTableWidget):
         """Autocompleta correlativo hacia abajo en la misma tabla, desde el primer MCB válido."""

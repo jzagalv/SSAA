@@ -15,15 +15,14 @@ from screens.cc_consumption.widgets import (
     PERM_COL_GAB, PERM_COL_TAG, PERM_COL_DESC, PERM_COL_PW, PERM_COL_PCT, PERM_COL_P_PERM, PERM_COL_I, PERM_COL_P_MOM, PERM_COL_I_OUT,
 )
 from screens.cc_consumption.models.permanentes_table_model import PermanentesTableModel
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
 
 class PermanentesTabMixin:
     def _ensure_perm_model(self):
         if getattr(self, "_perm_model", None) is None:
             self._perm_model = PermanentesTableModel(parent=self)
             self.tbl_perm.setModel(self._perm_model)
-            header = self.tbl_perm.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.Interactive)
-            header.setStretchLastSection(False)
+            configure_table_autoresize(self.tbl_perm)
             self.tbl_perm.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.tbl_perm.setSelectionMode(QAbstractItemView.SingleSelection)
             self._perm_model.dataChanged.connect(self._on_perm_data_changed)
@@ -71,17 +70,7 @@ class PermanentesTabMixin:
         # Solo actualizamos editabilidad (sin tocar valores)
         self._refresh_pct_editability()
 
-        self._auto_resize(self.tbl_perm, {
-            PERM_COL_GAB: 150,
-            PERM_COL_TAG: 120,
-            PERM_COL_DESC: 200,
-            PERM_COL_PW: 90,
-            PERM_COL_PCT: 110,
-            PERM_COL_P_PERM: 110,
-            PERM_COL_P_MOM: 110,
-            PERM_COL_I: 110,
-            PERM_COL_I_OUT: 110,
-        })
+        request_autofit(self.tbl_perm)
 
     def _refresh_pct_editability(self):
         """

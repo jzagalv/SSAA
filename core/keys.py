@@ -35,3 +35,7 @@ class ProjectKeys:
     # validation
     VALIDATION_ISSUES = "validation_issues"
     VALIDATION_ISSUES_BY_SECTION = "validation_issues_by_section"
+
+    # load tables
+    LOAD_TABLE_USER_FIELDS = "load_table_user_fields"
+    LOAD_TABLE_BALANCE_AUTO = "load_table_balance_auto"

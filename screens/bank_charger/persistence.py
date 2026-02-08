@@ -62,6 +62,22 @@ class BankChargerPersistence:
                 "t_inicio": self._to_number_or_str(cell_text(4)),
                 "duracion": self._to_number_or_str(cell_text(5)),
             }
+            it_desc = scr.tbl_cargas.item(r, 1)
+            scenario_id = None
+            if it_desc is not None:
+                sid = it_desc.data(Qt.UserRole)
+                if sid not in (None, ""):
+                    try:
+                        scenario_id = int(sid)
+                    except Exception:
+                        scenario_id = sid
+            if scenario_id is None and hasattr(scr, "_extract_scenario_id"):
+                try:
+                    scenario_id = scr._extract_scenario_id(desc)
+                except Exception:
+                    scenario_id = None
+            if scenario_id is not None:
+                fila["scenario_id"] = scenario_id
             perfil.append(fila)
 
         proyecto["perfil_cargas"] = perfil

@@ -16,7 +16,7 @@ import copy
 import uuid
 from typing import Any, Dict, Optional
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QComboBox, QTableWidgetItem
 
 from ui.common import dialogs
@@ -30,6 +30,17 @@ from .constants import (
 class CabinetController:
     def __init__(self, screen: Any):
         self.s = screen  # referencia al Screen (UI)
+        self._emit_scheduled = False
+
+    def _emit_data_changed_deferred(self) -> None:
+        if self._emit_scheduled:
+            return
+        self._emit_scheduled = True
+        QTimer.singleShot(0, self._emit_data_changed_once)
+
+    def _emit_data_changed_once(self) -> None:
+        self._emit_scheduled = False
+        self.s.data_changed.emit()
 
     # -----------------------------
     # Copy/Paste de componentes
@@ -96,7 +107,7 @@ class CabinetController:
             if hasattr(s.data_model, 'mark_dirty'):
                 s.data_model.mark_dirty(True)
             s.update_design_view()
-            s.data_changed.emit()
+            self._emit_data_changed_deferred()
 
     # -----------------------------
     # Sync tabla -> modelo
@@ -133,6 +144,8 @@ class CabinetController:
             return
 
         s.data_model.mark_dirty(True)
+        if hasattr(s.data_model, "invalidate_feeding_validation"):
+            s.data_model.invalidate_feeding_validation()
 
         # actualizar componente en modelo
         for comp in s.current_cabinet.setdefault("components", []):
@@ -172,4 +185,4 @@ class CabinetController:
             elif key == "origen":
                 s._apply_origin_to_row(row, value)
 
-        s.data_changed.emit()
+        self._emit_data_changed_deferred()

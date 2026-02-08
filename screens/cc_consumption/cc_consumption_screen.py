@@ -37,6 +37,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QGuiApplication
+from ui.utils.table_utils import configure_table_autoresize
 
 
 from ui.common.state import save_header_state, restore_header_state
@@ -268,9 +269,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_perm.addLayout(top_perm)
         # Tabla de permanentes
         self.tbl_perm = QTableView(self)
-        header_p = self.tbl_perm.horizontalHeader()
-        header_p.setMinimumSectionSize(40)
-        header_p.setStretchLastSection(False)
+        configure_table_autoresize(self.tbl_perm)
         self.tbl_perm.verticalHeader().setDefaultSectionSize(26)
 
         # La tabla debe ocupar el alto disponible (ev el alto disponible (evita âaireâ debajo)
@@ -321,9 +320,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_mom.addLayout(top_mom)
         # Tabla de cargas momentÃ¡neas
         self.tbl_mom = QTableView(self)
-        header_m = self.tbl_mom.horizontalHeader()
-        header_m.setMinimumSectionSize(40)
-        header_m.setStretchLastSection(False)
+        configure_table_autoresize(self.tbl_mom)
         self.tbl_mom.verticalHeader().setDefaultSectionSize(26)
         self.tbl_mom.setSortingEnabled(False)   # <-- CLAVE (tiene checkbox/combo)
 
@@ -332,10 +329,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # Tabla de resumen por escenario (con descripcion)
         self.tbl_mom_resumen = QTableView(self)
-        header_mr = self.tbl_mom_resumen.horizontalHeader()
-        header_mr.setSectionResizeMode(QHeaderView.Interactive)
-        header_mr.setMinimumSectionSize(40)
-        header_mr.setStretchLastSection(False)
+        configure_table_autoresize(self.tbl_mom_resumen)
         self.tbl_mom_resumen.setSortingEnabled(False)
         self.tbl_mom_resumen.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_mom_resumen.verticalHeader().setDefaultSectionSize(26)
@@ -361,11 +355,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         g_ale = self.grp_ale
         v_ale = QVBoxLayout(g_ale)
         self.tbl_ale = QTableView(self)
-        header_a = self.tbl_ale.horizontalHeader()
-
-        header_a.setSectionResizeMode(QHeaderView.Interactive)
-        header_a.setMinimumSectionSize(40)
-        header_a.setStretchLastSection(False)
+        configure_table_autoresize(self.tbl_ale)
         self.tbl_ale.setSortingEnabled(False)   # <-- recomendado
         v_ale.addWidget(self.tbl_ale, 1)
 
@@ -479,25 +469,6 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
     def _set_project_value(self, key: str, value):
         # Delegar en controller (centraliza mutaciones y dirty flag)
         return self._controller.set_project_value(key, value)
-
-    def _auto_resize(self, table, min_widths: dict = None):
-        """Ajusta las columnas al contenido con un ancho mÃ­nimo por columna."""
-        if table is None:
-            return
-        if min_widths is None:
-            min_widths = {}
-        table.resizeColumnsToContents()
-        header = table.horizontalHeader()
-        if hasattr(table, "columnCount"):
-            col_count = table.columnCount()
-        else:
-            model = table.model()
-            col_count = model.columnCount() if model is not None else 0
-        for col in range(col_count):
-            current = header.sectionSize(col)
-            minw = min_widths.get(col, 60)
-            if current < minw:
-                header.resizeSection(col, minw)
 
     def load_from_model(self):
         # ScreenBase hook: cargar datos desde el modelo a la UI

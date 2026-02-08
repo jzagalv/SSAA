@@ -51,6 +51,16 @@ class ProfileTablePresenter:
                 scr.tbl_cargas.insertRow(r)
                 for c, v in enumerate([item, desc, p, i, t0, dur]):
                     scr.tbl_cargas.setItem(r, c, QTableWidgetItem("" if v is None else str(v)))
+                scenario_id = fila.get("scenario_id")
+                if scenario_id is None:
+                    scenario_id = scr._extract_scenario_id(desc)
+                if scenario_id is not None:
+                    it_desc = scr.tbl_cargas.item(r, 1)
+                    if it_desc is not None:
+                        try:
+                            it_desc.setData(Qt.UserRole, int(scenario_id))
+                        except Exception:
+                            it_desc.setData(Qt.UserRole, scenario_id)
 
             def has_code(code: str) -> bool:
                 for rr in range(scr.tbl_cargas.rowCount()):

@@ -14,6 +14,7 @@ from typing import Callable, Iterable, Optional, Dict
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 from PyQt5.QtCore import Qt
 
+from ui.utils.table_utils import configure_table_autoresize
 from .table_schema import (
     PERM_COL_GAB, PERM_COL_TAG, PERM_COL_DESC, PERM_COL_PW, PERM_COL_PCT, PERM_COL_P_PERM, PERM_COL_I, PERM_COL_P_MOM, PERM_COL_I_OUT,
     MOM_COL_GAB, MOM_COL_TAG, MOM_COL_DESC, MOM_COL_PEFF, MOM_COL_I, MOM_COL_INCLUIR, MOM_COL_ESC,
@@ -29,7 +30,7 @@ from .table_schema import (
 def _mk_table(parent, cols: int, headers: list) -> QTableWidget:
     tbl = QTableWidget(0, cols, parent)
     tbl.setHorizontalHeaderLabels(headers)
-    tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+    configure_table_autoresize(tbl)
     tbl.verticalHeader().setVisible(False)
     tbl.setAlternatingRowColors(True)
     tbl.setSelectionBehavior(QTableWidget.SelectRows)

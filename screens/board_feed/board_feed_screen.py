@@ -18,8 +18,10 @@ from PyQt5.QtWidgets import (
     QHeaderView, QCheckBox, QPushButton, QMessageBox,
     QDialog, QAbstractItemView, QLineEdit, QListWidget
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer, QSignalBlocker
+import logging
 from ui.table_utils import make_table_sortable
+from ui.utils.table_utils import configure_table_autoresize
 from screens.base import ScreenBase
 from app.sections import Section
 
@@ -40,9 +42,18 @@ class BoardFeedScreen(ScreenBase):
         self._loading = False
         self._row_map = []
         self._selected_row = -1
+        self._issues_timer = QTimer(self)
+        self._issues_timer.setSingleShot(True)
+        self._issues_timer.timeout.connect(self._update_issue_count)
+        self._reload_timer = QTimer(self)
+        self._reload_timer.setSingleShot(True)
+        self._reload_timer.timeout.connect(self._reload_from_model_debounced)
 
         self._setup_ui()
         self.load_from_model()
+        if hasattr(self.data_model, "on"):
+            self.data_model.on("section_changed", self._on_section_changed)
+            self.data_model.on("feeding_validation_invalidated", self._on_feeding_validation_invalidated)
 
     def _restyle(self, w: QWidget):
         w.style().unpolish(w)
@@ -83,20 +94,108 @@ class BoardFeedScreen(ScreenBase):
     def _apply_filter_text(self, text: str):
         """Oculta las filas cuyo TAG o Descripción no contengan el texto dado."""
         text = (text or "").strip().lower()
+        rows = self.table.rowCount()
+        cols = self.table.columnCount()
+        if rows <= 0 or cols <= 0:
+            return
 
-        for row in range(self.table.rowCount()):
+        for row in range(rows):
             if not text:
                 self.table.setRowHidden(row, False)
                 continue
 
-            item_tag = self.table.item(row, COL_TAG)
-            item_desc = self.table.item(row, COL_DESC)
+            item_tag = self.table.item(row, COL_TAG) if COL_TAG < cols else None
+            item_desc = self.table.item(row, COL_DESC) if COL_DESC < cols else None
 
-            tag_txt = item_tag.text().lower() if item_tag is not None else ""
-            desc_txt = item_desc.text().lower() if item_desc is not None else ""
+            if item_tag is not None or item_desc is not None:
+                tag_txt = item_tag.text().lower() if item_tag is not None else ""
+                desc_txt = item_desc.text().lower() if item_desc is not None else ""
+                hay = f"{tag_txt} {desc_txt}".strip()
+            else:
+                parts = []
+                for c in range(cols):
+                    it = self.table.item(row, c)
+                    if it is not None:
+                        parts.append(it.text())
+                hay = " ".join(parts).lower()
 
-            match = text in tag_txt or text in desc_txt
+            match = text in hay
             self.table.setRowHidden(row, not match)
+
+    def _iter_consumptions(self, gab):
+        for comp in (gab.get("components") or []):
+            data = (comp or {}).get("data", {}) or {}
+            tipo = (
+                data.get("tipo_consumo")
+                or data.get("consumo")
+                or comp.get("tipo_consumo")
+                or comp.get("consumo")
+                or ""
+            )
+            yield str(tipo).strip().lower()
+
+    def _has_cc_consumptions(self, gab) -> bool:
+        for t in self._iter_consumptions(gab):
+            if t.startswith("c.c") or t.startswith("cc") or "c.c" in t:
+                return True
+        return False
+
+    def _has_ca_essential(self, gab) -> bool:
+        for t in self._iter_consumptions(gab):
+            if "c.a" in t or t.startswith("ca"):
+                if "no" in t and "esencial" in t:
+                    continue
+                if "esencial" in t:
+                    return True
+        return False
+
+    def _has_ca_no_essential(self, gab) -> bool:
+        for t in self._iter_consumptions(gab):
+            if "c.a" in t or t.startswith("ca"):
+                if "no" in t and "esencial" in t:
+                    return True
+        return False
+
+    def _iter_consumptions_for_target(self, gab, comp_index):
+        if gab is None:
+            return []
+        if comp_index is None:
+            return list(self._iter_consumptions(gab))
+        comps = gab.get("components", []) or []
+        if not (0 <= comp_index < len(comps)):
+            return []
+        comp = comps[comp_index]
+        data = (comp or {}).get("data", {}) or {}
+        tipo = (
+            data.get("tipo_consumo")
+            or data.get("consumo")
+            or comp.get("tipo_consumo")
+            or comp.get("consumo")
+            or ""
+        )
+        return [str(tipo).strip().lower()]
+
+    def _has_cc_from_types(self, types_list) -> bool:
+        for t in types_list or []:
+            if t.startswith("c.c") or t.startswith("cc") or "c.c" in t:
+                return True
+        return False
+
+    def _has_ca_essential_from_types(self, types_list) -> bool:
+        for t in types_list or []:
+            if "c.a" in t or t.startswith("ca"):
+                if "no" in t and "esencial" in t:
+                    continue
+                if "esencial" in t:
+                    return True
+        return False
+
+    def _has_ca_no_essential_from_types(self, types_list) -> bool:
+        for t in types_list or []:
+            if "c.a" in t or t.startswith("ca"):
+                if "no" in t and "esencial" in t:
+                    return True
+        return False
 
     # ---------------------------------------------------------
     # UI
@@ -110,6 +209,9 @@ class BoardFeedScreen(ScreenBase):
         self.btn_validate = QPushButton("Validar inconsistencias")
         self.btn_validate.clicked.connect(self.show_validation_dialog)
         btn_row.addWidget(self.btn_validate)
+        self.btn_auto_assign = QPushButton("Asignación automática...")
+        self.btn_auto_assign.clicked.connect(self._show_auto_assign_dialog)
+        btn_row.addWidget(self.btn_auto_assign)
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
@@ -137,11 +239,7 @@ class BoardFeedScreen(ScreenBase):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.NoSelection)
 
-        header = self.table.horizontalHeader()
-        for col in range(self.table.columnCount()):
-            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
-        for col in range(self.table.columnCount()):
-            header.setSectionResizeMode(col, QHeaderView.Interactive)
+        configure_table_autoresize(self.table)
 
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -163,8 +261,13 @@ class BoardFeedScreen(ScreenBase):
     def load_data(self):
         """Rellena la tabla desde self.data_model.gabinetes (sin tableros padre)."""
         self._loading = True
+        scroll_y = self.table.verticalScrollBar().value()
+        cur_row = self.table.currentRow()
+        cur_col = self.table.currentColumn()
+        blocker = None
         try:
             gabinetes = getattr(self.data_model, "gabinetes", []) or []
+            blocker = QSignalBlocker(self.table)
 
             # --- Auto-detección de perfiles de alimentación ---
             # Esta pantalla se usa como "fuente" de alimentadores para Arquitectura SS/AA.
@@ -325,12 +428,25 @@ class BoardFeedScreen(ScreenBase):
                     current_row += 1
 
         finally:
+            if blocker is not None:
+                del blocker
             self._loading = False
-            self.table.resizeColumnsToContents()
+            configure_table_autoresize(self.table)
             self.table.resizeRowsToContents()
 
             if hasattr(self, "filter_edit"):
                 self._apply_filter_text(self.filter_edit.text())
+            self._schedule_issue_count_update()
+
+            try:
+                self.table.verticalScrollBar().setValue(scroll_y)
+            except Exception:
+                pass
+            if cur_row >= 0 and cur_col >= 0 and cur_row < self.table.rowCount():
+                try:
+                    self.table.setCurrentCell(cur_row, cur_col)
+                except Exception:
+                    pass
 
     # ---------------------------------------------------------
     # Helpers para widgets en celdas
@@ -417,6 +533,170 @@ class BoardFeedScreen(ScreenBase):
 
         if hasattr(self.data_model, "mark_dirty"):
             self.data_model.mark_dirty(True)
+        self._schedule_issue_count_update()
+
+    # ---------------------------------------------------------
+    # Auto-assign
+    # ---------------------------------------------------------
+    def _show_auto_assign_dialog(self):
+        if self._loading:
+            return
+        dlg = AutoAssignDialog(self, self._compute_auto_assign_diffs)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        diffs = dlg.get_diffs()
+        if not diffs:
+            return
+        self._apply_auto_assign_diffs(diffs)
+
+    def _compute_auto_assign_diffs(self, only_inconsistencies: bool):
+        diffs = []
+        gabinetes = getattr(self.data_model, "gabinetes", []) or []
+        for row, (cab_index, comp_index) in enumerate(self._row_map):
+            if not (0 <= cab_index < len(gabinetes)):
+                continue
+            gab = gabinetes[cab_index]
+            if comp_index is None:
+                key_cc_b1, key_cc_b2 = "cc_b1", "cc_b2"
+                key_ca_es, key_ca_no = "ca_esencial", "ca_no_esencial"
+                target_data = gab
+            else:
+                comps = gab.get("components", []) or []
+                if not (0 <= comp_index < len(comps)):
+                    continue
+                target_data = comps[comp_index].setdefault("data", {})
+                key_cc_b1, key_cc_b2 = "feed_cc_b1", "feed_cc_b2"
+                key_ca_es, key_ca_no = "feed_ca_esencial", "feed_ca_no_esencial"
+
+            types_list = self._iter_consumptions_for_target(gab, comp_index)
+            has_cc = self._has_cc_from_types(types_list)
+            has_ca_es = self._has_ca_essential_from_types(types_list)
+            has_ca_no = self._has_ca_no_essential_from_types(types_list)
+
+            cur_cc_b1 = bool(target_data.get(key_cc_b1, False))
+            cur_cc_b2 = bool(target_data.get(key_cc_b2, False))
+            cur_ca_es = bool(target_data.get(key_ca_es, False))
+            cur_ca_no = bool(target_data.get(key_ca_no, False))
+
+            inconsistent = (
+                (has_cc and not (cur_cc_b1 or cur_cc_b2)) or
+                ((not has_cc) and (cur_cc_b1 or cur_cc_b2)) or
+                (has_ca_es and not cur_ca_es) or
+                ((not has_ca_es) and cur_ca_es) or
+                (has_ca_no and not cur_ca_no) or
+                ((not has_ca_no) and cur_ca_no)
+            )
+            if only_inconsistencies and not inconsistent:
+                continue
+
+            target_cc_b1 = True if has_cc else False
+            target_cc_b2 = cur_cc_b2 if has_cc else False
+            target_ca_es = True if has_ca_es else False
+            target_ca_no = True if has_ca_no else False
+
+            if (
+                cur_cc_b1 == target_cc_b1 and
+                cur_cc_b2 == target_cc_b2 and
+                cur_ca_es == target_ca_es and
+                cur_ca_no == target_ca_no
+            ):
+                continue
+
+            tag = ""
+            desc = ""
+            it_tag = self.table.item(row, COL_TAG)
+            it_desc = self.table.item(row, COL_DESC)
+            if it_tag is not None:
+                tag = it_tag.text()
+            if it_desc is not None:
+                desc = it_desc.text()
+
+            diffs.append({
+                "row": row,
+                "cab_index": cab_index,
+                "comp_index": comp_index,
+                "tag": tag,
+                "desc": desc,
+                "keys": (key_cc_b1, key_cc_b2, key_ca_es, key_ca_no),
+                "before": (cur_cc_b1, cur_cc_b2, cur_ca_es, cur_ca_no),
+                "after": (target_cc_b1, target_cc_b2, target_ca_es, target_ca_no),
+            })
+
+        return diffs
+
+    def _apply_auto_assign_diffs(self, diffs):
+        gabinetes = getattr(self.data_model, "gabinetes", []) or []
+        if not diffs:
+            return
+        logger = logging.getLogger(__name__)
+        logger.debug("Applying board feed auto-assign for %s rows", len(diffs))
+
+        with QSignalBlocker(self.table):
+            for d in diffs:
+                cab_index = d.get("cab_index")
+                comp_index = d.get("comp_index")
+                if cab_index is None or not (0 <= cab_index < len(gabinetes)):
+                    continue
+                gab = gabinetes[cab_index]
+                if comp_index is None:
+                    target_data = gab
+                else:
+                    comps = gab.get("components", []) or []
+                    if not (0 <= comp_index < len(comps)):
+                        continue
+                    target_data = comps[comp_index].setdefault("data", {})
+
+                key_cc_b1, key_cc_b2, key_ca_es, key_ca_no = d.get("keys")
+                after = d.get("after") or (False, False, False, False)
+                target_data[key_cc_b1] = bool(after[0])
+                target_data[key_cc_b2] = bool(after[1])
+                target_data[key_ca_es] = bool(after[2])
+                target_data[key_ca_no] = bool(after[3])
+
+                row = d.get("row", -1)
+                if row >= 0:
+                    self._set_checkbox_cell(row, COL_CC_B1, bool(after[0]))
+                    self._set_checkbox_cell(row, COL_CC_B2, bool(after[1]))
+                    self._set_checkbox_cell(row, COL_CA_ES, bool(after[2]))
+                    self._set_checkbox_cell(row, COL_CA_NOES, bool(after[3]))
+
+        if hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        self._schedule_issue_count_update()
+
+    def _set_checkbox_cell(self, row: int, col: int, checked: bool):
+        cell = self.table.cellWidget(row, col)
+        if cell is None:
+            return
+        chk = cell.findChild(QCheckBox)
+        if chk is None:
+            return
+        chk.blockSignals(True)
+        chk.setChecked(bool(checked))
+        chk.blockSignals(False)
+
+    def _schedule_issue_count_update(self):
+        if self._issues_timer.isActive():
+            self._issues_timer.start(200)
+        else:
+            self._issues_timer.start(200)
+
+    def _update_issue_count(self):
+        count = len(self._collect_issues())
+        self.btn_validate.setText(f"Validar inconsistencias ({count})")
+
+    def _reload_from_model_debounced(self):
+        self.load_from_model()
+
+    def _on_section_changed(self, section):
+        if section in (Section.CABINET, Section.INSTALACIONES):
+            if self._reload_timer.isActive():
+                self._reload_timer.start(250)
+            else:
+                self._reload_timer.start(250)
+
+    def _on_feeding_validation_invalidated(self):
+        self._schedule_issue_count_update()
 
     # ---------------------------------------------------------
     # Validación
@@ -449,89 +729,21 @@ class BoardFeedScreen(ScreenBase):
             g_ca_es = bool(g.get("ca_esencial", False))
             g_ca_noes = bool(g.get("ca_no_esencial", False))
 
-            if not any((g_cc_b1, g_cc_b2, g_ca_es, g_ca_noes)):
-                issues.append(f"{ctx_g}: no tiene definida ninguna alimentación (marque al menos una).")
-
-            comps = g.get("components", []) or []
-
-            # --- Validación por tipo de consumo (C.C. / C.A.) ---
-            # Determinamos qué tipos de consumo existen en el tablero.
-            has_cc = False
-            has_ca = False
-            has_ca_es = False
-            has_ca_no = False
-
-            for c in comps:
-                tc = str(c.get("tipo_consumo") or "").strip().lower()
-                if tc.startswith("c.c."):
-                    has_cc = True
-                elif tc.startswith("c.a."):
-                    has_ca = True
-                    if "no" in tc:
-                        has_ca_no = True
-                    else:
-                        has_ca_es = True
-
-            # Si el tablero es SOLO C.C., no debería marcar C.A.
-            if has_cc and not has_ca and (g_ca_es or g_ca_noes):
-                issues.append(f"{ctx_g}: el tablero tiene consumos C.C. pero se marcó alimentación C.A. (Esencial/No esencial).")
-
-            # Si el tablero es SOLO C.A., no debería marcar C.C.
-            if has_ca and not has_cc and (g_cc_b1 or g_cc_b2):
-                issues.append(f"{ctx_g}: el tablero tiene consumos C.A. pero se marcó alimentación C.C. (B1/B2).")
-
-            # Requerimientos mínimos según lo que exista en el tablero.
+            has_cc = self._has_cc_consumptions(g)
+            has_ca_es = self._has_ca_essential(g)
+            has_ca_no = self._has_ca_no_essential(g)
             if has_cc and not (g_cc_b1 or g_cc_b2):
-                issues.append(f"{ctx_g}: el tablero tiene consumos C.C. pero no se marcó ninguna alimentación C.C. (B1/B2).")
+                issues.append(f"{ctx_g}: tiene consumos C.C. pero no está asignado a CC.B1 ni CC.B2.")
             if has_ca_es and not g_ca_es:
-                issues.append(f"{ctx_g}: el tablero tiene consumos C.A. Esenciales pero no se marcó C.A. Esencial.")
+                issues.append(f"{ctx_g}: tiene consumos C.A. esenciales pero no está asignado a barra C.A. Esencial.")
             if has_ca_no and not g_ca_noes:
-                issues.append(f"{ctx_g}: el tablero tiene consumos C.A. No esenciales pero no se marcó C.A. No esencial.")
-
-            # Si el tablero NO tiene consumos de un tipo, marcarlo es inconsistencia.
-            if not has_ca_es and g_ca_es:
-                issues.append(f"{ctx_g}: se marcó C.A. Esencial pero el tablero no tiene consumos C.A. Esenciales.")
-            if not has_ca_no and g_ca_noes:
-                issues.append(f"{ctx_g}: se marcó C.A. No esencial pero el tablero no tiene consumos C.A. No esenciales.")
-            for c in comps:
-                if str(c.get("alimentador", "")).lower() != "individual":
-                    continue
-                ctag = c.get("tag") or c.get("id") or "(componente)"
-                cdesc = c.get("descripcion") or ""
-                ctx_c = f"{ctx_g} / Componente {ctag} ({cdesc})"
-
-                # Validación tipo-consumo vs alimentación marcada a nivel consumo.
-                tc = str(c.get("tipo_consumo") or "").strip().lower()
-
-                data = c.get("data", {}) or {}
-                c_cc_b1 = bool(data.get("feed_cc_b1", False))
-                c_cc_b2 = bool(data.get("feed_cc_b2", False))
-                c_ca_es = bool(data.get("feed_ca_esencial", False))
-                c_ca_noes = bool(data.get("feed_ca_no_esencial", False))
-
-                if tc.startswith("c.c") and (c_ca_es or c_ca_noes):
-                    issues.append(f"{ctx_c}: es consumo C.C. pero tiene alimentación C.A. marcada.")
-                if tc.startswith("c.a") and (c_cc_b1 or c_cc_b2):
-                    issues.append(f"{ctx_c}: es consumo C.A. pero tiene alimentación C.C. marcada.")
-                if tc.startswith("c.a"):
-                    is_no = ("no" in tc)
-                    if is_no and c_ca_es:
-                        issues.append(f"{ctx_c}: es consumo C.A. No esencial pero se marcó C.A. Esencial.")
-                    if (not is_no) and c_ca_noes:
-                        issues.append(f"{ctx_c}: es consumo C.A. Esencial pero se marcó C.A. No esencial.")
-
-                if not any((c_cc_b1, c_cc_b2, c_ca_es, c_ca_noes)):
-                    issues.append(f"{ctx_c}: alimentador 'Individual' pero no tiene alimentación marcada.")
-                    continue
-
-                if c_cc_b1 and not g_cc_b1:
-                    issues.append(f"{ctx_c}: usa C.C. B1 pero el gabinete NO tiene C.C. B1 marcado.")
-                if c_cc_b2 and not g_cc_b2:
-                    issues.append(f"{ctx_c}: usa C.C. B2 pero el gabinete NO tiene C.C. B2 marcado.")
-                if c_ca_es and not g_ca_es:
-                    issues.append(f"{ctx_c}: usa C.A. Esencial pero el gabinete NO tiene C.A. Esencial marcado.")
-                if c_ca_noes and not g_ca_noes:
-                    issues.append(f"{ctx_c}: usa C.A. No esencial pero el gabinete NO tiene C.A. No esencial marcado.")
+                issues.append(f"{ctx_g}: tiene consumos C.A. no esenciales pero no está asignado a barra C.A. No esencial.")
+            if g_ca_es and not has_ca_es:
+                issues.append(f"{ctx_g}: está asignado a C.A. Esencial pero no tiene consumos esenciales.")
+            if g_ca_noes and not has_ca_no:
+                issues.append(f"{ctx_g}: está asignado a C.A. No esencial pero no tiene consumos no esenciales.")
+            if (has_cc or has_ca_es or has_ca_no) and not any((g_cc_b1, g_cc_b2, g_ca_es, g_ca_noes)) and not bool(g.get("is_energy_source", False)):
+                issues.append(f"{ctx_g}: no tiene definida ninguna alimentación (marque al menos una).")
 
         return issues
 
@@ -562,3 +774,94 @@ class FeedValidationDialog(QDialog):
         btn_close = QPushButton("Cerrar")
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close)
+
+
+class AutoAssignDialog(QDialog):
+    def __init__(self, parent, compute_fn):
+        super().__init__(parent)
+        self.setWindowTitle("Asignación automática")
+        self.resize(800, 420)
+        self._compute_fn = compute_fn
+        self._diffs = []
+
+        layout = QVBoxLayout(self)
+        self.lbl_summary = QLabel("")
+        layout.addWidget(self.lbl_summary)
+
+        self.chk_only_incons = QCheckBox("Aplicar solo a inconsistencias")
+        self.chk_only_incons.setChecked(True)
+        self.chk_only_incons.toggled.connect(self._refresh_preview)
+        layout.addWidget(self.chk_only_incons)
+
+        self.table = QTableWidget(0, 3, self)
+        self.table.setHorizontalHeaderLabels(["Tag", "Antes", "Después"])
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.NoSelection)
+        configure_table_autoresize(self.table)
+        layout.addWidget(self.table, 1)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        self.btn_apply = QPushButton("Aplicar")
+        self.btn_apply.clicked.connect(self._on_apply)
+        self.btn_cancel = QPushButton("Cancelar")
+        self.btn_cancel.clicked.connect(self.reject)
+        btn_row.addWidget(self.btn_apply)
+        btn_row.addWidget(self.btn_cancel)
+        layout.addLayout(btn_row)
+
+        self._refresh_preview()
+
+    def _refresh_preview(self):
+        only_incons = bool(self.chk_only_incons.isChecked())
+        self._diffs = self._compute_fn(only_incons)
+        self.table.setRowCount(0)
+
+        flag_changes = 0
+        rows_changed = len(self._diffs)
+
+        for d in self._diffs:
+            before = d.get("before") or (False, False, False, False)
+            after = d.get("after") or (False, False, False, False)
+            flag_changes += sum(1 for a, b in zip(before, after) if a != b)
+
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            tag = d.get("tag") or ""
+            desc = d.get("desc") or ""
+            label = tag if not desc else f"{tag} - {desc}"
+            self.table.setItem(row, 0, QTableWidgetItem(label))
+            self.table.setItem(row, 1, QTableWidgetItem(self._format_flags(before)))
+            self.table.setItem(row, 2, QTableWidgetItem(self._format_flags(after)))
+
+        if rows_changed <= 0:
+            self.lbl_summary.setText("No hay cambios a aplicar.")
+            self.btn_apply.setEnabled(False)
+        else:
+            self.lbl_summary.setText(
+                f"Se aplicarán cambios en {rows_changed} fila(s), "
+                f"modificando {flag_changes} marca(s) de alimentación."
+            )
+            self.btn_apply.setEnabled(True)
+
+        configure_table_autoresize(self.table)
+
+    @staticmethod
+    def _format_flags(flags):
+        cc_b1, cc_b2, ca_es, ca_no = flags
+        return (
+            f"CC.B1={'✓' if cc_b1 else '✗'}  "
+            f"CC.B2={'✓' if cc_b2 else '✗'}  "
+            f"CA.E={'✓' if ca_es else '✗'}  "
+            f"CA.NE={'✓' if ca_no else '✗'}"
+        )
+
+    def _on_apply(self):
+        if not self._diffs:
+            self.reject()
+            return
+        self.accept()
+
+    def get_diffs(self):
+        return list(self._diffs or [])

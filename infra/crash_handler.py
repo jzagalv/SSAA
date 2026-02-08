@@ -18,24 +18,38 @@ import traceback
 from types import TracebackType
 from typing import Optional, Type
 
+_handling_exception = False
+
 
 def _log_exception(exc_type: Type[BaseException], exc: BaseException, tb: Optional[TracebackType]) -> None:
+    global _handling_exception
+    if _handling_exception:
+        try:
+            sys.__stderr__.write("Unhandled exception (suppressed)\n")
+        except Exception:
+            pass
+        return
+
+    _handling_exception = True
     try:
-        logging.getLogger(__name__).critical(
-            "Unhandled exception: %s",
-            "".join(traceback.format_exception(exc_type, exc, tb)),
+        logging.getLogger(__name__).exception(
+            "Unhandled exception",
+            exc_info=(exc_type, exc, tb),
         )
     except Exception:
         # last resort
         try:
-            sys.stderr.write("Unhandled exception (logging failed):\n")
-            sys.stderr.write("".join(traceback.format_exception(exc_type, exc, tb)))
+            sys.__stderr__.write("Unhandled exception (logging failed):\n")
+            sys.__stderr__.write("".join(traceback.format_exception(exc_type, exc, tb)))
         except Exception:
             pass
+    finally:
+        _handling_exception = False
 
 
 def install_global_exception_handlers() -> None:
     """Install sys/thread exception hooks to ensure crashes are logged."""
+    logging.raiseExceptions = False
     sys.excepthook = _log_exception  # type: ignore[assignment]
 
     # Python 3.8+: thread exceptions

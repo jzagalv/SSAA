@@ -14,6 +14,7 @@ import time
 import logging
 from typing import TYPE_CHECKING
 from storage.project_paths import PROJECT_EXT
+from infra.text_encoding import fix_mojibake_deep
 
 
 def _norm_project_path(folder: str, filename: str, ext: str = PROJECT_EXT) -> str:
@@ -65,6 +66,7 @@ def load_project(dm, file_path: str) -> bool:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        data = fix_mojibake_deep(data)
         dm.from_dict(data, file_path=file_path)
         if hasattr(dm, "notify_project_loaded"):
             dm.notify_project_loaded(file_path)

@@ -17,6 +17,7 @@ import logging
 import os
 import uuid
 from copy import deepcopy
+from infra.text_encoding import fix_mojibake_deep
 
 from storage.schema import PROJECT_VERSION
 from storage.migrations import migrate_project_dict, upgrade_project_dict
@@ -128,6 +129,10 @@ class DataModel:
 
     def notify_project_saved(self, file_path: str):
         self._emit('project_saved', file_path or '')
+
+    def invalidate_feeding_validation(self):
+        """Notify subscribers that feeding validations should be recomputed."""
+        self._emit('feeding_validation_invalidated')
 
     # ----------------- estado general -----------------
     def clear(self):
@@ -249,7 +254,8 @@ class DataModel:
         if not path:
             return {}
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        return fix_mojibake_deep(data)
 
     def set_library_path(self, kind: str, path: str):
         kind = (kind or "").strip().lower()

@@ -56,6 +56,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialogButtonBox,
 )
+from ui.utils.table_utils import configure_table_autoresize
 
 from app.sections import Section
 
@@ -223,8 +224,7 @@ class BatteryDischargeTableDialog(QDialog):
 
         self.table = QTableWidget(0, len(labels))
         self.table.setHorizontalHeaderLabels(labels)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.table)
         root.addWidget(self.table, 1)
 
         # botones filas
@@ -322,8 +322,7 @@ class RCCBHelpDialog(QDialog):
 
         tbl = QTableWidget(0, 2)
         tbl.setHorizontalHeaderLabels(["Tipo", "Uso"])
-        tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        configure_table_autoresize(tbl)
         tbl.setEditTriggers(QTableWidget.NoEditTriggers)
         tbl.setSelectionBehavior(QTableWidget.SelectRows)
         root.addWidget(tbl, 1)
@@ -490,8 +489,7 @@ class MaterialsDatabaseScreen(QDialog):
         self.tbl_bat.setHorizontalHeaderLabels([
             "Marca", "Modelo", "Tensión Nominal [V]", "Ah", "Rate [h]", "Ri [mΩ]", "Float min", "Float max", "uuid"
         ])
-        self.tbl_bat.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_bat.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_bat)
         self.tbl_bat.setColumnHidden(7, True)
         self.tbl_bat.setSelectionBehavior(self.tbl_bat.SelectRows)
         # Misma operación que otras categorías: no edición en celda, editar vía diálogo.
@@ -524,8 +522,7 @@ class MaterialsDatabaseScreen(QDialog):
         self.tbl_chg.setHorizontalHeaderLabels([
             "Marca", "Modelo", "Tensión de Salida [Vdc]", "Fases", "Iout [A]", "uuid"
         ])
-        self.tbl_chg.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_chg.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_chg)
         self.tbl_chg.setColumnHidden(5, True)
         self.tbl_chg.setSelectionBehavior(self.tbl_chg.SelectRows)
         self.tbl_chg.setEditTriggers(self.tbl_chg.NoEditTriggers)
@@ -554,8 +551,7 @@ class MaterialsDatabaseScreen(QDialog):
             "N° de Polos", "Polo Neutro", "Capacidad [A]", "Curva",
             "Capacidad Cortocircuito [kA]", "Marca", "Modelo", "Código Fabricante", "uuid"
         ])
-        self.tbl_mcb.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_mcb.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_mcb)
         self.tbl_mcb.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_mcb.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_mcb.hideColumn(8)
@@ -584,8 +580,7 @@ class MaterialsDatabaseScreen(QDialog):
             "Unidad de Ajuste", "Ajuste Mínimo %", "Pasos %",
             "Capacidad Cortocircuito [kA]", "Marca", "Modelo", "Código Fabricante", "uuid"
         ])
-        self.tbl_mccb.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_mccb.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_mccb)
         self.tbl_mccb.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_mccb.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_mccb.hideColumn(10)
@@ -614,8 +609,7 @@ class MaterialsDatabaseScreen(QDialog):
             "Capacidad Cortocircuito [kA]", "Tipo base",
             "Marca", "Modelo", "Código Fabricante", "uuid"
         ])
-        self.tbl_rccb.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_rccb.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_rccb)
         self.tbl_rccb.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_rccb.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_rccb.hideColumn(8)
@@ -647,8 +641,7 @@ class MaterialsDatabaseScreen(QDialog):
             "Corriente Residual [mA]", "Tipo",
             "Capacidad Cortocircuito [kA]", "Marca", "Modelo", "Referencia Fabricante", "uuid"
         ])
-        self.tbl_rccb_mcb.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tbl_rccb_mcb.horizontalHeader().setStretchLastSection(True)
+        configure_table_autoresize(self.tbl_rccb_mcb)
         self.tbl_rccb_mcb.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_rccb_mcb.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl_rccb_mcb.hideColumn(10)
@@ -771,7 +764,7 @@ class MaterialsDatabaseScreen(QDialog):
                     v = ""
                 item = QTableWidgetItem(str(v))
                 tbl.setItem(r, c, item)
-        tbl.resizeColumnsToContents()
+        configure_table_autoresize(tbl)
 
     def _category_dialog(self, title: str, labels: List[str], initial: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         dlg = QDialog(self)
@@ -904,7 +897,7 @@ class MaterialsDatabaseScreen(QDialog):
             self.tbl_chg.setItem(r, 3, QTableWidgetItem(ph_disp))
             self.tbl_chg.setItem(r, 4, QTableWidgetItem(str(c.get("output_current_a", ""))))
             self.tbl_chg.setItem(r, 5, QTableWidgetItem(str(c.get("uuid", ""))))
-        self.tbl_chg.resizeColumnsToContents()
+        configure_table_autoresize(self.tbl_chg)
         self.tbl_chg.resizeRowsToContents()
         self._loading = False
 
@@ -979,7 +972,7 @@ class MaterialsDatabaseScreen(QDialog):
             self.tbl_bat.setItem(r, 6, QTableWidgetItem(str(b.get("float_voltage_min_v_per_cell", ""))))
             self.tbl_bat.setItem(r, 7, QTableWidgetItem(str(b.get("float_voltage_max_v_per_cell", ""))))
             self.tbl_bat.setItem(r, 8, QTableWidgetItem(str(b.get("uuid", ""))))
-        self.tbl_bat.resizeColumnsToContents()
+        configure_table_autoresize(self.tbl_bat)
         self.tbl_bat.resizeRowsToContents()
         self._loading = False
 

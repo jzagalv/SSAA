@@ -29,6 +29,8 @@ class CabinetUpdatePipeline:
         dm = getattr(self.s, "data_model", None)
         if dm is not None and hasattr(dm, "mark_dirty"):
             dm.mark_dirty(True)
+        if dm is not None and hasattr(dm, "invalidate_feeding_validation"):
+            dm.invalidate_feeding_validation()
 
     def emit_changed(self) -> None:
         sig = getattr(self.s, "data_changed", None)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""FeedListWidget extracted from ssaa_designer_screen.
+"""SourceListWidget for SSAA Designer.
 
-UI-only widget that enables drag&drop of feeder dict payloads.
+UI-only widget that enables drag&drop of source dict payloads.
 """
 
 from PyQt5.QtCore import Qt, QMimeData
@@ -9,8 +9,8 @@ from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import QListWidget
 
 
-class FeedListWidget(QListWidget):
-"""Lista de cargas disponibles (Tag + Descripción) con drag&drop."""
+class SourceListWidget(QListWidget):
+    """Lista de fuentes disponibles (Tag + Descripción) con drag&drop."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,16 +22,16 @@ class FeedListWidget(QListWidget):
         if not items:
             return
         it = items[0]
-        feeder = it.data(Qt.UserRole)
-        if not feeder:
+        source = it.data(Qt.UserRole)
+        if not source:
             return
         try:
             import json as _json
-            payload = _json.dumps(feeder, ensure_ascii=False)
+            payload = _json.dumps(source, ensure_ascii=False)
         except Exception:
             return
         md = QMimeData()
-        md.setData("application/x-ssaa-feeder", payload.encode("utf-8"))
+        md.setData("application/x-ssaa-source", payload.encode("utf-8"))
         drag = QDrag(self)
         drag.setMimeData(md)
         drag.exec_(Qt.CopyAction)

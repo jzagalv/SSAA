@@ -17,15 +17,14 @@ from screens.cc_consumption.table_schema import (
     ALE_COL_SEL, ALE_COL_GAB, ALE_COL_TAG, ALE_COL_DESC, ALE_COL_PEFF, ALE_COL_I,
 )
 from screens.cc_consumption.models.aleatorios_table_model import AleatoriosTableModel
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
 
 class AleatoriosTabMixin:
     def _ensure_ale_model(self):
         if getattr(self, "_ale_model", None) is None:
             self._ale_model = AleatoriosTableModel(self._controller, parent=self)
             self.tbl_ale.setModel(self._ale_model)
-            header = self.tbl_ale.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.Interactive)
-            header.setStretchLastSection(False)
+            configure_table_autoresize(self.tbl_ale)
             self.tbl_ale.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.tbl_ale.setSelectionMode(QAbstractItemView.SingleSelection)
             self._ale_model.dataChanged.connect(self._update_aleatory_totals)
@@ -37,14 +36,7 @@ class AleatoriosTabMixin:
         self._ensure_ale_model()
         self._ale_model.set_items(items)
 
-        self._auto_resize(self.tbl_ale, {
-            ALE_COL_SEL: 50,
-            ALE_COL_GAB: 160,
-            ALE_COL_TAG: 120,
-            ALE_COL_DESC: 260,
-            ALE_COL_PEFF: 110,
-            ALE_COL_I: 110,
-        })
+        request_autofit(self.tbl_ale)
         self._update_aleatory_totals()
 
     def _update_aleatory_totals(self, *args, **kwargs):

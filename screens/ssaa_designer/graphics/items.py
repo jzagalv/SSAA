@@ -14,7 +14,14 @@ from domain.ssaa_topology import TopoNode, TopoEdge
 
 from PyQt5.QtCore import Qt, QPointF, QRectF
 from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath, QFontMetrics
-from PyQt5.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsPathItem,
+    QGraphicsTextItem,
+    QGraphicsRectItem,
+    QMessageBox,
+    QInputDialog,
+)
 
 from .constants import GRID
 
@@ -34,23 +41,14 @@ class TopoNodeItem(QGraphicsItem):
         self._on_port_added = on_port_added
 
         self._port_items = {}
-        self._ensure_default_ports()
-
-        self.setPos(QPointF(node.pos[0], node.pos[1]))
-        self.setFlags(
-            QGraphicsItem.ItemIsSelectable
-            | QGraphicsItem.ItemIsMovable
-            | QGraphicsItem.ItemSendsGeometryChanges
-        )
 
         self._font_title = QFont("Segoe UI", 9)
         self._font_title.setBold(True)
         self._font_body = QFont("Segoe UI", 8)
 
-        # 👇 ahora que ya hay fonts, calcula ancho dinámico
-        self._recompute_dynamic_width()
-
-        # 👇 recién después crea y distribuye puertos con el ancho definitivo
+        self._ui_changed = self._ensure_ui_meta()
+        self._ensure_default_ports()
+        self._ports_changed = self._ensure_required_ports()
         self._rebuild_ports()
 
         self._pending_port = None  # (node_id, port_id, side)
@@ -62,113 +60,127 @@ class TopoNodeItem(QGraphicsItem):
             | QGraphicsItem.ItemSendsGeometryChanges
         )
 
-        self._font_title = QFont("Segoe UI", 9)
-        self._font_title.setBold(True)
-        self._font_body = QFont("Segoe UI", 8)
-
-    def _text_lines_for_width(self) -> List[Tuple[QFont, str]]:
-        """Devuelve las líneas que se dibujan en la tarjeta para medir ancho."""
+    def _default_ui_size(self) -> Tuple[float, float]:
         kind = (self.node.kind or "").upper()
+        fixed_w = {
+            "FUENTE": 200.0,
+            "CARGA": 300.0,
+            "CARGADOR": 280.0,
+            "TGCA": 300.0,
+            "TDCA": 300.0,
+            "TGCC": 300.0,
+            "TDCC": 300.0,
+            "TDAF": 300.0,
+            "TDAyF": 300.0,
+        }
+        fixed_h = {
+            "FUENTE": 90.0,
+            "CARGA": 110.0,
+            "CARGADOR": 100.0,
+            "TGCA": 110.0,
+            "TDCA": 110.0,
+            "TGCC": 110.0,
+            "TDCC": 110.0,
+            "TDAF": 110.0,
+            "TDAyF": 110.0,
+        }
+        return fixed_w.get(kind, 260.0), fixed_h.get(kind, 100.0)
+
+    def _ensure_ui_meta(self) -> bool:
         meta = self.node.meta or {}
+        ui = meta.get("ui")
+        changed = False
+        if not isinstance(ui, dict):
+            ui = {}
+            changed = True
 
-        lines: List[Tuple[QFont, str]] = []
-
-        if kind == "CARGA":
-            tag = (meta.get("tag") or self.node.name or "").strip()
-            desc = (meta.get("desc") or "").strip()
-            load = (meta.get("load") or "").strip() or "Alimentación General"
-
-            lines.append((self._font_title, f"TAG: {tag}"))
-            lines.append((self._font_body,  f"DESCRIPCIÓN: {desc}"))
-            lines.append((self._font_body,  f"CARGA: {load}"))
-            return lines
-
-        # otros nodos
-        title = f"{self.node.kind}: {self.node.name}" if self.node.name else f"{self.node.kind}"
-        lines.append((self._font_title, title))
-
-        if kind in ("TGCC", "TDCC", "CARGADOR") and self.node.dc_system:
-            lines.append((self._font_body, f"Sistema DC: {self.node.dc_system}"))
-
-        if kind in ("CARGADOR",) and (self.node.p_w or 0.0) > 0:
-            lines.append((self._font_body, f"P: {self.node.p_w:.0f} W"))
-
-        return lines
-
-    def _required_width_for_text(self) -> float:
-        """Calcula el ancho mínimo para que el texto no se corte."""
-        # padding horizontal: en paint usas x=8 y width=r.width()-16
-        pad = 16.0
-        max_px = 0.0
-        for font, s in self._text_lines_for_width():
-            fm = QFontMetrics(font)
-            # horizontalAdvance es el ancho real del texto
-            w = float(fm.horizontalAdvance(s))
-            if w > max_px:
-                max_px = w
-        return max_px + pad
-
-    def _required_width_for_ports(self) -> float:
-        """Ancho mínimo para distribuir puertos sin que queden amontonados."""
-        meta = self.node.meta or {}
-        ports = meta.get("ports", []) or []
-
-        Z = 20.0         # mismo margen que usas en _layout_ports
-        min_step = 40.0  # separación mínima entre centros de puertos (ajustable)
-        max_n = 0
-        for side in ("top", "bottom"):
-            n = sum(1 for p in ports if str(p.get("side") or "").lower() == side)
-            if n > max_n:
-                max_n = n
-
-        if max_n <= 1:
-            return float(self.node.size[0])
-
-        return 2.0 * Z + float(max_n - 1) * min_step
-
-    def _recompute_dynamic_width(self):
-        """Unifica ancho por texto + puertos y actualiza la geometría."""
-        meta = self.node.meta or {}
-        # ancho base “mínimo” (se fija una vez, para no achicar por debajo de lo original)
-        base_w = float(meta.get("base_w") or self.node.size[0] or 220.0)
-        meta["base_w"] = base_w
+        def_w, def_h = self._default_ui_size()
+        w = float(ui.get("w") or def_w)
+        h = float(ui.get("h") or def_h)
+        ui.setdefault("expanded", True)
+        if ui.get("w") != int(w):
+            ui["w"] = int(w)
+            changed = True
+        if ui.get("h") != int(h):
+            ui["h"] = int(h)
+            changed = True
+        meta["ui"] = ui
         self.node.meta = meta
+        self.node.size = (float(ui["w"]), float(ui["h"]))
+        return changed
 
-        w_text = self._required_width_for_text()
-        w_ports = self._required_width_for_ports()
-
-        # límites para que no se vaya al infinito (ajusta a gusto)
-        min_w = base_w
-        max_w = 700.0
-
-        new_w = max(min_w, w_text, w_ports)
-        new_w = max(min_w, min(max_w, new_w))
-
-        # si no cambió, no hagas nada
-        cur_w, cur_h = self.node.size
-        if abs(float(cur_w) - float(new_w)) < 0.5:
-            return
-
-        self.prepareGeometryChange()
-        self.node.size = (float(new_w), float(cur_h))
-
-        # reubicar puertos según nuevo ancho
-        self._layout_ports()
-        self.update()
+    def _wrap_text(self, text: str, font: QFont, max_width: float, max_lines: int) -> Tuple[List[str], bool]:
+        txt = (text or "").strip()
+        if not txt:
+            return [""], False
+        fm = QFontMetrics(font)
+        words = txt.split()
+        lines: List[str] = []
+        cur = ""
+        for w in words:
+            trial = f"{cur} {w}".strip()
+            if fm.horizontalAdvance(trial) <= max_width or not cur:
+                cur = trial
+                continue
+            lines.append(cur)
+            cur = w
+            if len(lines) >= max_lines:
+                break
+        if len(lines) < max_lines and cur:
+            lines.append(cur)
+        truncated = False
+        if len(lines) > max_lines:
+            lines = lines[:max_lines]
+            truncated = True
+        if lines and fm.horizontalAdvance(lines[-1]) > max_width:
+            lines[-1] = fm.elidedText(lines[-1], Qt.ElideRight, int(max_width))
+            truncated = True
+        if len(lines) == max_lines and " ".join(words) not in " ".join(lines):
+            truncated = True
+            lines[-1] = fm.elidedText(lines[-1], Qt.ElideRight, int(max_width))
+        return lines, truncated
 
 
     def _ensure_default_ports(self):
         meta = self.node.meta or {}
         ports = meta.get("ports")
         if not isinstance(ports, list) or not ports:
-            ports = [
-                {"id": _new_id("p"), "name": "IN", "io": "IN", "side": "top", "x": 0.5},
-                {"id": _new_id("p"), "name": "OUT", "io": "OUT", "side": "bottom", "x": 0.5},
-            ]
+            kind = (self.node.kind or "").upper()
+            if kind == "FUENTE":
+                ports = [
+                    {"id": _new_id("p"), "name": "OUT", "io": "OUT", "side": "bottom", "x": 0.5},
+                ]
+            else:
+                ports = [
+                    {"id": _new_id("p"), "name": "IN", "io": "IN", "side": "top", "x": 0.5},
+                    {"id": _new_id("p"), "name": "OUT", "io": "OUT", "side": "bottom", "x": 0.5},
+                ]
             meta["ports"] = ports
-            # ancho base para auto-crecer con múltiples salidas
-            meta.setdefault("base_w", float(self.node.size[0]))
             self.node.meta = meta
+
+    def _ensure_required_ports(self) -> bool:
+        meta = self.node.meta or {}
+        ports = meta.get("ports", []) or []
+        kind = (self.node.kind or "").upper()
+        changed = False
+
+        if kind == "FUENTE":
+            before = list(ports)
+            ports = [p for p in ports if (p.get("io") or "").upper() != "IN"]
+            if before != ports:
+                changed = True
+            if not ports:
+                ports = [{"id": _new_id("p"), "name": "OUT", "io": "OUT", "side": "bottom", "x": 0.5}]
+                changed = True
+        elif kind.startswith(("TG", "TD", "TDA")):
+            has_in = any((p.get("io") or "").upper() == "IN" for p in ports)
+            if not has_in:
+                ports.insert(0, {"id": _new_id("p"), "name": "IN", "io": "IN", "side": "top", "x": 0.5})
+                changed = True
+
+        meta["ports"] = ports
+        self.node.meta = meta
+        return changed
 
     def _rebuild_ports(self):
         # remove old
@@ -215,13 +227,17 @@ class TopoNodeItem(QGraphicsItem):
             step = usable / float(n - 1) if n > 1 else 0.0
             return [Z + i * step for i in range(n)]
 
-        # recalcular posiciones por lado
-        for side in ("top", "bottom"):
-            group = [pd for pd in ports if str(pd.get("side") or "").lower() == side]
-            xs = _positions_x(len(group))
-            for pd, x in zip(group, xs):
-                # guardamos x relativa por persistencia
-                pd["x"] = (x / w) if w else 0.5
+        kind = (self.node.kind or "").upper()
+        is_board = kind.startswith(("TG", "TD", "TDA"))
+
+        if not is_board:
+            # recalcular posiciones por lado
+            for side in ("top", "bottom"):
+                group = [pd for pd in ports if str(pd.get("side") or "").lower() == side]
+                xs = _positions_x(len(group))
+                for pd, x in zip(group, xs):
+                    # guardamos x relativa por persistencia
+                    pd["x"] = (x / w) if w else 0.5
 
         # aplicar posición a items
         for pid, pit in self._port_items.items():
@@ -297,19 +313,8 @@ class TopoNodeItem(QGraphicsItem):
             self._on_port_added(self.node.id)
 
     def _autoresize_for_ports(self):
-        # Desde el 2do OUT, crecer ancho hacia la derecha (base_w * 1.5^(n_out-1))
-        meta = self.node.meta or {}
-        base_w = float(meta.get("base_w") or self.node.size[0] or 220.0)
-        ports = meta.get("ports", []) or []
-        n_out = sum(1 for p in ports if (p.get("io") or "").upper() == "OUT")
-        extra = max(0, n_out - 1)
-        new_w = base_w * (1.5 ** extra)
-
-        # mantener altura
-        _, h = self.node.size
-        # avisar a Qt que cambia la geometría
-        self.prepareGeometryChange()
-        self.node.size = (float(new_w), float(h))
+        # Tamaño fijo: no crecer por puertos.
+        return
 
     def boundingRect(self) -> QRectF:
         w, h = self.node.size
@@ -406,26 +411,42 @@ class TopoNodeItem(QGraphicsItem):
             desc = (meta.get("desc") or "").strip()
             load = (meta.get("load") or "").strip() or "Alimentación General"
 
+            max_w = r.width() - 16
+            fm_title = QFontMetrics(self._font_title)
+            fm_body = QFontMetrics(self._font_body)
+            title = fm_title.elidedText(f"TAG: {tag}", Qt.ElideRight, int(max_w))
+
             painter.setFont(self._font_title)
-            painter.drawText(QRectF(8, 6, r.width() - 16, 18),
+            painter.drawText(QRectF(8, 6, max_w, 18),
                             Qt.AlignLeft | Qt.AlignVCenter,
-                            f"TAG: {tag}")
+                            title)
 
             painter.setFont(self._font_body)
             y = 28
-            painter.drawText(QRectF(8, y, r.width() - 16, 14),
+            desc_lines, desc_trunc = self._wrap_text(f"DESCRIPCIÓN: {desc}", self._font_body, max_w, 2)
+            for ln in desc_lines:
+                painter.drawText(QRectF(8, y, max_w, 14),
+                                Qt.AlignLeft | Qt.AlignVCenter,
+                                ln)
+                y += 14
+            load_line = fm_body.elidedText(f"CARGA: {load}", Qt.ElideRight, int(max_w))
+            painter.drawText(QRectF(8, y, max_w, 14),
                             Qt.AlignLeft | Qt.AlignVCenter,
-                            f"DESCRIPCIÓN: {desc}")
-            y += 14
-            painter.drawText(QRectF(8, y, r.width() - 16, 14),
-                            Qt.AlignLeft | Qt.AlignVCenter,
-                            f"CARGA: {load}")
+                            load_line)
+
+            if desc_trunc:
+                self.setToolTip(f"{tag}\n{desc}\n{load}")
+            else:
+                self.setToolTip(f"{tag}\n{desc}\n{load}")
             return
 
         # Otros nodos: título + 2 líneas
         painter.setFont(self._font_title)
+        max_w = r.width() - 16
+        fm_title = QFontMetrics(self._font_title)
         title = f"{self.node.kind}: {self.node.name}" if self.node.name else f"{self.node.kind}"
-        painter.drawText(QRectF(8, 6, r.width() - 16, 18),
+        title = fm_title.elidedText(title, Qt.ElideRight, int(max_w))
+        painter.drawText(QRectF(8, 6, max_w, 18),
                         Qt.AlignLeft | Qt.AlignVCenter,
                         title)
 
@@ -437,10 +458,12 @@ class TopoNodeItem(QGraphicsItem):
         if kind in ("CARGA", "CARGADOR") and (self.node.p_w or 0.0) > 0:
             lines.append(f"P: {self.node.p_w:.0f} W")
 
+        fm_body = QFontMetrics(self._font_body)
         for ln in lines[:2]:
-            painter.drawText(QRectF(8, y, r.width() - 16, 14),
+            txt = fm_body.elidedText(ln, Qt.ElideRight, int(max_w))
+            painter.drawText(QRectF(8, y, max_w, 14),
                             Qt.AlignLeft | Qt.AlignVCenter,
-                            ln)
+                            txt)
             y += 14
 
 
@@ -498,6 +521,13 @@ class TopoEdgeItem(QGraphicsPathItem):
         self.dst_item = dst_item
         self.setFlag(QGraphicsPathItem.ItemIsSelectable, True)
         self.setZValue(-10)
+        self._label_bg = QGraphicsRectItem(self)
+        self._label_bg.setBrush(QBrush(QColor(255, 255, 255, 200)))
+        self._label_bg.setPen(QPen(QColor(0, 0, 0, 80), 1))
+        self._label_bg.setZValue(1)
+        self._label_text = QGraphicsTextItem(self)
+        self._label_text.setDefaultTextColor(QColor(20, 20, 20))
+        self._label_text.setZValue(2)
         self.rebuild()
 
     @staticmethod
@@ -521,7 +551,7 @@ class TopoEdgeItem(QGraphicsPathItem):
 
         path = QPainterPath(a)
         # AutoCAD-like routing: si hay desalineación, usar quiebre V-H-V
-        if abs(a.x() - b.x()) < 1e-6 or abs(a.y() - b.y()) < 1e-6:
+        if abs(a.x() - b.x()) < 1.0 or abs(a.y() - b.y()) < 1.0:
             path.lineTo(b)
         else:
             mid_y = (a.y() + b.y()) / 2.0
@@ -539,5 +569,78 @@ class TopoEdgeItem(QGraphicsPathItem):
                 pen = QPen(QColor(0, 0, 0), 2)
         pen.setStyle(Qt.SolidLine)
         self.setPen(pen)
+        self._update_label()
 
+    def _build_label_text(self) -> str:
+        meta = self.edge.meta or {}
+        d_m = meta.get("d_m")
+        cond = meta.get("cond")
+        s_val = meta.get("S")
+        i_a = meta.get("I_A")
+        dv = meta.get("dV_pct")
+        dv_ac = meta.get("dV_ac_pct")
 
+        lines = []
+        parts1 = []
+        if d_m is not None:
+            try:
+                parts1.append(f"d={float(d_m):.1f} m")
+            except Exception:
+                pass
+        if cond:
+            parts1.append(f"Cond={cond}")
+        if parts1:
+            lines.append(" | ".join(parts1))
+
+        parts2 = []
+        if s_val is not None:
+            unit = "VA" if (self.edge.circuit or "CA").upper() == "CA" else "W"
+            try:
+                parts2.append(f"S={float(s_val):.0f} {unit}")
+            except Exception:
+                parts2.append(f"S={s_val} {unit}")
+        if i_a is not None:
+            try:
+                parts2.append(f"I={float(i_a):.2f} A")
+            except Exception:
+                parts2.append(f"I={i_a} A")
+        if parts2:
+            lines.append(" | ".join(parts2))
+
+        parts3 = []
+        if dv is not None:
+            try:
+                parts3.append(f"ΔV={float(dv):.2f}%")
+            except Exception:
+                parts3.append(f"ΔV={dv}%")
+        if dv_ac is not None:
+            try:
+                parts3.append(f"ΔV_ac={float(dv_ac):.2f}%")
+            except Exception:
+                parts3.append(f"ΔV_ac={dv_ac}%")
+        if parts3:
+            lines.append(" | ".join(parts3))
+
+        return "\n".join(lines)
+
+    def _update_label(self):
+        text = self._build_label_text()
+        if not text:
+            self._label_text.setPlainText("")
+            self._label_text.setVisible(False)
+            self._label_bg.setVisible(False)
+            return
+
+        self._label_text.setPlainText(text)
+        self._label_text.setVisible(True)
+        self._label_bg.setVisible(True)
+
+        br = self._label_text.boundingRect()
+        pad = 4.0
+        self._label_bg.setRect(br.adjusted(-pad, -pad, pad, pad))
+
+        mid = self.path().pointAtPercent(0.5)
+        x = mid.x() - (br.width() / 2.0)
+        y = mid.y() - (br.height() / 2.0)
+        self._label_text.setPos(QPointF(x, y))
+        self._label_bg.setPos(QPointF(x, y))

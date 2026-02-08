@@ -198,6 +198,8 @@ class BankChargerController(BaseController):
         s = self.screen
         s._updating = True
         try:
+            if hasattr(s, "_load_modes_from_project"):
+                s._load_modes_from_project()
             s._fill_datos_sistema()
             s._fill_comprobacion()
             s._install_vcell_combo()

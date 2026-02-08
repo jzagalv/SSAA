@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
     QFileDialog, QMessageBox, QCheckBox, QGroupBox, QFormLayout,
     QDialogButtonBox, QTableWidget, QTableWidgetItem, QAbstractItemView,
 )
+from ui.utils.table_utils import configure_table_autoresize
 
 
 class ConsumosUpdatePreviewDialog(QDialog):
@@ -119,9 +120,8 @@ class ConsumosUpdatePreviewDialog(QDialog):
             chk.stateChanged.connect(self._sync_master_from_rows)
             self.table.setCellWidget(r, 5, chk)
 
-        self.table.resizeColumnsToContents()
+        configure_table_autoresize(self.table)
         self.table.resizeRowsToContents()
-        self.table.horizontalHeader().setStretchLastSection(True)
 
     def _on_master_changed(self, state: int):
         """Marca/desmarca todas las filas desde el selector maestro."""
@@ -482,4 +482,3 @@ class LibraryManagerWindow(QDialog):
             "La librería de consumos alimenta el catálogo y propuestas."
             "Los datos del proyecto no se modifican automáticamente desde la librería.",
         )
-

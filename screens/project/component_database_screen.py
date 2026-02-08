@@ -30,6 +30,7 @@ from typing import Any, Dict, List
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
 from ui.theme import get_theme_token
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -137,6 +138,7 @@ class ComponentDatabaseScreen(QDialog):
 
         self._loading = True
         self._populate_table()
+        request_autofit(self.table)
         self._apply_all_rules()
         self._loading = False
 
@@ -180,9 +182,7 @@ class ComponentDatabaseScreen(QDialog):
             "Fase",
             "lib_uid",  # oculto
         ])
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Interactive)
-        header.setStretchLastSection(True)
+        configure_table_autoresize(self.table)
         make_table_sortable(self.table)
         layout.addWidget(self.table, 1)
 
@@ -276,6 +276,7 @@ class ComponentDatabaseScreen(QDialog):
         self._loading = True
         self._refresh_header_info()
         self._populate_table()
+        request_autofit(self.table)
         self._apply_all_rules()
         self._loading = False
 

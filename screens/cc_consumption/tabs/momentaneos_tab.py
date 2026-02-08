@@ -20,6 +20,7 @@ from screens.cc_consumption.models.momentaneos_scenarios_table_model import (
     ScenarioRow,
 )
 from screens.cc_consumption.utils import resolve_scenario_desc
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
 from screens.cc_consumption.table_schema import (
     MOM_COL_GAB, MOM_COL_TAG, MOM_COL_DESC, MOM_COL_PEFF, MOM_COL_I, MOM_COL_INCLUIR, MOM_COL_ESC,
     MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
@@ -31,9 +32,7 @@ class MomentaneosTabMixin:
         if getattr(self, "_mom_model", None) is None:
             self._mom_model = MomentaneosLoadsTableModel(self._controller, parent=self)
             self.tbl_mom.setModel(self._mom_model)
-            header = self.tbl_mom.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.Interactive)
-            header.setStretchLastSection(False)
+            configure_table_autoresize(self.tbl_mom)
             self.tbl_mom.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.tbl_mom.setSelectionMode(QAbstractItemView.SingleSelection)
             self._mom_delegate = ScenarioComboDelegate(self.tbl_mom, min_value=1, max_value=20)
@@ -44,9 +43,7 @@ class MomentaneosTabMixin:
         if getattr(self, "_mom_scenarios_model", None) is None:
             self._mom_scenarios_model = MomentaneosScenariosTableModel(self._controller, parent=self)
             self.tbl_mom_resumen.setModel(self._mom_scenarios_model)
-            header = self.tbl_mom_resumen.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.Interactive)
-            header.setStretchLastSection(False)
+            configure_table_autoresize(self.tbl_mom_resumen)
 
     def _ensure_cc_escenarios(self, n_esc: int) -> dict:
         """Asegura estructura proyecto['cc_escenarios'] en formato dict {"1": "..."}.
@@ -227,15 +224,7 @@ class MomentaneosTabMixin:
         finally:
             self._building = False
 
-        self._auto_resize(self.tbl_mom, {
-            MOM_COL_GAB: 150,
-            MOM_COL_TAG: 120,
-            MOM_COL_DESC: 240,
-            MOM_COL_PEFF: 110,
-            MOM_COL_I: 110,
-            MOM_COL_INCLUIR: 85,
-            MOM_COL_ESC: 90,
-        })
+        request_autofit(self.tbl_mom)
         try:
             from PyQt5.QtCore import QTimer
             QTimer.singleShot(0, self._update_momentary_summary_display)
@@ -272,12 +261,7 @@ class MomentaneosTabMixin:
 
             # Ensure summary model exists and size columns
             self._ensure_mom_scenarios_model()
-            self._auto_resize(self.tbl_mom_resumen, {
-                MOMR_COL_ESC: 70,
-                MOMR_COL_DESC: 220,
-                MOMR_COL_PT: 120,
-                MOMR_COL_IT: 120,
-            })
+            request_autofit(self.tbl_mom_resumen)
         finally:
             self._building = False
 

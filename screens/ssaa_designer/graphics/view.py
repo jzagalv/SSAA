@@ -8,10 +8,12 @@ from PyQt5.QtGui import QPainter
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene
 
 class TopoView(QGraphicsView):
-    def __init__(self, scene: QGraphicsScene, on_delete_selected=None, on_drop_feeder=None):
+    def __init__(self, scene: QGraphicsScene, on_delete_selected=None, on_drop_feeder=None, on_drop_source=None, on_drop_board=None):
         super().__init__(scene)
         self._on_delete_selected = on_delete_selected
         self._on_drop_feeder = on_drop_feeder
+        self._on_drop_source = on_drop_source
+        self._on_drop_board = on_drop_board
         self.setAcceptDrops(True)
         self.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
         self.setDragMode(QGraphicsView.RubberBandDrag)
@@ -62,13 +64,13 @@ class TopoView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat("application/x-ssaa-feeder"):
+        if event.mimeData().hasFormat("application/x-ssaa-feeder") or event.mimeData().hasFormat("application/x-ssaa-source") or event.mimeData().hasFormat("application/x-ssaa-board"):
             event.acceptProposedAction()
             return
         super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat("application/x-ssaa-feeder"):
+        if event.mimeData().hasFormat("application/x-ssaa-feeder") or event.mimeData().hasFormat("application/x-ssaa-source") or event.mimeData().hasFormat("application/x-ssaa-board"):
             event.acceptProposedAction()
             return
         super().dragMoveEvent(event)
@@ -86,6 +88,30 @@ class TopoView(QGraphicsView):
                 self._on_drop_feeder(pos, feeder)
                 event.acceptProposedAction()
                 return
+        if event.mimeData().hasFormat("application/x-ssaa-source") and self._on_drop_source:
+            try:
+                raw = bytes(event.mimeData().data("application/x-ssaa-source")).decode("utf-8")
+                import json as _json
+                source = _json.loads(raw)
+            except Exception:
+                source = None
+            if source:
+                pos = self.mapToScene(event.pos())
+                self._on_drop_source(pos, source)
+                event.acceptProposedAction()
+                return
+        if event.mimeData().hasFormat("application/x-ssaa-board") and hasattr(self, "_on_drop_board") and self._on_drop_board:
+            try:
+                raw = bytes(event.mimeData().data("application/x-ssaa-board")).decode("utf-8")
+                import json as _json
+                board = _json.loads(raw)
+            except Exception:
+                board = None
+            if board:
+                pos = self.mapToScene(event.pos())
+                self._on_drop_board(pos, board)
+                event.acceptProposedAction()
+                return
         super().dropEvent(event)
 
 
@@ -96,6 +122,3 @@ class TopoView(QGraphicsView):
                 e.accept()
                 return
         super().keyPressEvent(e)
-
-
-
