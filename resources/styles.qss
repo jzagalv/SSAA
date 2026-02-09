@@ -510,3 +510,30 @@ QWidget#bank_black_screen QGroupBox::title {
     color: {{TEXT}};
     font-weight: 700;
 }
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+QFrame#Sidebar {
+    background: {{PRIMARY}};
+    color: {{ON_DARK}};
+}
+
+QToolButton#SidebarItem {
+    background: transparent;
+    color: {{ON_DARK}};
+    padding: 10px 12px;
+    text-align: left;
+    border: none;
+}
+
+QToolButton#SidebarItem:hover {
+    background: {{PRIMARY_HOVER}};
+}
+
+QToolButton#SidebarItem[active="true"] {
+    background: {{PRIMARY_PRESSED}};
+    border-left: 4px solid {{BRAND}};
+    padding-left: 8px;
+}

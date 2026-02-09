@@ -78,3 +78,23 @@ def set_ui_theme(theme: str) -> None:
         _settings().setValue("ui/theme", theme_name)
     except Exception:
         log.debug("set_ui_theme failed", exc_info=True)
+
+
+def get_nav_mode() -> str:
+    """Return persisted navigation mode: 'classic' or 'modern'."""
+    try:
+        val = _settings().value("ui/nav_mode", "classic")
+        mode = str(val or "classic").strip().lower()
+        return mode if mode in ("classic", "modern") else "classic"
+    except Exception:
+        log.debug("get_nav_mode failed", exc_info=True)
+        return "classic"
+
+
+def set_nav_mode(mode: str) -> None:
+    """Persist navigation mode."""
+    try:
+        m = str(mode or "classic").strip().lower()
+        _settings().setValue("ui/nav_mode", m if m in ("classic", "modern") else "classic")
+    except Exception:
+        log.debug("set_nav_mode failed", exc_info=True)

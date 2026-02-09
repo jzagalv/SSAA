@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.139] - 2026-02-08
+### Added
+- Modo moderno con sidebar colapsable (navegacion lateral) sincronizado con tabs.
+- Alternancia "Modo clasico / moderno" desde menu Ver -> Navegacion + persistencia en QSettings.
+### Tech
+- Estilos de sidebar integrados en `resources/styles.qss` usando tokens del theme.
+
 ## [1.4.0-alpha.138] - 2026-02-08
 ### Added
 - Cuadros de carga C.A.: columnas completas segun template de planilla.

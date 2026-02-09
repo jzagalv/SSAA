@@ -17,7 +17,7 @@ from pathlib import Path
 from app.sections import Section
 from PyQt5.QtWidgets import (
     QTabWidget, QMessageBox, QMainWindow, QAction, QActionGroup, QFileDialog,
-    QProgressDialog, QApplication,
+    QProgressDialog, QApplication, QWidget, QHBoxLayout, QFrame,
 )
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtCore import Qt
@@ -42,8 +42,14 @@ from screens.load_tables.load_tables_screen import LoadTablesScreen
 from screens.ssaa_designer.ssaa_designer_screen import SSAADesignerScreen
 from screens.cc_consumption.cc_consumption_screen import CCConsumptionScreen
 from screens.bank_charger.bank_charger_screen import BankChargerSizingScreen
-from ui.common.state import get_ui_theme, set_ui_theme
+from ui.common.state import (
+    get_ui_theme,
+    set_ui_theme,
+    get_nav_mode as get_saved_nav_mode,
+    set_nav_mode as save_nav_mode,
+)
 from ui.theme import apply_named_theme
+from ui.widgets.sidebar import Sidebar
 
 # Guardrails / ownership catalog (kept in app layer to avoid UI cross-coupling)
 from app.section_catalog import validate_catalog
@@ -346,18 +352,57 @@ class MainWindow(QMainWindow):
 
         # Widget principal con tabs
         self.app_widget = BatteryBankCalculatorApp(self.data_model)
-        self.setCentralWidget(self.app_widget)
+        self.sidebar = Sidebar()
+        self.sidebar.navigate_requested.connect(self._on_sidebar_navigate)
+
+        self._central = QWidget()
+        lay = QHBoxLayout(self._central)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        lay.addWidget(self.sidebar)
+        lay.addWidget(self.app_widget, 1)
+        self.setCentralWidget(self._central)
+        self.app_widget.currentChanged.connect(self._on_tab_changed_for_sidebar)
 
         # Fin del armado inicial
         self.data_model.set_ui_refreshing(False)
         self.data_model.mark_dirty(False)
 
         self._create_menus()
+        self.set_nav_mode(get_saved_nav_mode())
 
         # Ventanas flotantes (reutilizables)
         self._lib_manager = None
         self._db_consumos = None
         self._db_materiales = None
+
+    def _on_sidebar_navigate(self, tab_index: int) -> None:
+        try:
+            self.app_widget.setCurrentIndex(int(tab_index))
+        except Exception:
+            pass
+
+    def _on_tab_changed_for_sidebar(self, index: int) -> None:
+        try:
+            self.sidebar.set_active(int(index))
+        except Exception:
+            pass
+
+    def set_nav_mode(self, mode: str) -> None:
+        mode = (mode or "classic").strip().lower()
+        if mode not in ("classic", "modern"):
+            mode = "classic"
+
+        self._nav_mode = mode
+        save_nav_mode(mode)
+
+        if mode == "classic":
+            self.sidebar.hide()
+            self.app_widget.tabBar().show()
+        else:
+            self.sidebar.show()
+            self.app_widget.tabBar().hide()
+            self.sidebar.set_active(self.app_widget.currentIndex())
 
     # ---------------------------------------------------------
     # Menús / acciones
@@ -426,6 +471,26 @@ class MainWindow(QMainWindow):
 
         act_theme_light.triggered.connect(lambda: self._apply_ui_theme("light"))
         act_theme_dark.triggered.connect(lambda: self._apply_ui_theme("dark"))
+
+        nav_menu = view_menu.addMenu("Navegacion")
+        nav_group = QActionGroup(self)
+        nav_group.setExclusive(True)
+
+        act_nav_classic = QAction("Modo clasico", self, checkable=True)
+        act_nav_modern = QAction("Modo moderno", self, checkable=True)
+        nav_group.addAction(act_nav_classic)
+        nav_group.addAction(act_nav_modern)
+        nav_menu.addAction(act_nav_classic)
+        nav_menu.addAction(act_nav_modern)
+
+        nav_mode = get_saved_nav_mode()
+        if nav_mode == "modern":
+            act_nav_modern.setChecked(True)
+        else:
+            act_nav_classic.setChecked(True)
+
+        act_nav_classic.triggered.connect(lambda: self.set_nav_mode("classic"))
+        act_nav_modern.triggered.connect(lambda: self.set_nav_mode("modern"))
 
         # Ayuda
         help_menu = menubar.addMenu("Ayuda")
