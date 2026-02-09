@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsItem,
     QStyleOptionGraphicsItem, QGraphicsRectItem,
     QTableWidget, QTableWidgetItem, QComboBox, QCheckBox, QMenu, QMessageBox,
-    QHeaderView
+    QHeaderView, QGroupBox
 )
 
 from ui.common.state import save_header_state, restore_header_state
@@ -98,7 +98,7 @@ class CabinetComponentsScreen(ScreenBase):
         self._copied_cabinet_info = None
 
         self.scene = QGraphicsScene(self)
-        self._dynamic_height = CABINET_HEIGHT
+        self._dynamic_height = self._cabinet_min_height()
         self.view = CustomGraphicsView(self.scene, self, self)
 
         self._frame_item = None
@@ -176,10 +176,13 @@ class CabinetComponentsScreen(ScreenBase):
     # --------------------------------------------------------
     def _init_ui(self):
         root = QHBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
 
         # panel izquierdo: gabinetes
+        left_group = QGroupBox("Gabinetes")
         left = QVBoxLayout()
-        left.addWidget(QLabel("Gabinetes"))
+        left.setSpacing(8)
         self.cabinets_list = QListWidget()
         self.cabinets_list.currentRowChanged.connect(self._on_select_cabinet)
         # menú contextual para copiar/pegar consumos entre gabinetes
@@ -188,14 +191,23 @@ class CabinetComponentsScreen(ScreenBase):
             self._show_cabinet_context_menu
         )
         left.addWidget(self.cabinets_list)
-        root.addLayout(left, 1)
+        left_group.setLayout(left)
+        root.addWidget(left_group, 1)
 
         # panel central: vista + tabla
         center = QVBoxLayout()
-        center.addWidget(QLabel("Diseño del gabinete"))
-        center.addWidget(self.view, 3)
+        center.setSpacing(10)
 
-        center.addWidget(QLabel("Consumos del gabinete"))
+        design_group = QGroupBox("Diseño del gabinete")
+        design_layout = QVBoxLayout()
+        design_layout.setSpacing(8)
+        design_layout.addWidget(self.view)
+        design_group.setLayout(design_layout)
+        center.addWidget(design_group, 3)
+
+        table_group = QGroupBox("Consumos del gabinete")
+        table_layout = QVBoxLayout()
+        table_layout.setSpacing(8)
         self.table = QTableWidget(0, 11, self)
         self.table.setHorizontalHeaderLabels([
             "Equipo",
@@ -210,22 +222,26 @@ class CabinetComponentsScreen(ScreenBase):
             "Fase",
             "Origen",
         ])
-        header = self.table.horizontalHeader()
         configure_table_autoresize(self.table)
+        restore_header_state(self.table.horizontalHeader(), "cabinet.components.table.header")
 
         # ---> activar ordenamiento
         make_table_sortable(self.table)
 
         self.table.itemChanged.connect(self._on_table_item_changed)
-        center.addWidget(self.table, 2)
+        table_layout.addWidget(self.table)
+        table_group.setLayout(table_layout)
+        center.addWidget(table_group, 2)
         root.addLayout(center, 3)
 
         # panel derecho: componentes disponibles
+        right_group = QGroupBox("Consumos")
         right = QVBoxLayout()
-        right.addWidget(QLabel("Consumos"))
+        right.setSpacing(8)
         self.equipment_list = EquipmentListWidget()
         right.addWidget(self.equipment_list)
-        root.addLayout(right, 1)
+        right_group.setLayout(right)
+        root.addWidget(right_group, 1)
 
     # --------------------------------------------------------
     # Carga de datos
@@ -343,6 +359,7 @@ class CabinetComponentsScreen(ScreenBase):
         else:
             self.current_cabinet = None
 
+        self._dynamic_height = self._cabinet_min_height()
         self.update_design_view()
 
     # --------------------------------------------------------
@@ -438,14 +455,18 @@ class CabinetComponentsScreen(ScreenBase):
         self._cab_title_bg = bg
         self._cabinet_title_item = t
 
+    def _cabinet_min_height(self) -> int:
+        return int(max(DEFAULT_SIZE[1] + 2 * GRID_SIZE + 2 * CABINET_MARGIN, 220))
+
     def _ensure_scene_fits(self):
-        max_bottom = CABINET_MARGIN + self._dynamic_height
+        max_bottom = CABINET_MARGIN
         for item in self.scene.items():
             if isinstance(item, ComponentCardItem):
                 br = item.mapRectToScene(item.boundingRect())
                 max_bottom = max(max_bottom, br.bottom() + CABINET_MARGIN)
 
-        self._dynamic_height = max(CABINET_HEIGHT, max_bottom - CABINET_MARGIN)
+        min_height = self._cabinet_min_height()
+        self._dynamic_height = max(min_height, max_bottom - CABINET_MARGIN)
         total_height = self._dynamic_height + EXTRA_SCROLL
         self.scene.setSceneRect(0, 0, CABINET_MARGIN * 2 + CABINET_WIDTH, total_height)
 
@@ -483,11 +504,11 @@ class CabinetComponentsScreen(ScreenBase):
 
         if not self.current_cabinet:
             self.table.setRowCount(0)
+            self._dynamic_height = self._cabinet_min_height()
+            total_height = self._dynamic_height + EXTRA_SCROLL
+            self.scene.setSceneRect(0, 0, CABINET_MARGIN * 2 + CABINET_WIDTH, total_height)
             self._loading = False
             return
-
-        self._draw_cabinet_frame()
-        self._show_cabinet_title()
 
         components = self.current_cabinet.setdefault("components", [])
         self.table.setRowCount(0)
@@ -546,6 +567,8 @@ class CabinetComponentsScreen(ScreenBase):
             self._append_table_row(comp_id, name, data)
 
         self._ensure_scene_fits()
+        self._draw_cabinet_frame()
+        self._show_cabinet_title()
         self._loading = False
 
     def _get_default_component_data(self, base_name: str, lib_uid: str = "") -> dict:
