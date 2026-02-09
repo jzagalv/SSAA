@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
+    QSizePolicy,
     QVBoxLayout,
 )
 
@@ -100,7 +101,9 @@ class LocationScreen(ScreenBase):
         layout.setSpacing(10)
 
         # ===== Ubicaciones =====
-        ubicaciones_group = QGroupBox("Ubicaciones")
+        self.group_ubicaciones = QGroupBox("Ubicaciones")
+        self.group_ubicaciones.setMinimumHeight(300)
+        self.group_ubicaciones.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         ubicaciones_layout = QVBoxLayout()
         ubicaciones_layout.setSpacing(8)
 
@@ -152,11 +155,12 @@ class LocationScreen(ScreenBase):
 
         ubicaciones_layout.addLayout(sala_layout)
         ubicaciones_layout.addWidget(self.tabla_salas)
-        ubicaciones_group.setLayout(ubicaciones_layout)
-        layout.addWidget(ubicaciones_group)
+        self.group_ubicaciones.setLayout(ubicaciones_layout)
+        layout.addWidget(self.group_ubicaciones)
 
         # ===== Gabinetes =====
-        gabinetes_group = QGroupBox("Gabinetes")
+        self.group_gabinetes = QGroupBox("Gabinetes")
+        self.group_gabinetes.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         gabinetes_layout = QVBoxLayout()
         gabinetes_layout.setSpacing(8)
 
@@ -214,8 +218,8 @@ class LocationScreen(ScreenBase):
 
         gabinetes_layout.addLayout(gabinete_layout)
         gabinetes_layout.addWidget(self.tabla_gabinetes)
-        gabinetes_group.setLayout(gabinetes_layout)
-        layout.addWidget(gabinetes_group)
+        self.group_gabinetes.setLayout(gabinetes_layout)
+        layout.addWidget(self.group_gabinetes, 1)
 
         self.btn_editar_sala.setEnabled(False)
         self.btn_eliminar_sala.setEnabled(False)
@@ -446,4 +450,3 @@ class LocationScreen(ScreenBase):
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         pass
-
