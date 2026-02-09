@@ -138,7 +138,6 @@ class ComponentDatabaseScreen(QDialog):
 
         self._loading = True
         self._populate_table()
-        request_autofit(self.table)
         self._apply_all_rules()
         self._loading = False
 
@@ -166,6 +165,40 @@ class ComponentDatabaseScreen(QDialog):
         self.txt_name = QLineEdit()
         self.txt_name.textChanged.connect(self._on_name_changed)
         top.addWidget(self.txt_name)
+
+        # filtros
+        filters = QHBoxLayout()
+        layout.addLayout(filters)
+
+        filters.addWidget(QLabel("Buscar:"))
+        self.txt_filter = QLineEdit()
+        self.txt_filter.setPlaceholderText("Equipo, código, marca o modelo…")
+        self.txt_filter.setToolTip("Filtra por Equipo/Código/Marca/Modelo")
+        self.txt_filter.textChanged.connect(self._apply_filters)
+        filters.addWidget(self.txt_filter, 1)
+
+        filters.addWidget(QLabel("Tipo:"))
+        self.cmb_tipo = QComboBox()
+        self.cmb_tipo.currentIndexChanged.connect(self._apply_filters)
+        filters.addWidget(self.cmb_tipo)
+
+        filters.addWidget(QLabel("Alimentador:"))
+        self.cmb_alim = QComboBox()
+        self.cmb_alim.currentIndexChanged.connect(self._apply_filters)
+        filters.addWidget(self.cmb_alim)
+
+        filters.addWidget(QLabel("Fase:"))
+        self.cmb_fase = QComboBox()
+        self.cmb_fase.currentIndexChanged.connect(self._apply_filters)
+        filters.addWidget(self.cmb_fase)
+
+        self.btn_clear_filters = QPushButton("Limpiar")
+        self.btn_clear_filters.clicked.connect(self._clear_filters)
+        filters.addWidget(self.btn_clear_filters)
+
+        self.lbl_count = QLabel("Mostrando 0 de 0")
+        self.lbl_count.setToolTip("Cantidad de filas visibles según filtros")
+        filters.addWidget(self.lbl_count)
 
         # tabla
         self.table = QTableWidget(0, 11, self)
@@ -228,6 +261,8 @@ class ComponentDatabaseScreen(QDialog):
         if self._loading:
             return
         self._dirty = True
+        self._refresh_filter_options()
+        self._apply_filters()
 
     def closeEvent(self, event):
         if not self._dirty:
@@ -276,7 +311,6 @@ class ComponentDatabaseScreen(QDialog):
         self._loading = True
         self._refresh_header_info()
         self._populate_table()
-        request_autofit(self.table)
         self._apply_all_rules()
         self._loading = False
 
@@ -334,11 +368,20 @@ class ComponentDatabaseScreen(QDialog):
         items = self.data.get("items", [])
         if not isinstance(items, list):
             items = []
-
-        self.table.setRowCount(0)
-        for raw in items:
-            d = _normalize_item(raw)
-            self._append_row(d)
+        prev_loading = self._loading
+        self._loading = True
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(0)
+            for raw in items:
+                d = _normalize_item(raw)
+                self._append_row(d)
+            self._refresh_filter_options()
+            self._apply_filters()
+            request_autofit(self.table)
+        finally:
+            self.table.blockSignals(False)
+            self._loading = prev_loading
 
     def _append_row(self, d: Dict[str, Any] | None = None):
         d = _normalize_item(d or {})
@@ -391,11 +434,16 @@ class ComponentDatabaseScreen(QDialog):
             return
         self._dirty = True
         self._apply_all_rules()
+        self._refresh_filter_options()
+        self._apply_filters()
 
     def _add_row(self):
         self._append_row({})
         self._dirty = True
         self._apply_all_rules()
+        self._refresh_filter_options()
+        self._apply_filters()
+        request_autofit(self.table)
 
     def _delete_selected(self):
         rows = sorted({idx.row() for idx in self.table.selectedIndexes()}, reverse=True)
@@ -404,6 +452,9 @@ class ComponentDatabaseScreen(QDialog):
         for r in rows:
             self.table.removeRow(r)
         self._dirty = True
+        self._refresh_filter_options()
+        self._apply_filters()
+        request_autofit(self.table)
 
     def _collect_from_table(self):
         items: List[Dict[str, Any]] = []
@@ -454,6 +505,78 @@ class ComponentDatabaseScreen(QDialog):
     def _combo_at(self, row: int, col: int) -> str:
         w = self.table.cellWidget(row, col)
         return w.currentText() if isinstance(w, QComboBox) else ""
+
+    def _collect_unique_values(self, col_index: int) -> List[str]:
+        values = set()
+        for r in range(self.table.rowCount()):
+            if col_index in (COL_ALIMENTADOR, COL_TIPO, COL_FASE):
+                text = self._combo_at(r, col_index).strip()
+            else:
+                text = self._item_text(r, col_index).strip()
+            if text:
+                values.add(text)
+        return sorted(values, key=str.casefold)
+
+    def _refresh_filter_options(self):
+        if not hasattr(self, "cmb_tipo"):
+            return
+
+        def _rebuild_combo(combo: QComboBox, values: List[str]) -> None:
+            prev = combo.currentText().strip()
+            combo.blockSignals(True)
+            combo.clear()
+            combo.addItem("Todos")
+            for v in values:
+                combo.addItem(v)
+            idx = combo.findText(prev) if prev else -1
+            combo.setCurrentIndex(idx if idx >= 0 else 0)
+            combo.blockSignals(False)
+
+        _rebuild_combo(self.cmb_tipo, self._collect_unique_values(COL_TIPO))
+        _rebuild_combo(self.cmb_alim, self._collect_unique_values(COL_ALIMENTADOR))
+        _rebuild_combo(self.cmb_fase, self._collect_unique_values(COL_FASE))
+
+    def _clear_filters(self, *_args):
+        if not hasattr(self, "txt_filter"):
+            return
+        self.txt_filter.blockSignals(True)
+        self.txt_filter.clear()
+        self.txt_filter.blockSignals(False)
+        for combo in (self.cmb_tipo, self.cmb_alim, self.cmb_fase):
+            combo.blockSignals(True)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+        self._apply_filters()
+
+    def _apply_filters(self, *_args):
+        if not hasattr(self, "table"):
+            return
+        q = self.txt_filter.text().strip().casefold() if hasattr(self, "txt_filter") else ""
+        tipo_sel = self.cmb_tipo.currentText().strip() if hasattr(self, "cmb_tipo") else "Todos"
+        alim_sel = self.cmb_alim.currentText().strip() if hasattr(self, "cmb_alim") else "Todos"
+        fase_sel = self.cmb_fase.currentText().strip() if hasattr(self, "cmb_fase") else "Todos"
+
+        shown = 0
+        total = self.table.rowCount()
+        for r in range(total):
+            haystack = " ".join([
+                self._item_text(r, COL_EQUIPO),
+                self._item_text(r, COL_CODE),
+                self._item_text(r, COL_MARCA),
+                self._item_text(r, COL_MODELO),
+            ]).casefold()
+            match_text = (not q) or (q in haystack)
+            match_tipo = (tipo_sel == "Todos") or (self._combo_at(r, COL_TIPO) == tipo_sel)
+            match_alim = (alim_sel == "Todos") or (self._combo_at(r, COL_ALIMENTADOR) == alim_sel)
+            match_fase = (fase_sel == "Todos") or (self._combo_at(r, COL_FASE) == fase_sel)
+
+            visible = bool(match_text and match_tipo and match_alim and match_fase)
+            self.table.setRowHidden(r, not visible)
+            if visible:
+                shown += 1
+
+        if hasattr(self, "lbl_count"):
+            self.lbl_count.setText(f"Mostrando {shown} de {total}")
 
     # ----------------- reglas visuales -----------------
     def _apply_all_rules(self):

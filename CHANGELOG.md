@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.155] - 2026-02-09
+- Librería de Consumos: filtros por búsqueda, tipo de consumo, alimentador y fase para facilitar lectura.
+
 ## [1.4.0-alpha.154] - 2026-02-09
 - UI: QComboBox vuelve a mostrar flecha y se corrige recorte de texto en combos (incluye combos en tablas).
 
