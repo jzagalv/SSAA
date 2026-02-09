@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.153] - 2026-02-09
+- Consumos C.C.: auto-ajuste de ancho de columnas por contenido (texto más largo) en todas las tablas.
+- Consumos C.C.: pulido final de layout/sorting/validaciones.
+
 ## [1.4.0-alpha.152] - 2026-02-09
 - Consumos C.C.: persistencia de columnas por pestaña.
 - Consumos C.C.: orden numérico real y formato uniforme.

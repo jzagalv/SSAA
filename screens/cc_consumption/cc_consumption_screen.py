@@ -37,7 +37,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QGuiApplication
-from ui.utils.table_utils import configure_table_autoresize
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
 from datetime import datetime
 
 
@@ -219,6 +219,16 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             else:
                 it.setToolTip("")
 
+    def _request_autofit_all_tables(self) -> None:
+        for table in (
+            getattr(self, "tbl_perm", None),
+            getattr(self, "tbl_mom", None),
+            getattr(self, "tbl_mom_resumen", None),
+            getattr(self, "tbl_ale", None),
+        ):
+            if table is not None:
+                request_autofit(table)
+
     # =========================================================
     # UI
     # =========================================================
@@ -294,6 +304,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_perm.addLayout(top_perm)
         # Tabla de permanentes
         self.tbl_perm = QTableView(self)
+        self.tbl_perm._autofit_extra_px = 20
+        self.tbl_perm._autofit_max_px = 360
+        self.tbl_perm._autofit_column_caps = {0: 360, 1: 240, 2: 560}
         configure_table_autoresize(self.tbl_perm)
         self.tbl_perm.verticalHeader().setDefaultSectionSize(26)
         self.tbl_perm.setSortingEnabled(True)
@@ -307,8 +320,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.lbl_perm_total_p_total = QLabel("Total P total: 0.00 [W]")
         self.lbl_perm_total_p_perm = QLabel("Total P permanente: 0.00 [W]")
         self.lbl_perm_total_i = QLabel("Total I permanente: 0.00 [A]")
-        self.lbl_perm_total_p_mom = QLabel("Total P momentÃ¡nea: 0.00 [W]")
-        self.lbl_perm_total_i_fuera = QLabel("Total I momentÃ¡nea: 0.00 [A]")
+        self.lbl_perm_total_p_mom = QLabel("Total P momentánea: 0.00 [W]")
+        self.lbl_perm_total_i_fuera = QLabel("Total I momentánea: 0.00 [A]")
 
         bottom_perm.addWidget(self.lbl_perm_total_p_total)
         bottom_perm.addSpacing(20)
@@ -346,6 +359,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_mom.addLayout(top_mom)
         # Tabla de cargas momentÃ¡neas
         self.tbl_mom = QTableView(self)
+        self.tbl_mom._autofit_extra_px = 20
+        self.tbl_mom._autofit_max_px = 360
+        self.tbl_mom._autofit_column_caps = {0: 360, 1: 240, 2: 560, 6: 140}
         configure_table_autoresize(self.tbl_mom)
         self.tbl_mom.verticalHeader().setDefaultSectionSize(26)
         self.tbl_mom.setSortingEnabled(True)
@@ -355,6 +371,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # Tabla de resumen por escenario (con descripcion)
         self.tbl_mom_resumen = QTableView(self)
+        self.tbl_mom_resumen._autofit_extra_px = 20
+        self.tbl_mom_resumen._autofit_max_px = 320
+        self.tbl_mom_resumen._autofit_column_caps = {0: 120, 1: 520, 2: 180, 3: 180}
         configure_table_autoresize(self.tbl_mom_resumen)
         self.tbl_mom_resumen.setSortingEnabled(True)
         self.tbl_mom_resumen.setEditTriggers(QAbstractItemView.AllEditTriggers)
@@ -381,6 +400,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         g_ale = self.grp_ale
         v_ale = QVBoxLayout(g_ale)
         self.tbl_ale = QTableView(self)
+        self.tbl_ale._autofit_extra_px = 20
+        self.tbl_ale._autofit_max_px = 360
+        self.tbl_ale._autofit_column_caps = {1: 360, 2: 240, 3: 560}
         configure_table_autoresize(self.tbl_ale)
         self.tbl_ale.setSortingEnabled(True)
         v_ale.addWidget(self.tbl_ale, 1)
@@ -646,6 +668,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self._building = False
         self._loading = False
         self._restore_ui_state()
+        self._request_autofit_all_tables()
 
         # --- Render from current computed results (if any) ---
         self._rebuild_momentary_scenarios()
