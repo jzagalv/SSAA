@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.149] - 2026-02-09
+### Changed
+- Proyecto: se agregó scroll para evitar corte de secciones y se ajustaron márgenes/espaciado.
+
 ## [1.4.0-alpha.148] - 2026-02-09
 ### Fixed
 - Instalaciones: la sección Ubicaciones ya no se colapsa al cargar proyectos con gabinetes.

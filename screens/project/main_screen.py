@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QVBoxLayout, QFormLayout, QGroupBox, QLineEdit
+from PyQt5.QtWidgets import (
+    QFormLayout,
+    QGroupBox,
+    QLineEdit,
+    QScrollArea,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from PyQt5.QtCore import pyqtSignal
@@ -16,9 +24,11 @@ PROJ_KEYS = [
     "num_cargadores", "num_bancos", "porcentaje_utilizacion", "tiempo_autonomia",
 ]
 
+
 class MainScreen(ScreenBase):
     SECTION = Section.PROJECT
     porcentaje_util_changed = pyqtSignal(float)
+
     def __init__(self, data_model):
         super().__init__(data_model, parent=None)
         self.inputs = {}  # key -> QLineEdit
@@ -32,7 +42,7 @@ class MainScreen(ScreenBase):
 
         def on_change(text):
             # Evitar ensuciar el proyecto por refrescos/cargas o si el
-            # valor realmente no cambió.
+            # valor realmente no cambio.
             if getattr(self.data_model, "_ui_refreshing", False):
                 return
             old = self.data_model.proyecto.get(key, "")
@@ -41,7 +51,7 @@ class MainScreen(ScreenBase):
             self.data_model.proyecto[key] = text
             self.data_model.mark_dirty(True)
 
-            # si es el % de utilización, avisamos al resto de pantallas
+            # si es el % de utilizacion, avisamos al resto de pantallas
             if key == "porcentaje_utilizacion":
                 value = self._to_float(text, default=0.0)
                 self.porcentaje_util_changed.emit(value)
@@ -62,7 +72,7 @@ class MainScreen(ScreenBase):
 
     def set_pct_from_outside(self, value: float):
         """
-        Actualiza el QLineEdit de % Utilización desde otra pantalla,
+        Actualiza el QLineEdit de % Utilizacion desde otra pantalla,
         sin disparar recursivamente textChanged.
         """
         txt = f"{float(value):.2f}"
@@ -76,16 +86,20 @@ class MainScreen(ScreenBase):
 
         # aseguramos que el modelo se mantenga coherente
         self.data_model.proyecto["porcentaje_utilizacion"] = txt
-        # Este campo se ajusta por recálculo/propagación desde otras
+        # Este campo se ajusta por recalculo/propagacion desde otras
         # pantallas, por lo que NO debe marcar el proyecto como 'dirty'.
         # (si el usuario lo edita directamente, se marca dirty en _bind_line)
 
     # ----- UI -----
     def initUI(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(10)
 
         # === Datos del Proyecto ===
         g_proy = QGroupBox("Datos del Proyecto")
+        g_proy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_proy = QFormLayout()
 
         self.ed_cliente = QLineEdit();                self._bind_line("cliente", self.ed_cliente)
@@ -107,10 +121,11 @@ class MainScreen(ScreenBase):
         f_proy.addRow("Altura (msnm):", self.ed_altura)
 
         g_proy.setLayout(f_proy)
-        layout.addWidget(g_proy)
+        content_layout.addWidget(g_proy)
 
         # === Sistema CA ===
         g_ca = QGroupBox("Sistema CA")
+        g_ca.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_ca = QFormLayout()
 
         self.ed_v_mono = QLineEdit();                 self._bind_line("tension_monofasica", self.ed_v_mono)
@@ -129,10 +144,11 @@ class MainScreen(ScreenBase):
         f_ca.addRow("Frecuencia (Hz):", self.ed_freq)
 
         g_ca.setLayout(f_ca)
-        layout.addWidget(g_ca)
+        content_layout.addWidget(g_ca)
 
         # === Sistema CC ===
         g_cc = QGroupBox("Sistema CC")
+        g_cc.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_cc = QFormLayout()
 
         self.ed_nom = QLineEdit();                    self._bind_line("tension_nominal", self.ed_nom)
@@ -151,15 +167,23 @@ class MainScreen(ScreenBase):
         f_cc.addRow("N° Bancos:", self.ed_bancos)
 
         self.ed_util = QLineEdit();                   self._bind_line("porcentaje_utilizacion", self.ed_util)
-        #f_cc.addRow("% Utilización:", self.ed_util)
+        # f_cc.addRow("% Utilización:", self.ed_util)
 
-        self.aut_time = QLineEdit();                   self._bind_line("tiempo_autonomia", self.aut_time)
+        self.aut_time = QLineEdit();                  self._bind_line("tiempo_autonomia", self.aut_time)
         f_cc.addRow("Tiempo de Autonomía [h]:", self.aut_time)
 
         g_cc.setLayout(f_cc)
-        layout.addWidget(g_cc)
+        content_layout.addWidget(g_cc)
 
-        self.setLayout(layout)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content_widget)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(scroll)
+        self.setLayout(main_layout)
 
         # Carga inicial de datos del modelo
         self.load_data()
@@ -191,6 +215,7 @@ class MainScreen(ScreenBase):
         _set(self.ed_bancos, p.get("num_bancos", ""))
         _set(self.ed_util, p.get("porcentaje_utilizacion", ""))
         _set(self.aut_time, p.get("tiempo_autonomia", ""))
+
     def setup_validators(self):
         self.ed_altura.setValidator(QDoubleValidator(0, 10000, 2, self))
         self.ed_vmax.setValidator(QDoubleValidator(0, 100, 2, self))
@@ -209,9 +234,10 @@ class MainScreen(ScreenBase):
             self.load_data()
         except Exception:
             import logging
-            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+            logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
 
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         # This screen writes through on-change bindings; keep as no-op.
         pass
+
