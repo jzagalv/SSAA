@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.157] - 2026-02-09
+- Consumos (gabinetes): se corrige crash y se restablece copiar/pegar consumos (mapeo por TAG con lista ordenada).
+- Consumos C.C.: se corrige crash al editar datos (restaurado iterador robusto de gabinetes en modelo).
+
 ## [1.4.0-alpha.156] - 2026-02-09
 - Consumos (gabinetes): se corrige copiar/pegar consumos entre gabinetes (mapeo por TAG; lista ordenada ya no rompe la acción).
 

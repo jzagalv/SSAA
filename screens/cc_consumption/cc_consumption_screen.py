@@ -190,10 +190,34 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         if not comp_id:
             return None
         for gab in self._iter_model_gabinetes():  # usa instalaciones["gabinetes"]
-            for c in gab.get("components", []) or []:
-                if c.get("id") == comp_id:
+            comps = []
+            if isinstance(gab, dict):
+                comps = gab.get("componentes") or gab.get("components") or []
+            if not isinstance(comps, list):
+                comps = []
+            for c in comps:
+                if not isinstance(c, dict):
+                    continue
+                if str(c.get("id", "")) == str(comp_id) or str(c.get("comp_id", "")) == str(comp_id):
                     return c
         return None
+
+    def _iter_model_gabinetes(self):
+        """
+        Itera gabinetes del modelo en forma robusta.
+        Preferir data_model.gabinetes; fallback a data_model.instalaciones["gabinetes"].
+        """
+        dm = getattr(self, "data_model", None)
+        if dm is None:
+            return []
+        gabs = getattr(dm, "gabinetes", None)
+        if isinstance(gabs, list):
+            return gabs
+        inst = getattr(dm, "instalaciones", None)
+        if isinstance(inst, dict):
+            gabs = inst.get("gabinetes", [])
+            return gabs if isinstance(gabs, list) else []
+        return []
 
     def set_debug_mode(self, enabled: bool):
         self._debug_mode = bool(enabled)
