@@ -577,6 +577,7 @@ QWidget[glass="true"][ui_role="table"] QHeaderView::section {
 /* Fondo general moderno: leve tinte claro (sin afectar clasico) */
 QWidget[glass="true"] {
     background: rgba(245, 248, 252, 255);
+    color: rgba(20, 35, 50, 230);
 }
 
 /* Sidebar: en moderno no debe ser verde solido, sino glass claro */
@@ -594,6 +595,8 @@ QWidget[glass="true"] QToolButton#SidebarItem {
     padding: 10px 12px;
     margin: 6px 10px;
     text-align: left;
+    color: rgba(20, 35, 50, 240);
+    font-weight: 500;
 }
 
 QWidget[glass="true"] QToolButton#SidebarItem:hover {
@@ -603,6 +606,8 @@ QWidget[glass="true"] QToolButton#SidebarItem:hover {
 QWidget[glass="true"] QToolButton#SidebarItem[active="true"] {
     background: rgba(255, 255, 255, 150);
     border-left: 4px solid rgba(0, 160, 90, 220);
+    color: rgba(20, 35, 50, 255);
+    font-weight: 600;
 }
 
 /* Cards suaves: groupboxes y frames */
@@ -667,4 +672,20 @@ QWidget[glass="true"] QHeaderView::section {
     color: rgba(20, 30, 40, 240);
     border: 1px solid rgba(0, 0, 0, 55);
     padding: 5px 8px;
+}
+
+/* =========================================================
+   Modern override: desactivar INPUT_EDIT_BG (amarillo) SOLO en moderno
+   ========================================================= */
+QWidget[glass="true"] QLineEdit:!read-only,
+QWidget[glass="true"] QAbstractSpinBox:!read-only,
+QWidget[glass="true"] QComboBox:enabled {
+    background: rgba(255, 255, 255, 210);
+}
+
+QWidget[glass="true"] QLineEdit[userField="true"],
+QWidget[glass="true"] QComboBox[userField="true"],
+QWidget[glass="true"] QDoubleSpinBox[userField="true"],
+QWidget[glass="true"] QSpinBox[userField="true"] {
+    background: rgba(255, 255, 255, 210);
 }

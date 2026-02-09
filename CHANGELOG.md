@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.144] - 2026-02-08
+### Fixed
+- Modo moderno: corregido contraste (texto oscuro en UI clara) y desactivado fondo amarillo legacy en inputs.
+
 ## [1.4.0-alpha.143] - 2026-02-08
 ### Fixed
 - En modo moderno, la sidebar ahora aplica estilo/seleccion correctamente al inicio (sin requerir cambio de pestana).
