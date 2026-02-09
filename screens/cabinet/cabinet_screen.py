@@ -315,19 +315,19 @@ class CabinetComponentsScreen(ScreenBase):
         Se ejecuta cuando el usuario cambia la selección de la lista de gabinetes.
         Actualiza el gabinete actual y redibuja la escena y la tabla.
         """
-        gabinetes = getattr(self.data_model, "gabinetes", [])
-        item = self.cabinets_list.item(row) if row >= 0 else None
-        tag = item.data(Qt.UserRole) if item is not None else None
-        if tag:
-            self.current_cabinet = next(
-                (g for g in gabinetes if str(g.get("tag", "")) == str(tag)),
-                None,
-            )
-        else:
-            self.current_cabinet = None
+        self.current_cabinet = self._get_cabinet_by_row(row)
 
         self._dynamic_height = self._cabinet_min_height()
         self.update_design_view()
+
+    def _get_cabinet_by_row(self, row: int):
+        """Resuelve gabinete por TAG guardado en UserRole (lista puede estar ordenada)."""
+        item = self.cabinets_list.item(row) if row >= 0 else None
+        tag = item.data(Qt.UserRole) if item is not None else None
+        if not tag:
+            return None
+        gabinetes = getattr(self.data_model, "gabinetes", [])
+        return next((g for g in gabinetes if str(g.get("tag", "")) == str(tag)), None)
 
     # --------------------------------------------------------
     # Copiar / pegar consumos entre gabinetes
@@ -349,10 +349,10 @@ class CabinetComponentsScreen(ScreenBase):
 
         action = menu.exec_(self.cabinets_list.mapToGlobal(pos))
 
-        gabinetes = getattr(self.data_model, "gabinetes", [])
-
-        if action == act_copy and 0 <= row < len(gabinetes):
-            source_cab = gabinetes[row]
+        if action == act_copy:
+            source_cab = self._get_cabinet_by_row(row)
+            if not source_cab:
+                return
             self._copied_cabinet_components = self._copy_cabinet_components(source_cab)
             self._copied_cabinet_info = {
                 "tag": source_cab.get("tag", ""),

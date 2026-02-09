@@ -77,10 +77,16 @@ class CabinetController:
 
         if row is None:
             row = s.cabinets_list.currentRow()
-        if row < 0 or row >= len(s.cabinets):
+        if row is None or row < 0:
             return
 
-        dest_cabinet = s.cabinets[row]
+        item = s.cabinets_list.item(row) if row >= 0 else None
+        tag = item.data(Qt.UserRole) if item is not None else None
+        gabinetes = getattr(s.data_model, "gabinetes", [])
+        dest_cabinet = next(
+            (g for g in gabinetes if str(g.get("tag", "")) == str(tag)),
+            None,
+        )
         if not dest_cabinet:
             return
 

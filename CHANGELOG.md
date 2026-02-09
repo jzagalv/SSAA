@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.156] - 2026-02-09
+- Consumos (gabinetes): se corrige copiar/pegar consumos entre gabinetes (mapeo por TAG; lista ordenada ya no rompe la acción).
+
 ## [1.4.0-alpha.155] - 2026-02-09
 - Librería de Consumos: filtros por búsqueda, tipo de consumo, alimentador y fase para facilitar lectura.
 
