@@ -1,14 +1,22 @@
-import uuid
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
-    QComboBox, QHeaderView, QCheckBox
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QMessageBox,
+    QComboBox,
 )
 from PyQt5.QtCore import pyqtSignal, Qt
+
 from screens.base import ScreenBase
 from app.sections import Section
 from ui.table_utils import make_table_sortable
 from ui.utils.table_utils import configure_table_autoresize
+from screens.project.location_controller import LocationController
+
 
 class LocationScreen(ScreenBase):
     SECTION = Section.INSTALACIONES
@@ -16,6 +24,7 @@ class LocationScreen(ScreenBase):
 
     def __init__(self, data_model):
         super().__init__(data_model, parent=None)
+        self.controller = LocationController(self.data_model)
         self.initUI()
         self.actualizar_combobox_salas()
         self.actualizar_tablas()
@@ -30,12 +39,6 @@ class LocationScreen(ScreenBase):
         if isinstance(sala, dict):
             return sala.get("tag", "") or "", sala.get("nombre", "") or ""
         return "", ""
-
-    def _validar_no_vacio(self, campos_con_valor, mensaje):
-        if any(not (v and str(v).strip()) for v in campos_con_valor):
-            QMessageBox.warning(self, "Error", mensaje)
-            return False
-        return True
 
     def _limpiar_inputs_sala(self):
         self.input_tag_sala.clear()
@@ -89,21 +92,12 @@ class LocationScreen(ScreenBase):
         self.tabla_salas = QTableWidget()
         self.tabla_salas.setColumnCount(2)
         self.tabla_salas.setHorizontalHeaderLabels(["TAG", "Nombre"])
-
         configure_table_autoresize(self.tabla_salas)
-
         make_table_sortable(self.tabla_salas)
-
         self.tabla_salas.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_salas.setSelectionMode(QTableWidget.SingleSelection)
         layout.addWidget(self.tabla_salas)
         self.tabla_salas.itemSelectionChanged.connect(self._on_select_sala)
-
-        self.tabla_gabinetes = QTableWidget()
-        self.tabla_gabinetes.setColumnCount(5)
-        self.tabla_gabinetes.setHorizontalHeaderLabels(["TAG", "Nombre", "Ubicación", "TD/TG", "Fuente de Alimentación"])
-
-        configure_table_autoresize(self.tabla_gabinetes)
 
         # ===== Gabinetes =====
         gabinete_layout = QVBoxLayout()
@@ -143,21 +137,18 @@ class LocationScreen(ScreenBase):
 
         self.tabla_gabinetes = QTableWidget()
         self.tabla_gabinetes.setColumnCount(5)
-        self.tabla_gabinetes.setHorizontalHeaderLabels(["TAG", "Nombre", "Ubicación", "TD/TG", "Fuente de Alimentación"])
+        self.tabla_gabinetes.setHorizontalHeaderLabels(
+            ["TAG", "Nombre", "Ubicación", "TD/TG", "Fuente de Alimentación"]
+        )
         configure_table_autoresize(self.tabla_gabinetes)
         self.tabla_gabinetes.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_gabinetes.setSelectionMode(QTableWidget.SingleSelection)
-        
         make_table_sortable(self.tabla_gabinetes)
-
         layout.addWidget(self.tabla_gabinetes)
         self.tabla_gabinetes.itemChanged.connect(self._on_gabinete_item_changed)
         self.tabla_gabinetes.itemSelectionChanged.connect(self._on_select_gabinete)
 
         self.setLayout(layout)
-
-#        make_table_sortable(self.tabla_salas)
-#        make_table_sortable(self.tabla_gabinetes)
 
     # ------------------------------
     # Actualizaciones de UI
@@ -198,7 +189,9 @@ class LocationScreen(ScreenBase):
                 self.tabla_gabinetes.setItem(row, 3, it)
                 it2 = QTableWidgetItem("")
                 it2.setFlags((it2.flags() | Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable)
-                it2.setCheckState(Qt.Checked if bool(gabinete.get("is_energy_source", False)) else Qt.Unchecked)
+                it2.setCheckState(
+                    Qt.Checked if bool(gabinete.get("is_energy_source", False)) else Qt.Unchecked
+                )
                 self.tabla_gabinetes.setItem(row, 4, it2)
             self.tabla_gabinetes.clearSelection()
         finally:
@@ -238,184 +231,110 @@ class LocationScreen(ScreenBase):
             self.combo_salas.setCurrentIndex(idx)
 
     # ------------------------------
-    # Salas (CRUD)  -> mark_dirty(True)
+    # Salas y gabinetes (CRUD)
     # ------------------------------
-
     def _on_gabinete_item_changed(self, item: QTableWidgetItem):
-        """Persist edits from the gabinetes table back into the DataModel (JSON state)."""
         if item is None:
             return
         row = item.row()
         col = item.column()
-        if row < 0 or row >= len(self.data_model.gabinetes):
+        if row < 0:
             return
 
-        g = self.data_model.gabinetes[row]
-
-        # Column mapping: 0=TAG, 1=Nombre, 2=Sala, 3=TD/TG (checkbox), 4=Fuente de Alimentación (checkbox)
         if col == 0:
-            g["tag"] = item.text().strip()
+            field = "tag"
+            value = item.text()
         elif col == 1:
-            g["nombre"] = item.text().strip()
+            field = "nombre"
+            value = item.text()
         elif col == 2:
-            g["sala"] = item.text().strip()
+            field = "sala"
+            value = item.text()
         elif col == 3:
-            g["is_board"] = (item.checkState() == Qt.Checked)
+            field = "is_board"
+            value = item.checkState() == Qt.Checked
         elif col == 4:
-            g["is_energy_source"] = (item.checkState() == Qt.Checked)
+            field = "is_energy_source"
+            value = item.checkState() == Qt.Checked
+        else:
+            return
 
-        # Mark project as modified so user can save.
-        self.data_model.mark_dirty(True)
+        try:
+            self.controller.update_gabinete_field(row, field, value)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
+            self.actualizar_tabla_gabinetes()
+            return
 
-        # Keep dependent UI in sync (combo + selection panel)
         self.actualizar_combobox_salas()
-
 
     def agregar_sala(self):
         tag = self.input_tag_sala.text().strip()
         nombre = self.input_nombre_sala.text().strip()
-        if not self._validar_no_vacio([tag, nombre], "Complete ambos campos"):
+        try:
+            self.controller.add_ubicacion(tag, nombre)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
-        if any((self._sala_parts(s)[0] == tag) for s in self.data_model.salas):
-            QMessageBox.warning(self, "Error", "TAG ya existe")
-            return
-
-        self.data_model.salas.append({"id": str(uuid.uuid4()), "tag": tag, "nombre": nombre})
-        self.data_model.mark_dirty(True)
         self.actualizar_tablas()
         self._limpiar_inputs_sala()
 
     def editar_sala(self):
         fila = self.tabla_salas.currentRow()
-        if fila < 0 or fila >= len(self.data_model.salas):
-            QMessageBox.warning(self, "Error", "Seleccione una ubicación")
-            return
         tag = self.input_tag_sala.text().strip()
         nombre = self.input_nombre_sala.text().strip()
-        if not self._validar_no_vacio([tag, nombre], "Complete ambos campos"):
+        try:
+            self.controller.edit_ubicacion(fila, tag, nombre)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
-        current_tag, _ = self._sala_parts(self.data_model.salas[fila])
-        if tag != current_tag and any(self._sala_parts(s)[0] == tag for s in self.data_model.salas):
-            QMessageBox.warning(self, "Error", "TAG ya existe")
-            return
-
-        cur = self.data_model.salas[fila]
-        if isinstance(cur, dict):
-            cur["tag"] = tag
-            cur["nombre"] = nombre
-        else:
-            self.data_model.salas[fila] = {"id": str(uuid.uuid4()), "tag": tag, "nombre": nombre}
-        self.data_model.mark_dirty(True)
         self.actualizar_tablas()
         self._limpiar_inputs_sala()
 
     def eliminar_sala(self):
         fila = self.tabla_salas.currentRow()
-        if fila < 0 or fila >= len(self.data_model.salas):
-            QMessageBox.warning(self, "Error", "Seleccione una ubicación")
+        try:
+            self.controller.delete_ubicacion(fila)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
-        self.data_model.salas.pop(fila)
-        self.data_model.mark_dirty(True)
         self.actualizar_tablas()
         self.cabinets_updated.emit()
 
-    # ------------------------------
-    # Gabinetes (CRUD)  -> mark_dirty(True)
-    # ------------------------------
-    def _sala_label_actual(self):
-        idx = self.combo_salas.currentIndex()
-        if idx < 0:
-            return ""
-        return self.combo_salas.itemText(idx)
-
-    
     def agregar_gabinete(self):
         tag = self.input_tag_gabinete.text().strip()
         nombre = self.input_nombre_gabinete.text().strip()
-        sala_label = self._sala_label_actual()
-        if not self._validar_no_vacio([tag, nombre, sala_label], "Complete todos los campos"):
-            return
-        if any(g.get("tag") == tag for g in self.data_model.gabinetes):
-            QMessageBox.warning(self, "Error", "TAG ya existe")
-            return
-
-        # Resolver Ubicación seleccionada (guardamos UUID estable)
         ubic_tag = self.combo_salas.currentData()
-        ubic_id = ""
-        if ubic_tag:
-            for u in self.data_model.salas:
-                if isinstance(u, dict) and u.get("tag") == ubic_tag:
-                    ubic_id = u.get("id", "")
-                    break
-
-        self.data_model.gabinetes.append({
-            "id": str(uuid.uuid4()),
-            "tag": tag,
-            "nombre": nombre,
-            "sala": sala_label,          # legacy (label)
-            "ubicacion_id": ubic_id,     # nuevo (uuid)
-            "is_board": False,
-            "components": [],
-        })
-        self.data_model.mark_dirty(True)
+        try:
+            self.controller.add_gabinete(tag, nombre, ubic_tag)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
+            return
         self.actualizar_tablas()
         self.cabinets_updated.emit()
         self._limpiar_inputs_gabinete()
 
     def editar_gabinete(self):
-
-            fila = self.tabla_gabinetes.currentRow()
-            if fila < 0 or fila >= len(self.data_model.gabinetes):
-                QMessageBox.warning(self, "Error", "Seleccione un gabinete")
-                return
-
-            tag = self.input_tag_gabinete.text().strip()
-            nombre = self.input_nombre_gabinete.text().strip()
-            sala_label = self._sala_label_actual()
-            if not self._validar_no_vacio([tag, nombre, sala_label], "Complete todos los campos"):
-                return
-
-            current_tag = self.data_model.gabinetes[fila].get("tag", "")
-            if tag != current_tag and any(g.get("tag") == tag for g in self.data_model.gabinetes):
-                QMessageBox.warning(self, "Error", "TAG ya existe")
-                return
-
-            # IMPORTANT:
-            # No reemplacemos el dict completo, porque otras pantallas (p.ej. 'Alimentación tableros')
-            # guardan flags adicionales a nivel de gabinete (cc_b1/cc_b2/ca_esencial/ca_no_esencial,
-            # es_fuente, etc.). Reemplazar el dict hacía que esos campos se perdieran al editar.
-            gprev = self.data_model.gabinetes[fila]
-
-            # Asegurar id
-            gprev.setdefault("id", __import__("uuid").uuid4().hex)
-
-            # Actualizar SOLO los campos editados por el usuario
-            gprev["tag"] = tag
-            gprev["nombre"] = nombre
-            gprev["sala"] = sala_label
-            # actualizar ubicacion_id según selección actual
-            ubic_tag = self.combo_salas.currentData()
-            if ubic_tag:
-                for u in self.data_model.salas:
-                    if isinstance(u, dict) and u.get("tag") == ubic_tag:
-                        gprev["ubicacion_id"] = u.get("id", "")
-                        break
-
-            # Mantener explícitamente claves esperadas
-            gprev.setdefault("is_board", False)
-            gprev.setdefault("components", [])
-            self.data_model.mark_dirty(True)
-            self.actualizar_tablas()
-            self.cabinets_updated.emit()
-            self._limpiar_inputs_gabinete()
+        fila = self.tabla_gabinetes.currentRow()
+        tag = self.input_tag_gabinete.text().strip()
+        nombre = self.input_nombre_gabinete.text().strip()
+        ubic_tag = self.combo_salas.currentData()
+        try:
+            self.controller.edit_gabinete(fila, tag, nombre, ubic_tag)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
+            return
+        self.actualizar_tablas()
+        self.cabinets_updated.emit()
+        self._limpiar_inputs_gabinete()
 
     def eliminar_gabinete(self):
         fila = self.tabla_gabinetes.currentRow()
-        if fila < 0 or fila >= len(self.data_model.gabinetes):
-            QMessageBox.warning(self, "Error", "Seleccione un gabinete")
+        try:
+            self.controller.delete_gabinete(fila)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
-        self.data_model.gabinetes.pop(fila)
-        self.data_model.mark_dirty(True)
         self.actualizar_tablas()
         self.cabinets_updated.emit()
 
@@ -426,8 +345,10 @@ class LocationScreen(ScreenBase):
             self.actualizar_tablas()
         except Exception:
             import logging
-            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+            logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
 
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         pass
+

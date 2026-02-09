@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.145] - 2026-02-09
+### Changed
+- Instalaciones: refactor a service+controller (UI desacoplada de lógica).
+### Fixed
+- Instalaciones: eliminado bug potencial por doble creación de tabla de gabinetes en initUI().
+
 ## [1.4.0-alpha.144] - 2026-02-08
 ### Fixed
 - Modo moderno: corregido contraste (texto oscuro en UI clara) y desactivado fondo amarillo legacy en inputs.
