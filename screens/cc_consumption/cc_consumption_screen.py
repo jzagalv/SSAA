@@ -38,6 +38,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QGuiApplication
 from ui.utils.table_utils import configure_table_autoresize
+from datetime import datetime
 
 
 from ui.common.state import save_header_state, restore_header_state
@@ -83,6 +84,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.data_model = data_model
         self._controller = CCConsumptionController(data_model)
         self._building = False  # para no disparar seÃ±ales mientras se carga
+        self._loading = False
+        self._headers_restored = False
 
         self._build_ui()
         self._restore_ui_state()
@@ -142,16 +145,38 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
     def _restore_ui_state(self):
         """Restore per-user UI state (safe)."""
+        if self._headers_restored:
+            return
+        restored = False
         try:
-            restore_header_state(self.tbl_perm.horizontalHeader(), "cc_consumption.tbl_perm.header")
+            mapping = (
+                (getattr(self, "tbl_perm", None), "cc.permanentes.header"),
+                (getattr(self, "tbl_mom", None), "cc.momentaneos.header"),
+                (getattr(self, "tbl_ale", None), "cc.aleatorios.header"),
+                (getattr(self, "tbl_mom_resumen", None), "cc.escenarios.header"),
+            )
+            for table, key in mapping:
+                if table is None or table.model() is None:
+                    continue
+                restore_header_state(table.horizontalHeader(), key)
+                restored = True
         except Exception:
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+        self._headers_restored = restored
 
     def _persist_ui_state(self):
         """Persist per-user UI state (safe)."""
         try:
-            save_header_state(self.tbl_perm.horizontalHeader(), "cc_consumption.tbl_perm.header")
+            mapping = (
+                (getattr(self, "tbl_perm", None), "cc.permanentes.header"),
+                (getattr(self, "tbl_mom", None), "cc.momentaneos.header"),
+                (getattr(self, "tbl_ale", None), "cc.aleatorios.header"),
+                (getattr(self, "tbl_mom_resumen", None), "cc.escenarios.header"),
+            )
+            for table, key in mapping:
+                if table is not None:
+                    save_header_state(table.horizontalHeader(), key)
         except Exception:
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
@@ -271,6 +296,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.tbl_perm = QTableView(self)
         configure_table_autoresize(self.tbl_perm)
         self.tbl_perm.verticalHeader().setDefaultSectionSize(26)
+        self.tbl_perm.setSortingEnabled(True)
 
         # La tabla debe ocupar el alto disponible (ev el alto disponible (evita âaireâ debajo)
         v_perm.addWidget(self.tbl_perm, 1)
@@ -322,7 +348,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.tbl_mom = QTableView(self)
         configure_table_autoresize(self.tbl_mom)
         self.tbl_mom.verticalHeader().setDefaultSectionSize(26)
-        self.tbl_mom.setSortingEnabled(False)   # <-- CLAVE (tiene checkbox/combo)
+        self.tbl_mom.setSortingEnabled(True)
 
         # Tabla principal ocupa el alto disponible
         v_mom.addWidget(self.tbl_mom, 3)
@@ -330,7 +356,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         # Tabla de resumen por escenario (con descripcion)
         self.tbl_mom_resumen = QTableView(self)
         configure_table_autoresize(self.tbl_mom_resumen)
-        self.tbl_mom_resumen.setSortingEnabled(False)
+        self.tbl_mom_resumen.setSortingEnabled(True)
         self.tbl_mom_resumen.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_mom_resumen.verticalHeader().setDefaultSectionSize(26)
         v_mom.addWidget(self.tbl_mom_resumen, 1)
@@ -356,7 +382,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_ale = QVBoxLayout(g_ale)
         self.tbl_ale = QTableView(self)
         configure_table_autoresize(self.tbl_ale)
-        self.tbl_ale.setSortingEnabled(False)   # <-- recomendado
+        self.tbl_ale.setSortingEnabled(True)
         v_ale.addWidget(self.tbl_ale, 1)
 
         bottom_ale = QHBoxLayout()
@@ -408,6 +434,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.refresh_display_only()
 
     def refresh_display_only(self):
+        if getattr(self, "_loading", False):
+            return
         try:
             self.commit_pending_edits()
         except Exception:
@@ -480,10 +508,12 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
     def save_to_model(self):
         # ScreenBase hook: persistir ediciones pendientes al modelo
         self.commit_pending_edits()
+        self._persist_ui_state()
 
     def reload_data(self):
         self.commit_pending_edits()
         self._building = True
+        self._loading = True
 
         try:
             if hasattr(self.data_model, "ensure_aliases_consistent"):
@@ -539,6 +569,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
                 if model is not None and hasattr(model, "set_items"):
                     model.set_items([])
             self._building = False
+            self._loading = False
             return
 
         # If we got here we have voltages -> hide startup hint.
@@ -613,6 +644,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self._load_aleatorios(aleatorios)                    # <-- igual, pero ahora recibe CCItem
 
         self._building = False
+        self._loading = False
+        self._restore_ui_state()
 
         # --- Render from current computed results (if any) ---
         self._rebuild_momentary_scenarios()
@@ -709,14 +742,58 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         if container is None or table is None:
             return
 
+        tab_text = ""
+        try:
+            idx = self.tabs.currentIndex()
+            tab_text = self.tabs.tabText(idx)
+        except Exception:
+            tab_text = ""
+
+        tab_slug = (
+            str(tab_text or "")
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+        base = str(default_name or "tabla").strip()
+        if base.lower().endswith(".png"):
+            base = base[:-4]
+        if tab_slug and tab_slug not in base:
+            base = f"{base}_{tab_slug}"
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suggested_name = f"{base}_{stamp}.png"
+
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Guardar secciÃ³n como imagen",
-            default_name,
+            suggested_name,
             "PNG (*.png)"
         )
         if not path:
             return
+
+        # Ajuste temporal de columnas para reducir riesgo de recortes en export.
+        if hasattr(table, "columnCount"):
+            col_count = table.columnCount()
+        else:
+            model = table.model()
+            col_count = model.columnCount() if model is not None else 0
+        original_col_widths = [table.columnWidth(col) for col in range(col_count)]
+        try:
+            table.resizeColumnsToContents()
+            for col in range(col_count):
+                w = table.columnWidth(col)
+                if w > 420:
+                    table.setColumnWidth(col, 420)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
         # ---------- 1) TamaÃ±o total de la tabla (todas las filas/columnas) ----------
         vh = table.verticalHeader()
@@ -724,11 +801,6 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         frame = table.frameWidth() * 2
 
         width_table = vh.width() + frame
-        if hasattr(table, "columnCount"):
-            col_count = table.columnCount()
-        else:
-            model = table.model()
-            col_count = model.columnCount() if model is not None else 0
         for col in range(col_count):
             width_table += table.columnWidth(col)
 
@@ -782,6 +854,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         container.setMinimumSize(orig_cont_min)
         container.resize(orig_cont_size)
         container.repaint()
+        for col, width in enumerate(original_col_widths):
+            table.setColumnWidth(col, width)
 
     def reload_from_project(self):
         p = getattr(self.data_model, "proyecto", {}) or {}

@@ -17,7 +17,7 @@ from screens.cc_consumption.table_schema import (
     MOMR_COL_IT,
     MOMR_HEADERS,
 )
-from screens.cc_consumption.utils import should_persist_scenario_desc
+from screens.cc_consumption.utils import should_persist_scenario_desc, fmt
 
 
 @dataclass
@@ -101,17 +101,17 @@ if QtCore is not None:
                 return None
 
             col = index.column()
-            if role != QtCore.Qt.DisplayRole:
+            if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
             if col == MOMR_COL_ESC:
-                return str(int(row.n))
+                return int(row.n) if role == QtCore.Qt.EditRole else str(int(row.n))
             if col == MOMR_COL_DESC:
                 return row.desc
             if col == MOMR_COL_PT:
-                return f"{float(row.p_total or 0.0):.2f}"
+                return float(row.p_total or 0.0) if role == QtCore.Qt.EditRole else fmt(row.p_total)
             if col == MOMR_COL_IT:
-                return f"{float(row.i_total or 0.0):.2f}"
+                return float(row.i_total or 0.0) if role == QtCore.Qt.EditRole else fmt(row.i_total)
             return None
 
         def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
@@ -132,6 +132,24 @@ if QtCore is not None:
             row.desc = desc
             self.dataChanged.emit(index, index, [QtCore.Qt.DisplayRole])
             return True
+
+        def sort(self, column: int, order: QtCore.Qt.SortOrder = QtCore.Qt.AscendingOrder) -> None:
+            reverse = order == QtCore.Qt.DescendingOrder
+
+            def key_fn(r: ScenarioRow):
+                if column == MOMR_COL_ESC:
+                    return int(r.n or 0)
+                if column == MOMR_COL_DESC:
+                    return (r.desc or "").casefold()
+                if column == MOMR_COL_PT:
+                    return float(r.p_total or 0.0)
+                if column == MOMR_COL_IT:
+                    return float(r.i_total or 0.0)
+                return 0
+
+            self.layoutAboutToBeChanged.emit()
+            self._logic._rows.sort(key=key_fn, reverse=reverse)
+            self.layoutChanged.emit()
 
 else:
 

@@ -10,6 +10,7 @@ Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict 
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
 from domain.cc_consumption import get_vcc_for_currents
+from screens.cc_consumption.utils import fmt
 
 
 
@@ -33,8 +34,12 @@ class AleatoriosTabMixin:
         """
         Model-only table fill.
         """
-        self._ensure_ale_model()
-        self._ale_model.set_items(items)
+        self._loading = True
+        try:
+            self._ensure_ale_model()
+            self._ale_model.set_items(items)
+        finally:
+            self._loading = False
 
         request_autofit(self.tbl_ale)
         self._update_aleatory_totals()
@@ -45,6 +50,8 @@ class AleatoriosTabMixin:
         - 1) sincroniza selección desde la UI al modelo (cc_aleatorio_sel por ID)
         - 2) calcula totales desde el dominio leyendo el modelo real
         """
+        if getattr(self, "_loading", False):
+            return
         try:
             self.commit_pending_edits()
         except Exception:
@@ -59,8 +66,8 @@ class AleatoriosTabMixin:
         p_sel = float(rnd.get("p_sel", 0.0) or 0.0)
         i_sel = float(rnd.get("i_sel", 0.0) or 0.0)
 
-        self.lbl_ale_total_p.setText(f"Total P aleatoria seleccionada: {p_sel:.2f} [W]")
-        self.lbl_ale_total_i.setText(f"Total I aleatoria seleccionada: {i_sel:.2f} [A]")
+        self.lbl_ale_total_p.setText(f"Total P aleatoria seleccionada: {fmt(p_sel)} [W]")
+        self.lbl_ale_total_i.setText(f"Total I aleatoria seleccionada: {fmt(i_sel)} [A]")
 
     # =========================================================
     # Guardar imagen de tablas (tabla completa)

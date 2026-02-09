@@ -91,7 +91,7 @@ class MomentaneosTabMixin:
         return raw
 
     def _on_mom_loads_changed(self, *args):
-        if self._building:
+        if self._building or getattr(self, "_loading", False):
             return
         self._mom_force_recalc = True
         try:
@@ -100,11 +100,28 @@ class MomentaneosTabMixin:
         except Exception:
             self._update_momentary_summary_display()
 
+    def _clamp_momentary_model_scenarios(self, n_esc: int) -> None:
+        model = getattr(self, "_mom_model", None)
+        if model is None:
+            return
+        for r in range(model.rowCount()):
+            row = model.get_row(r)
+            if row is None:
+                continue
+            esc = int(row.escenario or 1)
+            if not (1 <= esc <= n_esc):
+                esc = 1
+                model.set_row_escenario(r, esc)
+            if row.comp_id:
+                self._persist_mom_flags(row.comp_id, bool(row.incluir), esc)
+
     def _update_momentary_summary_display(self):
         """
         Display-only: reads computed results from calculated.cc.scenarios_totals,
         with controller fallback when missing.
         """
+        if getattr(self, "_loading", False):
+            return
         # Aseguramos que cualquier edición pendiente se materialice
         self._commit_table_edits()
 
@@ -215,13 +232,16 @@ class MomentaneosTabMixin:
         UI-only table fill. Scenario logic remains in this screen/controller.
         """
         self._building = True
+        self._loading = True
         try:
             n_esc = self.spin_escenarios.value()
             self._ensure_mom_model()
             if getattr(self, "_mom_delegate", None) is not None:
                 self._mom_delegate.set_range(1, int(n_esc))
             self._mom_model.set_items(items)
+            self._clamp_momentary_model_scenarios(int(n_esc))
         finally:
+            self._loading = False
             self._building = False
 
         request_autofit(self.tbl_mom)
@@ -243,18 +263,7 @@ class MomentaneosTabMixin:
                 self._mom_delegate.set_range(1, int(n_esc))
 
             # A) ajustar escenarios en model (clamp) sin tocar "incluir"
-            model = getattr(self, "_mom_model", None)
-            if model is not None:
-                for r in range(model.rowCount()):
-                    row = model.get_row(r)
-                    if row is None:
-                        continue
-                    esc = int(row.escenario or 1)
-                    if not (1 <= esc <= n_esc):
-                        esc = 1
-                        model.set_row_escenario(r, esc)
-                    if row.comp_id:
-                        self._persist_mom_flags(row.comp_id, bool(row.incluir), esc)
+            self._clamp_momentary_model_scenarios(int(n_esc))
 
             # Guardar numero de escenarios en proyecto
             self._set_project_value("cc_num_escenarios", int(n_esc))

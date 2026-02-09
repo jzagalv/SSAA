@@ -22,6 +22,7 @@ from screens.cc_consumption.table_schema import (
     PERM_COL_I_OUT,
     PERM_HEADERS,
 )
+from screens.cc_consumption.utils import fmt
 
 
 @dataclass
@@ -180,7 +181,7 @@ if QtCore is not None:
             if row is None:
                 return None
 
-            if role != QtCore.Qt.DisplayRole:
+            if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
             col = index.column()
@@ -191,17 +192,17 @@ if QtCore is not None:
             if col == PERM_COL_DESC:
                 return row.desc
             if col == PERM_COL_PW:
-                return "" if row.p_total == 0 else f"{row.p_total:.2f}"
+                return float(row.p_total) if role == QtCore.Qt.EditRole else fmt(row.p_total)
             if col == PERM_COL_PCT:
-                return f"{row.pct:.2f}"
+                return float(row.pct) if role == QtCore.Qt.EditRole else fmt(row.pct)
             if col == PERM_COL_P_PERM:
-                return f"{row.p_perm:.2f}"
+                return float(row.p_perm) if role == QtCore.Qt.EditRole else fmt(row.p_perm)
             if col == PERM_COL_P_MOM:
-                return f"{row.p_mom:.2f}"
+                return float(row.p_mom) if role == QtCore.Qt.EditRole else fmt(row.p_mom)
             if col == PERM_COL_I:
-                return f"{row.i_perm:.2f}"
+                return float(row.i_perm) if role == QtCore.Qt.EditRole else fmt(row.i_perm)
             if col == PERM_COL_I_OUT:
-                return f"{row.i_out:.2f}"
+                return float(row.i_out) if role == QtCore.Qt.EditRole else fmt(row.i_out)
             return None
 
         def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
@@ -254,6 +255,45 @@ if QtCore is not None:
 
         def get_row(self, row: int) -> Optional[PermanentRow]:
             return self._logic.row_at(row)
+
+        def sort(self, column: int, order: QtCore.Qt.SortOrder = QtCore.Qt.AscendingOrder) -> None:
+            reverse = order == QtCore.Qt.DescendingOrder
+            text_cols = {PERM_COL_GAB, PERM_COL_TAG, PERM_COL_DESC}
+            numeric_cols = {
+                PERM_COL_PW,
+                PERM_COL_PCT,
+                PERM_COL_P_PERM,
+                PERM_COL_P_MOM,
+                PERM_COL_I,
+                PERM_COL_I_OUT,
+            }
+            if column not in text_cols and column not in numeric_cols:
+                return
+
+            def key_fn(r: PermanentRow):
+                if column == PERM_COL_GAB:
+                    return (r.gab_label or "").casefold()
+                if column == PERM_COL_TAG:
+                    return (r.tag or "").casefold()
+                if column == PERM_COL_DESC:
+                    return (r.desc or "").casefold()
+                if column == PERM_COL_PW:
+                    return float(r.p_total or 0.0)
+                if column == PERM_COL_PCT:
+                    return float(r.pct or 0.0)
+                if column == PERM_COL_P_PERM:
+                    return float(r.p_perm or 0.0)
+                if column == PERM_COL_P_MOM:
+                    return float(r.p_mom or 0.0)
+                if column == PERM_COL_I:
+                    return float(r.i_perm or 0.0)
+                if column == PERM_COL_I_OUT:
+                    return float(r.i_out or 0.0)
+                return 0.0
+
+            self.layoutAboutToBeChanged.emit()
+            self._logic._rows.sort(key=key_fn, reverse=reverse)
+            self.layoutChanged.emit()
 
 else:
 

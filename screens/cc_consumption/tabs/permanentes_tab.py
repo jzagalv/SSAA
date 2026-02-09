@@ -10,6 +10,7 @@ Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict 
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
 from domain.cc_consumption import get_pct_for_permanent, get_vcc_for_currents, get_vcc_nominal
+from screens.cc_consumption.utils import fmt
 
 from screens.cc_consumption.widgets import (
     PERM_COL_GAB, PERM_COL_TAG, PERM_COL_DESC, PERM_COL_PW, PERM_COL_PCT, PERM_COL_P_PERM, PERM_COL_I, PERM_COL_P_MOM, PERM_COL_I_OUT,
@@ -58,14 +59,18 @@ class PermanentesTabMixin:
             # Delegamos a helper existente (dominio)
             return float(get_pct_for_permanent(proyecto, comp_data))
 
-        self._ensure_perm_model()
-        self._perm_model.set_items(
-            items,
-            use_global=usar_global,
-            pct_global=pct_global,
-            get_custom_pct=_get_custom_pct,
-            vmin=float(vmin or 0.0),
-        )
+        self._loading = True
+        try:
+            self._ensure_perm_model()
+            self._perm_model.set_items(
+                items,
+                use_global=usar_global,
+                pct_global=pct_global,
+                get_custom_pct=_get_custom_pct,
+                vmin=float(vmin or 0.0),
+            )
+        finally:
+            self._loading = False
 
         # Solo actualizamos editabilidad (sin tocar valores)
         self._refresh_pct_editability()
@@ -113,14 +118,14 @@ class PermanentesTabMixin:
         p_mom = float(totals.get("p_mom", 0.0) or 0.0)
         i_mom = float(totals.get("i_mom", 0.0) or 0.0)
 
-        self.lbl_perm_total_p_total.setText(f"Total P total: {p_total:.2f} [W]")
-        self.lbl_perm_total_p_perm.setText(f"Total P permanente: {p_perm:.2f} [W]")
-        self.lbl_perm_total_i.setText(f"Total I permanente: {i_perm:.2f} [A]")
-        self.lbl_perm_total_p_mom.setText(f"Total P moment?nea: {p_mom:.2f} [W]")
-        self.lbl_perm_total_i_fuera.setText(f"Total I moment?nea: {i_mom:.2f} [A]")
+        self.lbl_perm_total_p_total.setText(f"Total P total: {fmt(p_total)} [W]")
+        self.lbl_perm_total_p_perm.setText(f"Total P permanente: {fmt(p_perm)} [W]")
+        self.lbl_perm_total_i.setText(f"Total I permanente: {fmt(i_perm)} [A]")
+        self.lbl_perm_total_p_mom.setText(f"Total P momentánea: {fmt(p_mom)} [W]")
+        self.lbl_perm_total_i_fuera.setText(f"Total I momentánea: {fmt(i_mom)} [A]")
 
     def _on_perm_data_changed(self, top_left, bottom_right, roles=None):
-        if self._building:
+        if self._building or getattr(self, "_loading", False):
             return
         if self.chk_usar_global.isChecked():
             return

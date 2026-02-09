@@ -19,6 +19,7 @@ from screens.cc_consumption.table_schema import (
     ALE_COL_I,
     ALE_HEADERS,
 )
+from screens.cc_consumption.utils import fmt
 
 
 @dataclass
@@ -131,7 +132,7 @@ if QtCore is not None:
                     return ""
                 return None
 
-            if role != QtCore.Qt.DisplayRole:
+            if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
             if col == ALE_COL_GAB:
@@ -141,9 +142,9 @@ if QtCore is not None:
             if col == ALE_COL_DESC:
                 return row.desc
             if col == ALE_COL_PEFF:
-                return "" if row.p_eff == 0 else f"{row.p_eff:.2f}"
+                return float(row.p_eff) if role == QtCore.Qt.EditRole else fmt(row.p_eff)
             if col == ALE_COL_I:
-                return "" if row.i_eff == 0 else f"{row.i_eff:.2f}"
+                return float(row.i_eff) if role == QtCore.Qt.EditRole else fmt(row.i_eff)
             return None
 
         def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
@@ -161,6 +162,28 @@ if QtCore is not None:
             if changed:
                 self.dataChanged.emit(index, index, [QtCore.Qt.CheckStateRole])
             return changed
+
+        def sort(self, column: int, order: QtCore.Qt.SortOrder = QtCore.Qt.AscendingOrder) -> None:
+            reverse = order == QtCore.Qt.DescendingOrder
+
+            def key_fn(r: AleatorioRow):
+                if column == ALE_COL_SEL:
+                    return 1 if self._logic.get_selected(r.comp_id) else 0
+                if column == ALE_COL_GAB:
+                    return (r.gab_label or "").casefold()
+                if column == ALE_COL_TAG:
+                    return (r.tag or "").casefold()
+                if column == ALE_COL_DESC:
+                    return (r.desc or "").casefold()
+                if column == ALE_COL_PEFF:
+                    return float(r.p_eff or 0.0)
+                if column == ALE_COL_I:
+                    return float(r.i_eff or 0.0)
+                return 0
+
+            self.layoutAboutToBeChanged.emit()
+            self._logic._rows.sort(key=key_fn, reverse=reverse)
+            self.layoutChanged.emit()
 
 else:
 

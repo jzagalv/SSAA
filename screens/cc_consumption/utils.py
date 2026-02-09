@@ -46,3 +46,17 @@ def extract_cc_totals_for_ui(results: dict | None) -> dict:
         return {}
     totals = results.get("totals")
     return totals if isinstance(totals, dict) else {}
+
+
+def fmt(value: object, default: float = 0.0) -> str:
+    """Uniform numeric formatting for CC UI tables/totals."""
+    try:
+        if value is None:
+            num = float(default)
+        elif isinstance(value, (int, float)):
+            num = float(value)
+        else:
+            num = float(str(value).strip().replace(",", "."))
+    except Exception:
+        num = float(default)
+    return f"{num:.2f}"
