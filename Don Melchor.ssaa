@@ -65,9 +65,342 @@
     ],
     "ssaa_topology_layers": {
       "CA_ES": {
-        "nodes": [],
-        "edges": [],
-        "used_feeders": []
+        "nodes": [
+          {
+            "id": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_ES",
+            "kind": "TGCA",
+            "name": "TGCA-01",
+            "pos": {
+              "x": -80.0,
+              "y": 420.0
+            },
+            "size": {
+              "w": 1360.0,
+              "h": 110.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "TGCA-01",
+              "desc": "Tablero General de C.A. - Servicios No Esenciales",
+              "layer": "CA_ES",
+              "board_key": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64",
+              "gabinete_id": "b14cee41-9f08-4274-ac13-5b77bc7b8b64",
+              "source": "board_feed_root",
+              "root_board": true,
+              "ports": [
+                {
+                  "id": "p_1f10020c6c",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.375
+                },
+                {
+                  "id": "p_1f10020c6c",
+                  "name": "IN2",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.625
+                },
+                {
+                  "id": "p_4b0fd740d1",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.125
+                },
+                {
+                  "id": "p_b269cb33d4",
+                  "name": "OUT2",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.375
+                },
+                {
+                  "id": "p_f7af33851b",
+                  "name": "OUT3",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.625
+                },
+                {
+                  "id": "p_c4b202e76f",
+                  "name": "OUT4",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.875
+                }
+              ],
+              "ui": {
+                "expanded": true,
+                "w": 1360,
+                "h": 110,
+                "desired_in_ports": 1,
+                "desired_out_ports": 4,
+                "out_port_map": {
+                  "CARGA_78d2ae17c6": 0,
+                  "CARGA_6c3c50aed5": 1
+                },
+                "in_port_map": {
+                  "src:b125efa9-fa1e-433f-a11e-8037265c7f6b:CA_ES": 0,
+                  "src:b2707e8b-2866-44fc-9635-f85bb59c7c25:CA_ES": 1
+                },
+                "last_n_in": 2,
+                "last_n_out": 4,
+                "manual_pos": true
+              }
+            }
+          },
+          {
+            "id": "CARGA_78d2ae17c6",
+            "kind": "CARGA",
+            "name": "LCC-H4",
+            "pos": {
+              "x": -60.0,
+              "y": 740.0
+            },
+            "size": {
+              "w": 300.0,
+              "h": 110.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "LCC-H4",
+              "desc": "Gabinete Control Local Paño H4 (Futuro)",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_ES",
+              "layer": "CA_ES",
+              "feeder_key": "gabinete:64059d71-dbea-470b-a51f-8ee2f3774c39:None:CA_ES",
+              "gabinete_id": "64059d71-dbea-470b-a51f-8ee2f3774c39",
+              "source": "board_feed",
+              "ui": {
+                "expanded": true,
+                "w": 300,
+                "h": 110,
+                "manual_pos": true
+              },
+              "ports": [
+                {
+                  "id": "p_ab945885b8",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_c72e9094e3",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "CARGA_6c3c50aed5",
+            "kind": "CARGA",
+            "name": "LCC-H4",
+            "pos": {
+              "x": 280.0,
+              "y": 740.0
+            },
+            "size": {
+              "w": 300.0,
+              "h": 110.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "LCC-H4",
+              "desc": "Gabinete Control Local Paño H4 (Futuro) / Motores Desconectador 110kV (C.A.)",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_ES",
+              "layer": "CA_ES",
+              "feeder_key": "componente:64059d71-dbea-470b-a51f-8ee2f3774c39:6:CA_ES",
+              "gabinete_id": "64059d71-dbea-470b-a51f-8ee2f3774c39",
+              "source": "board_feed",
+              "ui": {
+                "expanded": true,
+                "w": 300,
+                "h": 110,
+                "manual_pos": true
+              },
+              "ports": [
+                {
+                  "id": "p_544ba1dd04",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_9012a8b20e",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "CARGA_5dac591742",
+            "kind": "CARGA",
+            "name": "LCC-HR",
+            "pos": {
+              "x": -60.0,
+              "y": 1000.0
+            },
+            "size": {
+              "w": 300.0,
+              "h": 110.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "LCC-HR",
+              "desc": "Gabinete Control Local Paño HR / Motores Desconectador 110kV (C.A.)",
+              "load": "",
+              "circuit": "CA",
+              "dc_system": "",
+              "feed_req": "CA_ES",
+              "layer": "CA_ES",
+              "feeder_key": "componente:552cde25-373f-4cd9-b3c5-51ef3ae08268:7:CA_ES",
+              "gabinete_id": "552cde25-373f-4cd9-b3c5-51ef3ae08268",
+              "source": "board_feed",
+              "ui": {
+                "expanded": true,
+                "w": 300,
+                "h": 110,
+                "manual_pos": true
+              },
+              "ports": [
+                {
+                  "id": "p_72065fa9d0",
+                  "name": "IN",
+                  "io": "IN",
+                  "side": "top",
+                  "x": 0.5
+                },
+                {
+                  "id": "p_c070a5ee1a",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "src:b2707e8b-2866-44fc-9635-f85bb59c7c25:CA_ES",
+            "kind": "FUENTE",
+            "name": "GEN1",
+            "pos": {
+              "x": 420.0,
+              "y": 120.0
+            },
+            "size": {
+              "w": 200.0,
+              "h": 90.0
+            },
+            "dc_system": "B1",
+            "p_w": 0.0,
+            "meta": {
+              "tag": "GEN1",
+              "desc": "Generador de Emergencia",
+              "layer": "CA_ES",
+              "source_key": "src:b2707e8b-2866-44fc-9635-f85bb59c7c25",
+              "gabinete_id": "b2707e8b-2866-44fc-9635-f85bb59c7c25",
+              "source": "energy_source",
+              "ports": [
+                {
+                  "id": "p_b061c76d7d",
+                  "name": "OUT",
+                  "io": "OUT",
+                  "side": "bottom",
+                  "x": 0.5
+                }
+              ],
+              "ui": {
+                "expanded": true,
+                "w": 200,
+                "h": 90,
+                "manual_pos": true
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "E_97fcdb7104",
+            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_ES",
+            "dst": "CARGA_78d2ae17c6",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_4b0fd740d1",
+              "dst_port": "p_ab945885b8",
+              "layer": "CA_ES",
+              "out_port_id": "p_4b0fd740d1",
+              "lane_x": 250.0
+            }
+          },
+          {
+            "id": "E_53a5ed4778",
+            "src": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_ES",
+            "dst": "CARGA_6c3c50aed5",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_b269cb33d4",
+              "dst_port": "p_544ba1dd04",
+              "layer": "CA_ES",
+              "out_port_id": "p_b269cb33d4",
+              "lane_x": 590.0
+            }
+          },
+          {
+            "id": "E_1d95ada316",
+            "src": "CARGA_78d2ae17c6",
+            "dst": "CARGA_5dac591742",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_c72e9094e3",
+              "dst_port": "p_72065fa9d0",
+              "layer": "CA_ES",
+              "out_port_id": "p_c72e9094e3",
+              "lane_x": 250.0
+            }
+          },
+          {
+            "id": "E_723021c234",
+            "src": "src:b2707e8b-2866-44fc-9635-f85bb59c7c25:CA_ES",
+            "dst": "board:b14cee41-9f08-4274-ac13-5b77bc7b8b64:CA_ES",
+            "circuit": "CA",
+            "dc_system": "",
+            "meta": {
+              "src_port": "p_b061c76d7d",
+              "dst_port": "p_1f10020c6c",
+              "layer": "CA_ES",
+              "out_port_id": "p_b061c76d7d",
+              "lane_x": 600.0
+            }
+          }
+        ],
+        "used_feeders": [
+          "componente:552cde25-373f-4cd9-b3c5-51ef3ae08268:7:CA_ES",
+          "componente:64059d71-dbea-470b-a51f-8ee2f3774c39:6:CA_ES",
+          "gabinete:64059d71-dbea-470b-a51f-8ee2f3774c39:None:CA_ES"
+        ]
       },
       "CC_B1": {
         "nodes": [],
@@ -3857,6 +4190,49 @@
               "lib_uid": "1e286da4-8e38-49c9-a611-8baf3c29274e",
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "4f7297f5-0abc-46dd-bd7f-ff6491313ceb",
+            "base": "Motores Desconectador 110kV (C.A.)",
+            "name": "Motores Desconectador 110kV (C.A.)",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "893be6e9-ebb4-4ba5-ba4f-31ae74734c57",
+              "code": "",
+              "name": "Motores Desconectador 110kV (C.A.)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "132.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Individual",
+              "tipo_consumo": "C.A. Esencial",
+              "fase": "3F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_cc_b1": false,
+              "feed_cc_b2": false,
+              "feed_ca_esencial": true,
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "893be6e9-ebb4-4ba5-ba4f-31ae74734c57",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
             }
           }
         ],

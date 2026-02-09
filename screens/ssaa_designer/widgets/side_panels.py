@@ -152,7 +152,7 @@ def build_boards_panel(screen) -> QWidget:
     right = QWidget()
     vright = QVBoxLayout(right)
 
-    grp_boards = QGroupBox("Tableros/Fuentes disponibles (desde 'Alimentación tableros')")
+    grp_boards = QGroupBox("Tableros/Fuentes disponibles (desde 'Instalaciones' - TD/TG)")
     vlist = QVBoxLayout(grp_boards)
     vlist.addWidget(QLabel("Arrastra un tablero para crear un nodo raíz (no consumible)."))
 

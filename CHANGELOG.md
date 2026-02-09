@@ -3,17 +3,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
-## [1.4.0-alpha.130] - 2026-02-08
+## [1.4.0-alpha.135] - 2026-02-08
 ### Fixed
-- ssaa_designer: imports seguros y corrección de indentación en FeedListWidget.
-### Added
-- `tools/smoke_imports.py` para validar imports sin inicializar UI.
+- Arquitectura SS/AA: lista "Tableros/Fuentes" ahora depende unicamente de TD/TG (is_board) definido en Instalaciones.
+### Refactor
+- Eliminado filtrado por prefijos TGxx/TDxx y flags CA/CC para tableros.
+
+## [1.4.0-alpha.134] - 2026-02-08
+### Fixed
+- Arquitectura SS/AA: layout de puertos determinista y sin recomputes por selección.
+- Fix: refactor layout de puertos y rutas independientes (constantes y helpers unificados).
+### Changed
+- Tableros: ancho por slots (X/Y/PADDING) y puertos equidistantes con persistencia.
+
+
+## [1.4.0-alpha.133] - 2026-02-08
+### Fixed
+- Arquitectura SS/AA: rutas de aristas con lanes independientes y layout de puertos estable.
+### Changed
+- Selección de nodos ya no recalcula posiciones de puertos.
+
+## [1.4.0-alpha.132] - 2026-02-08
+### Fixed
+- Arquitectura SS/AA: puertos manuales persistentes; layout determinista solo en cambios estructurales.
+### Changed
+- Tableros: desired_in/out ports en meta.ui y ancho ajustado sin borrar puertos extra.
 
 ## [1.4.0-alpha.131] - 2026-02-08
 ### Fixed
 - Arquitectura SS/AA: layout estable de puertos; selección no recalcula; puertos equidistantes deterministas.
 ### Changed
 - Tableros: ancho automático por cantidad de puertos IN/OUT con persistencia en meta.ui.
+
+## [1.4.0-alpha.130] - 2026-02-08
+### Fixed
+- ssaa_designer: imports seguros y corrección de indentación en FeedListWidget.
+### Added
+- `tools/smoke_imports.py` para validar imports sin inicializar UI.
 
 ## [1.4.0-alpha.129] - 2026-02-08
 ### Fixed

@@ -24,29 +24,19 @@ from PyQt5.QtWidgets import (
 )
 
 from .constants import GRID
+from .layout_constants import (
+    CARD_WIDTH,
+    SOURCE_CARD_WIDTH,
+    BOARD_MIN_WIDTH,
+    EDGE_CLEARANCE,
+    MIN_LANE_GAP,
+)
+from .port_layout import compute_port_positions, compute_node_width
 
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
-
-def compute_port_x_positions(n: int, width: float, pad: float, min_pitch: float) -> List[float]:
-    """Return relative x positions (0..1) for ports."""
-    if n <= 0:
-        return []
-    if n == 1:
-        return [0.5]
-    w = max(1.0, float(width))
-    usable = max(0.0, w - 2.0 * pad)
-    step = usable / float(n - 1) if n > 1 else 0.0
-    if step < min_pitch:
-        step = min_pitch
-        start = (w - step * float(n - 1)) / 2.0
-        start = max(pad, start)
-    else:
-        start = pad
-    xs = [start + i * step for i in range(n)]
-    return [max(0.0, min(1.0, x / w)) for x in xs]
 
 class TopoNodeItem(QGraphicsItem):
     """Nodo arrastrable con snap a grilla."""
@@ -82,15 +72,15 @@ class TopoNodeItem(QGraphicsItem):
     def _default_ui_size(self) -> Tuple[float, float]:
         kind = (self.node.kind or "").upper()
         fixed_w = {
-            "FUENTE": 200.0,
-            "CARGA": 300.0,
+            "FUENTE": SOURCE_CARD_WIDTH,
+            "CARGA": CARD_WIDTH,
             "CARGADOR": 280.0,
-            "TGCA": 300.0,
-            "TDCA": 300.0,
-            "TGCC": 300.0,
-            "TDCC": 300.0,
-            "TDAF": 300.0,
-            "TDAyF": 300.0,
+            "TGCA": BOARD_MIN_WIDTH,
+            "TDCA": BOARD_MIN_WIDTH,
+            "TGCC": BOARD_MIN_WIDTH,
+            "TDCC": BOARD_MIN_WIDTH,
+            "TDAF": BOARD_MIN_WIDTH,
+            "TDAyF": BOARD_MIN_WIDTH,
         }
         fixed_h = {
             "FUENTE": 90.0,
@@ -116,6 +106,12 @@ class TopoNodeItem(QGraphicsItem):
         def_w, def_h = self._default_ui_size()
         w = float(ui.get("w") or def_w)
         h = float(ui.get("h") or def_h)
+        kind = (self.node.kind or "").upper()
+        if kind == "CARGA":
+            desc = (meta.get("desc") or "").strip()
+            max_w = w - 16.0
+            desc_lines, _ = self._wrap_text(f"DESCRIPCIÓN: {desc}", self._font_body, max_w, 3)
+            h = max(h, 42.0 + 14.0 * (len(desc_lines) + 2))
         ui.setdefault("expanded", True)
         if ui.get("w") != int(w):
             ui["w"] = int(w)
@@ -218,10 +214,10 @@ class TopoNodeItem(QGraphicsItem):
             pit = PortItem(node_item=self, port_id=pid, name=str(pd.get("name") or ""), io=str(pd.get("io") or ""), side=str(pd.get("side") or "top"), on_clicked=self._on_port_clicked)
             pit.setParentItem(self)
             self._port_items[pid] = pit
-        self._layout_ports()
+        self._layout_ports(force=False)
 
 
-    def _layout_ports(self):
+    def _layout_ports(self, force: bool = False):
         """Distribuye puertos como en el esquema de referencia.
 
         Variables:
@@ -235,25 +231,23 @@ class TopoNodeItem(QGraphicsItem):
         meta = self.node.meta or {}
         ports = meta.get("ports", []) or []
 
-        Z = 20.0  # margen en px (ajustable)
-        min_pitch = 40.0
-
-        def _positions_x(n: int) -> List[float]:
-            rel = compute_port_x_positions(n, w, Z, min_pitch)
-            return [x * w for x in rel]
-
-        kind = (self.node.kind or "").upper()
-        is_board = kind.startswith(("TG", "TD", "TDA"))
-
-        # recalcular posiciones solo cuando falta x o es inválido
+        # recalcular posiciones solo cuando falta x o es inválido (o force)
         for side in ("top", "bottom"):
-            group = [pd for pd in ports if str(pd.get("side") or "").lower() == side]
-            need = any(pd.get("x") is None or not isinstance(pd.get("x"), (int, float)) for pd in group)
+            group = []
+            for pd in ports:
+                pd_side = str(pd.get("side") or "").lower()
+                if not pd_side:
+                    io = str(pd.get("io") or "").upper()
+                    pd_side = "top" if io == "IN" else "bottom"
+                    pd["side"] = pd_side
+                if pd_side == side:
+                    group.append(pd)
+            need = force or any(pd.get("x") is None or not isinstance(pd.get("x"), (int, float)) for pd in group)
             if not need:
                 continue
-            xs = _positions_x(len(group))
-            for pd, x in zip(group, xs):
-                pd["x"] = (x / w) if w else 0.5
+            pts = compute_port_positions(self.boundingRect(), len(group), side)
+            for pd, pt in zip(group, pts):
+                pd["x"] = (pt.x() / w) if w else 0.5
 
         # aplicar posición a items
         for pid, pit in self._port_items.items():
@@ -295,11 +289,17 @@ class TopoNodeItem(QGraphicsItem):
 
         ports.append({"id": pid, "name": name, "io": io_u, "side": side, "x": None})
         meta["ports"] = ports
-        meta.setdefault("base_w", float(self.node.size[0]))
+        ui = meta.get("ui") if isinstance(meta.get("ui"), dict) else {}
+        if io_u == "IN":
+            ui["desired_in_ports"] = int(ui.get("desired_in_ports") or 1) + 1
+        else:
+            ui["desired_out_ports"] = int(ui.get("desired_out_ports") or 1) + 1
+        meta["ui"] = ui
         self.node.meta = meta
 
         self._autoresize_for_ports()
         self._rebuild_ports()
+        self._layout_ports(force=True)
 
         if self._on_port_added:
             self._on_port_added(self.node.id)
@@ -329,7 +329,23 @@ class TopoNodeItem(QGraphicsItem):
             self._on_port_added(self.node.id)
 
     def _autoresize_for_ports(self):
-        # Tamaño fijo: no crecer por puertos.
+        kind = (self.node.kind or "").upper()
+        if kind.startswith(("TG", "TD", "TDA")):
+            meta = self.node.meta or {}
+            ports = meta.get("ports", []) or []
+            n_in = sum(1 for p in ports if (p.get("io") or "").upper() == "IN")
+            n_out = sum(1 for p in ports if (p.get("io") or "").upper() == "OUT")
+            new_w = compute_node_width(kind, n_in, n_out)
+            old_w, old_h = self.node.size
+            if abs(old_w - new_w) > 0.5:
+                center_x = self.pos().x() + old_w / 2.0
+                self.prepareGeometryChange()
+                self.node.size = (float(new_w), float(old_h))
+                meta_ui = meta.get("ui") if isinstance(meta.get("ui"), dict) else {}
+                meta_ui["w"] = int(new_w)
+                meta["ui"] = meta_ui
+                self.node.meta = meta
+                self.setPos(QPointF(center_x - new_w / 2.0, self.pos().y()))
         return
 
     def boundingRect(self) -> QRectF:
@@ -345,6 +361,11 @@ class TopoNodeItem(QGraphicsItem):
         if change == QGraphicsItem.ItemPositionHasChanged:
             p = self.pos()
             self.node.pos = (float(p.x()), float(p.y()))
+            meta = self.node.meta or {}
+            ui = meta.get("ui") if isinstance(meta.get("ui"), dict) else {}
+            ui["manual_pos"] = True
+            meta["ui"] = ui
+            self.node.meta = meta
             if self._on_moved:
                 self._on_moved(self.node.id, self.node.pos)
 
@@ -439,7 +460,7 @@ class TopoNodeItem(QGraphicsItem):
 
             painter.setFont(self._font_body)
             y = 28
-            desc_lines, desc_trunc = self._wrap_text(f"DESCRIPCIÓN: {desc}", self._font_body, max_w, 2)
+            desc_lines, desc_trunc = self._wrap_text(f"DESCRIPCIÓN: {desc}", self._font_body, max_w, 3)
             for ln in desc_lines:
                 painter.drawText(QRectF(8, y, max_w, 14),
                                 Qt.AlignLeft | Qt.AlignVCenter,
@@ -566,14 +587,38 @@ class TopoEdgeItem(QGraphicsPathItem):
             b = self._center_of(self.dst_item)
 
         path = QPainterPath(a)
-        # AutoCAD-like routing: si hay desalineación, usar quiebre V-H-V
-        if abs(a.x() - b.x()) < 1.0 or abs(a.y() - b.y()) < 1.0:
+        lane_x = meta.get("lane_x")
+        try:
+            lane_x = float(lane_x) if lane_x is not None else a.x()
+        except Exception:
+            lane_x = a.x()
+
+        if abs(a.x() - b.x()) < 1.0 and abs(lane_x - a.x()) < 1.0:
             path.lineTo(b)
         else:
-            mid_y = (a.y() + b.y()) / 2.0
-            path.lineTo(QPointF(a.x(), mid_y))
-            path.lineTo(QPointF(b.x(), mid_y))
-            path.lineTo(b)
+            clearance = EDGE_CLEARANCE
+            lane_step = max(4.0, MIN_LANE_GAP / 2.0)
+            lane_offset = (sum(ord(c) for c in (self.edge.id or "")) % 7) * lane_step
+            y1 = a.y() + clearance + lane_offset if b.y() >= a.y() else a.y() - clearance - lane_offset
+            y2 = b.y() - clearance - lane_offset if b.y() >= a.y() else b.y() + clearance + lane_offset
+
+            # 1) vertical from src
+            if abs(a.y() - y1) > 0.5:
+                path.lineTo(QPointF(a.x(), y1))
+            # 2) horizontal to lane
+            if abs(a.x() - lane_x) > 0.5:
+                path.lineTo(QPointF(lane_x, y1))
+            # 3) vertical down/up to target band
+            if abs(y1 - y2) > 0.5:
+                path.lineTo(QPointF(lane_x, y2))
+            # 4) horizontal to dst (use slight offset to avoid shared horizontals)
+            if abs(lane_x - b.x()) > 0.5:
+                path.lineTo(QPointF(b.x(), y2))
+            # 5) final to dst
+            if abs(y2 - b.y()) > 0.5:
+                path.lineTo(QPointF(b.x(), b.y()))
+            else:
+                path.lineTo(b)
         self.setPath(path)
 
         if self.isSelected():

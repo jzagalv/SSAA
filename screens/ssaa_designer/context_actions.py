@@ -44,6 +44,8 @@ def connect_nodes_checked(scr, circuit: str, dc: str, src: str, dst: str) -> boo
         dc_system=(dc or "B1") if circuit.upper() == "CC" else "",
         meta={},
     )
+    if hasattr(scr, "_assign_edge_lane"):
+        scr._assign_edge_lane(edge)
     scr._add_edge_item(edge)
     scr._persist()
     scr._rebuild_all_edges()

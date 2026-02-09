@@ -11,11 +11,6 @@ from domain.ssaa_topology import TopoNode
 from .graphics.items import _new_id
 
 
-def is_board_tag(tag: str) -> bool:
-    t = (tag or "").strip().upper()
-    return t.startswith(("TGCA", "TDCA", "TGCC", "TDCC", "TDAF", "TDAyF"))
-
-
 def _kind_from_tag(tag: str) -> str:
     t = (tag or "").strip().upper()
     for prefix in ("TGCA", "TDCA", "TGCC", "TDCC", "TDAF", "TDAyF"):
@@ -25,18 +20,14 @@ def _kind_from_tag(tag: str) -> str:
 
 
 def iter_board_rows(scr):
-    """Genera tableros/fuentes físicos desde Alimentación tableros (gabinetes)."""
+    """Genera tableros/fuentes fisicos desde Instalaciones (gabinetes TD/TG)."""
     gabinetes = (getattr(scr.data_model, "gabinetes", None) or [])
     for gi, g in enumerate(gabinetes):
+        if not bool(g.get("is_board", False)):
+            continue
         tag = str(g.get("tag", "") or "").strip()
-        if not is_board_tag(tag):
-            continue
-        flags = (
-            bool(g.get("cc_b1", False)) or bool(g.get("cc_b2", False)) or
-            bool(g.get("ca_esencial", False)) or bool(g.get("ca_no_esencial", False))
-        )
-        if not flags:
-            continue
+        if not tag:
+            tag = str(g.get("nombre", "") or "").strip() or f"idx{gi}"
         desc = str(g.get("nombre", g.get("descripcion", "")) or "").strip()
         yield {
             "gi": gi,

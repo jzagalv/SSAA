@@ -47,6 +47,9 @@ from domain.ssaa_topology import TopoNode, TopoEdge, to_float
 
 from .ssaa_designer_controller import SSaaDesignerController
 from .graphics import GRID, TopoNodeItem, PortItem, TopoEdgeItem, TopoView
+from .graphics.port_layout import compute_node_width
+from .graphics.layout_constants import CARD_WIDTH, CARD_GAP, SIDE_PADDING
+from .graphics.auto_layout import auto_place_children
 
 
 from screens.base import ScreenBase
@@ -100,6 +103,7 @@ class SSAADesignerScreen(ScreenBase):
         self._connect_dc_system = "B1"
 
         self._pending_port: Optional[Tuple[str, str]] = None
+        self._auto_place_children = False
 
         self._node_items: Dict[str, TopoNodeItem] = {}
         self._edge_items: Dict[str, TopoEdgeItem] = {}
@@ -417,16 +421,15 @@ class SSAADesignerScreen(ScreenBase):
 
         # Align children to board output ports (straight edges)
         self._sync_board_ports(align_children=True)
+        edges = [it.edge for it in self._edge_items.values()]
+        for nit in self._node_items.values():
+            if (nit.node.kind or "").upper().startswith(("TG", "TD", "TDA")):
+                auto_place_children(nit, edges, self._node_items, only_unpinned=True)
         self._persist()
         self._rebuild_all_edges()
 
     def _sync_board_ports(self, align_children: bool) -> None:
         """Ensure dynamic IN/OUT ports for boards and (optionally) align children to port columns."""
-        board_w_min = 260.0
-        port_pitch = 60.0
-        pad_l = 20.0
-        pad_r = 20.0
-
         nodes = list(self._node_items.values())
         edges = [it.edge for it in self._edge_items.values()]
 
@@ -452,6 +455,8 @@ class SSAADesignerScreen(ScreenBase):
                 out_map = {}
             if not isinstance(in_map, dict):
                 in_map = {}
+            desired_in = int(ui.get("desired_in_ports") or 1)
+            desired_out = int(ui.get("desired_out_ports") or 1)
 
             def _next_free_index(m: dict) -> int:
                 used = {int(v) for v in m.values() if isinstance(v, int) or str(v).isdigit()}
@@ -469,23 +474,43 @@ class SSAADesignerScreen(ScreenBase):
                     in_map[str(parent_id)] = _next_free_index(in_map)
                     changed = True
 
-            n_out = (max(out_map.values()) + 1) if out_map else 1
-            n_in = (max(in_map.values()) + 1) if in_map else 1
-            n_ports = max(n_out, n_in, 1)
+            needed_out = (max(out_map.values()) + 1) if out_map else 1
+            needed_in = (max(in_map.values()) + 1) if in_map else 1
+            n_out = max(1, needed_out, desired_out)
+            n_in = max(1, needed_in, desired_in)
 
-            board_w = max(board_w_min, pad_l + n_ports * port_pitch + pad_r)
+            existing_ports = meta.get("ports", []) or []
+            existing_in = [p for p in existing_ports if (p.get("io") or "").upper() == "IN"]
+            existing_out = [p for p in existing_ports if (p.get("io") or "").upper() == "OUT"]
+            n_in = max(n_in, len(existing_in))
+            n_out = max(n_out, len(existing_out))
+
+            board_w = compute_node_width(kind, n_in, n_out)
+            force_layout = False
             if ui.get("w") != int(board_w):
                 ui["w"] = int(board_w)
                 changed = True
+                force_layout = True
             ui.setdefault("expanded", True)
+            ui["desired_in_ports"] = desired_in
+            ui["desired_out_ports"] = desired_out
             ui["out_port_map"] = out_map
             ui["in_port_map"] = in_map
+            if ui.get("last_n_in") != n_in:
+                ui["last_n_in"] = int(n_in)
+                force_layout = True
+            if ui.get("last_n_out") != n_out:
+                ui["last_n_out"] = int(n_out)
+                force_layout = True
             meta["ui"] = ui
             nit.node.meta = meta
             if abs(nit.node.size[0] - board_w) > 0.5:
+                old_w = nit.node.size[0]
+                center_x = nit.node.pos[0] + old_w / 2.0
                 nit.node.size = (float(board_w), float(nit.node.size[1]))
+                nit.setPos(QPointF(center_x - board_w / 2.0, nit.pos().y()))
 
-            ports = meta.get("ports", []) or []
+            ports = existing_ports
             out_port_ids: Dict[int, str] = {}
             in_port_ids: Dict[int, str] = {}
             for e in edges:
@@ -513,17 +538,23 @@ class SSAADesignerScreen(ScreenBase):
             for i in range(n_in):
                 pid = in_port_ids.get(i) or _find_port_id("IN", i) or _new_id("p")
                 name = "IN" if i == 0 else f"IN{i+1}"
-                x = (pad_l + i * port_pitch + (port_pitch / 2.0)) / float(board_w)
-                new_ports.append({"id": pid, "name": name, "io": "IN", "side": "top", "x": x})
+                new_ports.append({"id": pid, "name": name, "io": "IN", "side": "top", "x": None})
             for i in range(n_out):
                 pid = out_port_ids.get(i) or _find_port_id("OUT", i) or _new_id("p")
                 name = "OUT" if i == 0 else f"OUT{i+1}"
-                x = (pad_l + i * port_pitch + (port_pitch / 2.0)) / float(board_w)
-                new_ports.append({"id": pid, "name": name, "io": "OUT", "side": "bottom", "x": x})
+                new_ports.append({"id": pid, "name": name, "io": "OUT", "side": "bottom", "x": None})
+
+            # Preserve extra manual ports (do not delete).
+            used_ids = {p["id"] for p in new_ports}
+            for p in ports:
+                pid = str(p.get("id") or "")
+                if pid and pid not in used_ids:
+                    new_ports.append(p)
 
             meta["ports"] = new_ports
             nit.node.meta = meta
             nit._rebuild_ports()
+            nit._layout_ports(force=force_layout)
 
             # Update edges to use current port ids for stable attachment
             out_port_ids = {int(i): p["id"] for i, p in enumerate([p for p in new_ports if p["io"] == "OUT"])}
@@ -542,11 +573,13 @@ class SSAADesignerScreen(ScreenBase):
 
             if align_children:
                 base_x = nit.node.pos[0]
+                pad_l = SIDE_PADDING
+                port_pitch = CARD_WIDTH + CARD_GAP
                 for child_id, idx in out_map.items():
                     child_item = self._node_items.get(child_id)
                     if child_item is None:
                         continue
-                    port_x = base_x + pad_l + idx * port_pitch + (port_pitch / 2.0)
+                    port_x = base_x + pad_l + idx * port_pitch + (CARD_WIDTH / 2.0)
                     child_w = float(child_item.node.size[0])
                     child_x = port_x - (child_w / 2.0)
                     child_x = round(child_x / GRID) * GRID
@@ -652,6 +685,59 @@ class SSAADesignerScreen(ScreenBase):
         for e in self._edge_items.values():
             e.rebuild()
 
+    def _assign_edge_lane(self, edge: TopoEdge) -> None:
+        meta = dict(edge.meta or {})
+        if meta.get("lane_x") is not None:
+            edge.meta = meta
+            return
+        src_item = self._node_items.get(edge.src)
+        if src_item is None:
+            return
+        sp = meta.get("src_port")
+        if sp:
+            base_x = src_item.port_scene_pos(str(sp)).x()
+        else:
+            r = src_item.boundingRect()
+            base_x = src_item.pos().x() + r.width() / 2.0
+
+        used = []
+        for it in self._edge_items.values():
+            e = it.edge
+            if e.src != edge.src:
+                continue
+            lx = (e.meta or {}).get("lane_x")
+            try:
+                used.append(float(lx))
+            except Exception:
+                continue
+
+        gap = 20.0
+        lane_x = base_x
+        if used:
+            def _conflicts(x: float) -> bool:
+                return any(abs(x - u) < gap for u in used)
+            if _conflicts(lane_x):
+                for k in range(1, 50):
+                    for sign in (1.0, -1.0):
+                        cand = base_x + sign * k * gap
+                        if not _conflicts(cand):
+                            lane_x = cand
+                            break
+                    if not _conflicts(lane_x):
+                        break
+        meta["lane_x"] = float(lane_x)
+        edge.meta = meta
+
+    def _ensure_edge_lanes(self) -> None:
+        changed = False
+        for it in self._edge_items.values():
+            e = it.edge
+            if (e.meta or {}).get("lane_x") is None:
+                self._assign_edge_lane(e)
+                changed = True
+        if changed:
+            self._persist()
+
     # ---------------- load/persist ----------------
 
 
@@ -691,6 +777,7 @@ class SSAADesignerScreen(ScreenBase):
         self._sync_layer_label()
         self._refresh_feeders_table()
         self._sync_board_ports(align_children=False)
+        self._ensure_edge_lanes()
         if getattr(self, "_ports_migrated", False) or getattr(self, "_ui_migrated", False):
             self._persist()
 
@@ -874,10 +961,15 @@ class SSAADesignerScreen(ScreenBase):
             dst=dst_node,
             circuit=circuit,
             dc_system=(dc if circuit == "CC" else ""),
-            meta={"src_port": src_port, "dst_port": dst_port, "layer": ws},
+            meta={"src_port": src_port, "dst_port": dst_port, "layer": ws, "out_port_id": src_port},
         )
+        self._assign_edge_lane(edge)
         self._add_edge_item(edge)
         self._persist()
+        if self._auto_place_children:
+            src_item = self._node_items.get(src_node)
+            if src_item is not None:
+                auto_place_children(src_item, [edge], self._node_items, only_unpinned=True)
         self._rebuild_all_edges()
 
     def _refresh_issues_layer_combo(self, *args, **kwargs):

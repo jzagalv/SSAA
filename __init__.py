@@ -1,1 +1,1 @@
-from app.version import __version__
+from ssaa.version import __version__
