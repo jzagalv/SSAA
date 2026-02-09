@@ -35,6 +35,66 @@ COL_CA_ES = 4
 COL_CA_NOES = 5
 
 
+def _get_comp_alimentador(comp: dict) -> str:
+    d = (comp or {}).get("data") or {}
+    raw = d.get("alimentador")
+    if raw is None or str(raw).strip() == "":
+        raw = (comp or {}).get("alimentador")
+    if raw is None or str(raw).strip() == "":
+        raw = "General"
+    return str(raw).strip().lower()
+
+
+def _infer_from_tipo(tipo: str) -> dict:
+    t = (tipo or "").strip().lower()
+    flags = {"cc_b1": False, "cc_b2": False, "ca_esencial": False, "ca_no_esencial": False}
+
+    if not t:
+        return flags
+
+    if t.startswith("c.c") or t.startswith("cc") or "c.c" in t or t == "cc":
+        flags["cc_b1"] = True
+        flags["cc_b2"] = True
+        return flags
+
+    if "c.a" in t or t.startswith("ca"):
+        if "no" in t and "esencial" in t:
+            flags["ca_no_esencial"] = True
+        elif "esencial" in t:
+            flags["ca_esencial"] = True
+
+    return flags
+
+
+def _infer_from_components(components, include_individual: bool) -> dict:
+    acc = {"cc_b1": False, "cc_b2": False, "ca_esencial": False, "ca_no_esencial": False}
+
+    for comp in components or []:
+        d = (comp or {}).get("data", {}) or {}
+
+        alim = _get_comp_alimentador(comp)
+        if include_individual:
+            if alim != "individual":
+                continue
+        else:
+            if alim == "individual":
+                continue
+
+        tipo = d.get("tipo_consumo") or d.get("consumo") or ""
+        f = _infer_from_tipo(tipo)
+
+        for k in acc:
+            acc[k] = acc[k] or bool(f.get(k, False))
+
+    return acc
+
+
+def _pick_bool(obj: dict, key: str, inferred: bool) -> bool:
+    if isinstance(obj, dict) and key in obj:
+        return bool(obj.get(key))
+    return bool(inferred)
+
+
 class BoardFeedScreen(ScreenBase):
     SECTION = Section.BOARD_FEED
     def __init__(self, data_model, parent=None):
@@ -276,54 +336,6 @@ class BoardFeedScreen(ScreenBase):
             #
             # A partir del campo "tipo_consumo" (p.ej. "C.C. aleatorio", "C.A. Esencial"),
             # inferimos las columnas que deben quedar marcadas.
-
-            def _infer_from_tipo(tipo: str) -> dict:
-                """Inferir columnas a marcar desde un texto tipo 'C.C. aleatorio', 'C.A. Esencial', etc."""
-                t = (tipo or "").strip().lower()
-                flags = {
-                    "cc_b1": False,
-                    "cc_b2": False,
-                    "ca_esencial": False,
-                    "ca_no_esencial": False,
-                }
-                if not t:
-                    return flags
-
-                # CC: cualquier variante (aleatorio, etc.) => por defecto lo dejamos disponible en B1 y B2
-                # para que esté disponible en ambas capas (el diseño final decide donde se conecta).
-                if t.startswith("c.c") or t.startswith("cc") or "c.c" in t or t == "cc":
-                    flags["cc_b1"] = True
-                    flags["cc_b2"] = True
-                    return flags
-
-                # CA esencial / no esencial
-                if "c.a" in t or t.startswith("ca"):
-                    if "no" in t and "esencial" in t:
-                        flags["ca_no_esencial"] = True
-                    elif "esencial" in t:
-                        flags["ca_esencial"] = True
-
-                return flags
-
-            def _infer_from_components(components, include_individual: bool) -> dict:
-                acc = {"cc_b1": False, "cc_b2": False, "ca_esencial": False, "ca_no_esencial": False}
-                for comp in components or []:
-                    d = (comp or {}).get("data", {}) or {}
-                    alim = (d.get("alimentador") or "General").strip().lower()
-                    if (alim == "individual") != bool(include_individual):
-                        continue
-                    tipo = d.get("tipo_consumo") or d.get("consumo") or ""
-                    f = _infer_from_tipo(tipo)
-                    for k in acc:
-                        acc[k] = acc[k] or f.get(k, False)
-                return acc
-
-
-            def _pick_bool(obj: dict, key: str, inferred: bool) -> bool:
-                """Usa el valor guardado si existe (aunque sea False). Si no existe, usa el inferido."""
-                if isinstance(obj, dict) and key in obj:
-                    return bool(obj.get(key))
-                return bool(inferred)
 
             self.table.setRowCount(0)
             self._row_map = []
