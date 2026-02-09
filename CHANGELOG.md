@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.141] - 2026-02-08
+### Added
+- Modern UI glass A/B system (forms vs tables), active only in modern mode.
+
 ## [1.4.0-alpha.139] - 2026-02-08
 ### Added
 - Modo moderno con sidebar colapsable (navegacion lateral) sincronizado con tabs.

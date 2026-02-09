@@ -537,3 +537,35 @@ QToolButton#SidebarItem[active="true"] {
     border-left: 4px solid {{BRAND}};
     padding-left: 8px;
 }
+
+/* ===== MODERN GLASS FORM ===== */
+QWidget[glass="true"][ui_role="form"] {
+    background: rgba(255,255,255,170);
+    border: 1px solid rgba(255,255,255,120);
+    border-radius: 14px;
+}
+
+/* ===== TECH TABLE STYLE ===== */
+QTableWidget[glass="true"][ui_role="table"],
+QTableView[glass="true"][ui_role="table"] {
+    background: rgba(255,255,255,240);
+    alternate-background-color: rgba(245,247,250,255);
+    gridline-color: rgba(0,0,0,40);
+}
+
+QTableWidget[glass="true"][ui_role="table"] QHeaderView::section,
+QTableView[glass="true"][ui_role="table"] QHeaderView::section {
+    background: rgba(230,235,240,255);
+    border: 1px solid rgba(0,0,0,50);
+}
+
+QWidget[glass="true"][ui_role="table"] QTableWidget {
+    background: rgba(255,255,255,240);
+    alternate-background-color: rgba(245,247,250,255);
+    gridline-color: rgba(0,0,0,40);
+}
+
+QWidget[glass="true"][ui_role="table"] QHeaderView::section {
+    background: rgba(230,235,240,255);
+    border: 1px solid rgba(0,0,0,50);
+}

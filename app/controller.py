@@ -17,7 +17,7 @@ from pathlib import Path
 from app.sections import Section
 from PyQt5.QtWidgets import (
     QTabWidget, QMessageBox, QMainWindow, QAction, QActionGroup, QFileDialog,
-    QProgressDialog, QApplication, QWidget, QHBoxLayout, QFrame,
+    QProgressDialog, QApplication, QWidget, QHBoxLayout, QFrame, QTableWidget,
 )
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtCore import Qt
@@ -48,6 +48,7 @@ from ui.common.state import (
     get_nav_mode as get_saved_nav_mode,
     set_nav_mode as save_nav_mode,
 )
+from ui.common.ui_roles import set_role_form, auto_tag_tables
 from ui.theme import apply_named_theme
 from ui.widgets.sidebar import Sidebar
 
@@ -362,6 +363,8 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.sidebar)
         lay.addWidget(self.app_widget, 1)
         self.setCentralWidget(self._central)
+        set_role_form(self.app_widget)
+        auto_tag_tables(self.app_widget)
         self.app_widget.currentChanged.connect(self._on_tab_changed_for_sidebar)
 
         # Fin del armado inicial
@@ -403,6 +406,22 @@ class MainWindow(QMainWindow):
             self.sidebar.show()
             self.app_widget.tabBar().hide()
             self.sidebar.set_active(self.app_widget.currentIndex())
+        self._apply_ui_mode_properties(mode)
+
+    def _apply_ui_mode_properties(self, mode: str) -> None:
+        is_modern = mode == "modern"
+        self.setProperty("glass", is_modern)
+        self.setProperty("ui_mode", mode)
+        self.app_widget.setProperty("glass", is_modern)
+        self.app_widget.setProperty("ui_mode", mode)
+        auto_tag_tables(self.app_widget)
+        for t in self.app_widget.findChildren(QTabWidget):
+            t.setProperty("glass", is_modern)
+        for table in self.app_widget.findChildren(QTableWidget):
+            table.setProperty("glass", is_modern)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
     # ---------------------------------------------------------
     # Menús / acciones
