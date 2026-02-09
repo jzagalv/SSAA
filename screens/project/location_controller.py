@@ -72,3 +72,17 @@ class LocationController:
         self._sync_aliases()
         self._mark_dirty()
 
+    def update_gabinete_field_by_id(self, cab_id, field, value) -> None:
+        self.service.update_gabinete_field_by_id(cab_id, field, value)
+        self._sync_aliases()
+        self._mark_dirty()
+
+    def edit_gabinete_by_id(self, cab_id, tag, nombre, ubic_tag) -> None:
+        self.service.edit_gabinete_by_id(cab_id, tag, nombre, ubic_tag)
+        self._sync_aliases()
+        self._mark_dirty()
+
+    def delete_gabinete_by_id(self, cab_id) -> None:
+        self.service.delete_gabinete_by_id(cab_id)
+        self._sync_aliases()
+        self._mark_dirty()

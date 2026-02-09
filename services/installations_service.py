@@ -111,6 +111,17 @@ class InstallationsService:
             raise ValueError(empty_message)
         return index
 
+    def _find_gabinete_index_by_id(self, cab_id) -> int:
+        cab_id_clean = self._clean_text(cab_id)
+        if not cab_id_clean:
+            raise ValueError("Seleccione un gabinete")
+        for idx, gabinete in enumerate(self._gabinetes()):
+            if not isinstance(gabinete, dict):
+                continue
+            if self._clean_text(gabinete.get("id")) == cab_id_clean:
+                return idx
+        raise ValueError("Seleccione un gabinete")
+
     # -------- ubicaciones --------
     def add_ubicacion(self, tag, nombre) -> None:
         tag, nombre = self._validate_ubicacion_data(tag, nombre)
@@ -198,3 +209,14 @@ class InstallationsService:
 
         cabinet[field_name] = bool(value)
 
+    def edit_gabinete_by_id(self, cab_id, tag, nombre, ubic_tag) -> None:
+        idx = self._find_gabinete_index_by_id(cab_id)
+        self.edit_gabinete(idx, tag, nombre, ubic_tag)
+
+    def delete_gabinete_by_id(self, cab_id) -> None:
+        idx = self._find_gabinete_index_by_id(cab_id)
+        self.delete_gabinete(idx)
+
+    def update_gabinete_field_by_id(self, cab_id, field, value) -> None:
+        idx = self._find_gabinete_index_by_id(cab_id)
+        self.update_gabinete_field(idx, field, value)

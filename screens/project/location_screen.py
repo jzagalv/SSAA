@@ -51,6 +51,23 @@ class LocationScreen(ScreenBase):
         self.combo_salas.setCurrentIndex(-1)
         self.input_tag_gabinete.setFocus()
 
+    def _get_selected_gabinete_id(self, row: int) -> str:
+        item0 = self.tabla_gabinetes.item(row, 0)
+        if item0 is None:
+            return ""
+        return str(item0.data(Qt.UserRole) or "").strip()
+
+    def _find_gabinete_by_id(self, cab_id: str):
+        cab_id_clean = str(cab_id or "").strip()
+        if not cab_id_clean:
+            return None
+        for gabinete in self.data_model.gabinetes:
+            if not isinstance(gabinete, dict):
+                continue
+            if str(gabinete.get("id", "") or "").strip() == cab_id_clean:
+                return gabinete
+        return None
+
     # ------------------------------
     # UI
     # ------------------------------
@@ -177,17 +194,26 @@ class LocationScreen(ScreenBase):
             filas = len(self.data_model.gabinetes)
             self.tabla_gabinetes.setRowCount(filas)
             for row, gabinete in enumerate(self.data_model.gabinetes):
+                cab_id = str(gabinete.get("id", "") or "")
                 tag = gabinete.get("tag", "")
                 nombre = gabinete.get("nombre", "")
                 sala = gabinete.get("sala", "")
-                self.tabla_gabinetes.setItem(row, 0, QTableWidgetItem(tag))
-                self.tabla_gabinetes.setItem(row, 1, QTableWidgetItem(nombre))
-                self.tabla_gabinetes.setItem(row, 2, QTableWidgetItem(sala))
+                item_tag = QTableWidgetItem(tag)
+                item_tag.setData(Qt.UserRole, cab_id)
+                item_nombre = QTableWidgetItem(nombre)
+                item_nombre.setData(Qt.UserRole, cab_id)
+                item_sala = QTableWidgetItem(sala)
+                item_sala.setData(Qt.UserRole, cab_id)
+                self.tabla_gabinetes.setItem(row, 0, item_tag)
+                self.tabla_gabinetes.setItem(row, 1, item_nombre)
+                self.tabla_gabinetes.setItem(row, 2, item_sala)
                 it = QTableWidgetItem("")
+                it.setData(Qt.UserRole, cab_id)
                 it.setFlags((it.flags() | Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable)
                 it.setCheckState(Qt.Checked if bool(gabinete.get("is_board", False)) else Qt.Unchecked)
                 self.tabla_gabinetes.setItem(row, 3, it)
                 it2 = QTableWidgetItem("")
+                it2.setData(Qt.UserRole, cab_id)
                 it2.setFlags((it2.flags() | Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable)
                 it2.setCheckState(
                     Qt.Checked if bool(gabinete.get("is_energy_source", False)) else Qt.Unchecked
@@ -220,9 +246,12 @@ class LocationScreen(ScreenBase):
 
     def _on_select_gabinete(self):
         fila = self.tabla_gabinetes.currentRow()
-        if fila < 0 or fila >= len(self.data_model.gabinetes):
+        if fila < 0:
             return
-        g = self.data_model.gabinetes[fila]
+        cab_id = self._get_selected_gabinete_id(fila)
+        g = self._find_gabinete_by_id(cab_id)
+        if not isinstance(g, dict):
+            return
         self.input_tag_gabinete.setText(g.get("tag", ""))
         self.input_nombre_gabinete.setText(g.get("nombre", ""))
         sala_label = g.get("sala", "")
@@ -240,6 +269,7 @@ class LocationScreen(ScreenBase):
         col = item.column()
         if row < 0:
             return
+        cab_id = self._get_selected_gabinete_id(row)
 
         if col == 0:
             field = "tag"
@@ -260,7 +290,7 @@ class LocationScreen(ScreenBase):
             return
 
         try:
-            self.controller.update_gabinete_field(row, field, value)
+            self.controller.update_gabinete_field_by_id(cab_id, field, value)
         except ValueError as exc:
             QMessageBox.warning(self, "Error", str(exc))
             self.actualizar_tabla_gabinetes()
@@ -316,11 +346,12 @@ class LocationScreen(ScreenBase):
 
     def editar_gabinete(self):
         fila = self.tabla_gabinetes.currentRow()
+        cab_id = self._get_selected_gabinete_id(fila)
         tag = self.input_tag_gabinete.text().strip()
         nombre = self.input_nombre_gabinete.text().strip()
         ubic_tag = self.combo_salas.currentData()
         try:
-            self.controller.edit_gabinete(fila, tag, nombre, ubic_tag)
+            self.controller.edit_gabinete_by_id(cab_id, tag, nombre, ubic_tag)
         except ValueError as exc:
             QMessageBox.warning(self, "Error", str(exc))
             return
@@ -330,8 +361,9 @@ class LocationScreen(ScreenBase):
 
     def eliminar_gabinete(self):
         fila = self.tabla_gabinetes.currentRow()
+        cab_id = self._get_selected_gabinete_id(fila)
         try:
-            self.controller.delete_gabinete(fila)
+            self.controller.delete_gabinete_by_id(cab_id)
         except ValueError as exc:
             QMessageBox.warning(self, "Error", str(exc))
             return
@@ -351,4 +383,3 @@ class LocationScreen(ScreenBase):
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         pass
-
