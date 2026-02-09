@@ -358,6 +358,7 @@ class ACRow:
     descripcion: str
     tag: str
     ubicacion: str
+    cantidad: int
     n_itm: str
     capacidad_itm: str
     cap_dif: str
@@ -365,7 +366,24 @@ class ACRow:
     p_total_w: float
     fp: float
     fd: float
+    reserva: float
     consumo_va: float
+    cc_seq1_va: float
+    cc_p_total_w: float
+    cc_reserva_va: float
+    op_seq1_va: float
+    op_seq2_va: float
+    op_va: float
+    factor_servicio: float
+    op_reserva_va: float
+    vac_seq1_va: float
+    vac_seq2_va: float
+    vac_va: float
+    vac_factor_servicio: float
+    vac_reserva_va: float
+    dm_seq1_va: float
+    dm_seq2_va: float
+    dm_va: float
     i_r: float
     i_s: float
     i_t: float
@@ -459,18 +477,44 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
         fields = user_map.get(uf_key, {}) if isinstance(user_map, dict) else {}
         fp = float(fields.get("fp", 0.90) or 0.90)
         fd = float(fields.get("fd", 1.00) or 1.00)
+        qty = int(fields.get("qty", 1) or 1)
+        reserva_pct = float(fields.get("reserva_pct", 0.0) or 0.0)
+        factor_servicio = float(fields.get("factor_servicio", fields.get("fs", 1.0)) or 1.0)
+        seq2_mult = float(fields.get("seq2_mult", 1.0) or 1.0)
+        vacante_va = float(fields.get("vacante_va", 0.0) or 0.0)
+
         if fp <= 0:
             fp = 1.0
         consumo_va = (p_sum / fp) * fd
         phase_manual = str(fields.get("phase") or "").strip().upper()
         fase = "R-S-T" if "3" in fase_kind else (phase_manual or "R")
-        ir, is_, it_ = _calc_i_ac_from_va(consumo_va, fase=fase, v_mono=v_mono, v_tri=v_tri)
+        cc_seq1_va = consumo_va * qty
+        cc_p_total_w = p_sum * qty
+        cc_reserva_va = cc_seq1_va * (reserva_pct / 100.0)
+
+        op_seq1_va = cc_seq1_va * factor_servicio
+        op_seq2_va = op_seq1_va * seq2_mult
+        op_va = max(op_seq1_va, op_seq2_va)
+        op_reserva_va = op_va * (reserva_pct / 100.0)
+
+        vac_seq1_va = op_seq1_va + vacante_va
+        vac_seq2_va = op_seq2_va + vacante_va
+        vac_va = max(vac_seq1_va, vac_seq2_va)
+        vac_reserva_va = vac_va * (reserva_pct / 100.0)
+
+        dm_seq1_va = vac_seq1_va
+        dm_seq2_va = vac_seq2_va
+        dm_va = max(dm_seq1_va, dm_seq2_va)
+
+        base_va = dm_va if dm_va > 0 else consumo_va
+        ir, is_, it_ = _calc_i_ac_from_va(base_va, fase=fase, v_mono=v_mono, v_tri=v_tri)
 
         rows.append(ACRow(
             node_id=str(root_node.get("id") or ""),
             descripcion=str(meta_root.get("desc") or "").strip(),
             tag=str(meta_root.get("tag") or "").strip(),
             ubicacion=ubic,
+            cantidad=qty,
             n_itm=str(meta_root.get("load") or "").strip() or "-",
             capacidad_itm="-",
             cap_dif="-",
@@ -478,7 +522,24 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
             p_total_w=p_sum,
             fp=fp,
             fd=fd,
+            reserva=reserva_pct,
             consumo_va=consumo_va,
+            cc_seq1_va=cc_seq1_va,
+            cc_p_total_w=cc_p_total_w,
+            cc_reserva_va=cc_reserva_va,
+            op_seq1_va=op_seq1_va,
+            op_seq2_va=op_seq2_va,
+            op_va=op_va,
+            factor_servicio=factor_servicio,
+            op_reserva_va=op_reserva_va,
+            vac_seq1_va=vac_seq1_va,
+            vac_seq2_va=vac_seq2_va,
+            vac_va=vac_va,
+            vac_factor_servicio=factor_servicio,
+            vac_reserva_va=vac_reserva_va,
+            dm_seq1_va=dm_seq1_va,
+            dm_seq2_va=dm_seq2_va,
+            dm_va=dm_va,
             i_r=ir,
             i_s=is_,
             i_t=it_,
@@ -510,7 +571,8 @@ def build_ac_table(data_model, *, workspace: str, board_node_id: str) -> List[AC
             else:
                 phase = "T"
         r.fases = phase
-        ir, is_, it_ = _calc_i_ac_from_va(r.consumo_va, fase=phase, v_mono=v_mono, v_tri=v_tri)
+        base_va = r.dm_va if r.dm_va > 0 else r.consumo_va
+        ir, is_, it_ = _calc_i_ac_from_va(base_va, fase=phase, v_mono=v_mono, v_tri=v_tri)
         r.i_r, r.i_s, r.i_t = ir, is_, it_
         sum_r += ir
         sum_s += is_
@@ -642,6 +704,7 @@ def list_board_nodes(data_model, *, workspace: str) -> List[Tuple[str, str]]:
             return None
         return None
 
+    nodes_by_id = {str(n.get("id")): n for n in (topo.get("nodes") or []) if isinstance(n, dict) and n.get("id") is not None}
     out: List[Tuple[str, str]] = []
     for n in topo.get("nodes", []) or []:
         if not isinstance(n, dict):
@@ -657,6 +720,23 @@ def list_board_nodes(data_model, *, workspace: str) -> List[Tuple[str, str]]:
                 n["meta"] = meta
 
         if gid not in board_ids:
+            continue
+
+        # Filtrar tableros sin cargas alcanzables
+        has_loads = False
+        for grp in _subfeeder_groups(topo, nid):
+            root_id = str(grp.get("root_id") or "")
+            root_node = nodes_by_id.get(root_id)
+            if not root_node or str(root_node.get("kind", "")).upper() != "CARGA":
+                continue
+            for cid in (grp.get("node_ids") or []):
+                cn = nodes_by_id.get(str(cid))
+                if cn and str(cn.get("kind", "")).upper() == "CARGA":
+                    has_loads = True
+                    break
+            if has_loads:
+                break
+        if not has_loads:
             continue
 
         g = board_ids[gid]
