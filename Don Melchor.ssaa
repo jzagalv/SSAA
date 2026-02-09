@@ -10,8 +10,8 @@
     "schema_version": 3
   },
   "proyecto": {
-    "cliente": "",
-    "project_number": "",
+    "cliente": "SAESA",
+    "project_number": "S/E Reloncaví",
     "tag_room": "",
     "doc_isep": "",
     "doc_cliente": "",
@@ -26,7 +26,7 @@
     "min_voltaje_cc": "15",
     "num_cargadores": "2",
     "num_bancos": "2",
-    "porcentaje_utilizacion": "85.00",
+    "porcentaje_utilizacion": 80.0,
     "tension_flotacion_celda": 2.3,
     "num_celdas_usuario": 53,
     "cc_usar_pct_global": false,
@@ -214,12 +214,6 @@
           "context": "nombre_proyecto"
         },
         {
-          "code": "PROJ_MISSING_FIELD",
-          "msg": "Falta Cliente en 'Proyecto'.",
-          "level": "warn",
-          "context": "cliente"
-        },
-        {
           "code": "PROJ_VCC_INVALID",
           "msg": "La tensión C.C. (Vcc/V_CC) no está definida o es inválida.",
           "level": "warn",
@@ -251,12 +245,6 @@
         "msg": "Falta Nombre de proyecto en 'Proyecto'.",
         "level": "warn",
         "context": "nombre_proyecto"
-      },
-      {
-        "code": "PROJ_MISSING_FIELD",
-        "msg": "Falta Cliente en 'Proyecto'.",
-        "level": "warn",
-        "context": "cliente"
       },
       {
         "code": "PROJ_VCC_INVALID",
@@ -849,7 +837,7 @@
             "name": "Calefacción y alumbrado",
             "pos": {
               "x": 60.0,
-              "y": 400.0
+              "y": 380.0
             },
             "size": {
               "w": 260.0,
@@ -1224,12 +1212,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "38c7e69b-519a-4bb3-b783-b822f40eff06",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1307,12 +1335,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "85a5631b-9946-41c1-bea2-ab4472add93e",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1356,12 +1424,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "4613fbca-a87d-419c-8dce-9799438115ae",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1439,12 +1547,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "8d097dd8-86c1-44d1-b53a-c2897e45a5e8",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1454,11 +1602,52 @@
         "sala": "Sala de Control - Sala de Control",
         "ubicacion_id": "616ad93f-a1af-4944-aa09-f68614e87a0f",
         "is_board": true,
-        "components": [],
+        "components": [
+          {
+            "id": "0c2c8d59-b6de-4385-b300-3f3227a253f2",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 80.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
+          }
+        ],
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1502,12 +1691,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "49bd251c-f48a-415c-abd0-05fa7745f38a",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1517,11 +1746,52 @@
         "sala": "Sala de Control - Sala de Control",
         "ubicacion_id": "616ad93f-a1af-4944-aa09-f68614e87a0f",
         "is_board": true,
-        "components": [],
+        "components": [
+          {
+            "id": "0c10b926-830e-451e-a5ac-ac42768eb64e",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 80.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
+          }
+        ],
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1701,12 +1971,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "de3ad2c2-b3dc-468c-aba7-ea4461bc94ac",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 80.0,
+              "y": 540.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -1818,12 +2128,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "c5ea2fd1-156f-4245-88ec-67fdb8d2bc8b",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 80.0,
+              "y": 380.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2071,12 +2421,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "cdac7b3f-f828-4811-af3d-785b6e7c6494",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2120,12 +2510,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "d1f7f574-d194-42ea-b91c-1dfba1c86248",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2169,12 +2599,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "1fec0d77-7468-4c65-b214-b547154ce9c4",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2218,12 +2688,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "e2c75975-b7c6-4266-ae7e-b2b82aff63f2",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2267,12 +2777,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "31080f76-1a6c-4552-b584-938bb7af47c5",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2316,12 +2866,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "00c443d0-df42-4600-8086-5dde52200984",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2331,11 +2921,52 @@
         "sala": "Sala de Celdas - Sala de Celdas",
         "ubicacion_id": "d52d0a2e-132e-4a0e-890a-01335548d8ae",
         "is_board": false,
-        "components": [],
+        "components": [
+          {
+            "id": "937fef25-a946-4d95-93e1-1d91185b0585",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 80.0,
+              "y": 80.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
+          }
+        ],
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2413,12 +3044,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "283db7a7-3525-4930-9b0b-03e25bff0741",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2702,12 +3373,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "761ebd75-0648-43da-b51d-54a9809d31d2",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -2991,12 +3702,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "5f1f47c4-af3a-476c-bc90-3a6ec7415cb0",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -3280,12 +4031,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "07964f47-ac63-49e0-bd59-88d4c81f90e9",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -3569,12 +4360,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "4e917615-69a5-4890-a8d9-1073d7b433eb",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -3858,12 +4689,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "f2909c44-5c5d-452b-92a2-f49770a64111",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4175,12 +5046,52 @@
               "code": "",
               "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
             }
+          },
+          {
+            "id": "51a7e56d-6f04-43a1-a5b4-68dfd0db1dc3",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4238,11 +5149,51 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "9583b7d3-18d4-400c-bc8b-44f2f17a73e4",
+            "base": "Ventiladores Transformador",
+            "name": "Ventiladores Transformador",
+            "pos": {
+              "x": 420.0,
+              "y": 60.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "0869a98e-1c70-4c3c-8cf5-00d14ae487db",
+              "code": "",
+              "name": "Ventiladores Transformador",
+              "marca": "",
+              "modelo": "",
+              "potencia_w": "2400",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. Esencial",
+              "fase": "3F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "0869a98e-1c70-4c3c-8cf5-00d14ae487db",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
-        "ca_esencial": false,
+        "ca_esencial": true,
         "ca_no_esencial": false,
         "is_energy_source": false
       },
@@ -4287,11 +5238,51 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "11324333-0b2f-47ba-a562-2f55ea3a789a",
+            "base": "Alimentación CTBC",
+            "name": "Alimentación CTBC",
+            "pos": {
+              "x": 400.0,
+              "y": 60.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "9fcbcf8b-f166-4570-9f78-cb5134ccfe1a",
+              "code": "",
+              "name": "Alimentación CTBC",
+              "marca": "",
+              "modelo": "",
+              "potencia_w": "600",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. Esencial",
+              "fase": "3F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "9fcbcf8b-f166-4570-9f78-cb5134ccfe1a",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
-        "cc_b1": false,
+        "cc_b1": true,
         "cc_b2": true,
-        "ca_esencial": false,
+        "ca_esencial": true,
         "ca_no_esencial": false,
         "is_energy_source": false
       },
@@ -4404,12 +5395,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "f863ae22-1360-4ebd-8abe-77987569487b",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 380.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4521,12 +5552,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "af0a4e26-3de5-474f-8718-d0eae23fb600",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 380.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4604,12 +5675,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "081d0b7d-56c3-4e7a-b48a-9ed358610fd0",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 360.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4687,12 +5798,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "ae7188d5-4f55-45f7-88ff-c7657f728472",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 360.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4770,12 +5921,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "b129bad2-cc27-4f81-8a3a-cb83605e60f8",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 360.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4853,12 +6044,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "a9622502-a145-4c2c-a663-cdddd66d5a16",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 360.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": false,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -4985,12 +6216,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "f5c99a1a-ad3f-4899-b990-09fb1e307f3e",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -5034,12 +6305,52 @@
               "cc_mom_escenario": 1,
               "cc_aleatorio_sel": false
             }
+          },
+          {
+            "id": "9760e1c3-e939-4e01-905d-2a9e83843671",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
           }
         ],
         "cc_b1": true,
         "cc_b2": true,
         "ca_esencial": false,
-        "ca_no_esencial": false,
+        "ca_no_esencial": true,
         "is_energy_source": false
       },
       {
@@ -5076,7 +6387,7 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "cc_perm_pct_custom": "50.00",
+              "cc_perm_pct_custom": "100.00",
               "feed_ca_no_esencial": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_mom_incluir": true,
@@ -5093,20 +6404,6 @@
         ],
         "cc_b1": true,
         "cc_b2": true,
-        "ca_esencial": false,
-        "ca_no_esencial": false,
-        "is_energy_source": false
-      },
-      {
-        "id": "86bbd1fa-d6eb-43e5-a5a4-a19da3d93020",
-        "tag": "TSA-01",
-        "nombre": "Transformador de SS/AA",
-        "sala": "Patio Subestación - Patio Subestación",
-        "ubicacion_id": "87a5e493-20da-41fe-a73f-19aaae57cab5",
-        "is_board": false,
-        "components": [],
-        "cc_b1": false,
-        "cc_b2": false,
         "ca_esencial": false,
         "ca_no_esencial": false,
         "is_energy_source": false

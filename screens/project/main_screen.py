@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from screens.base import ScreenBase
 from app.sections import Section
@@ -101,6 +101,8 @@ class MainScreen(ScreenBase):
         g_proy = QGroupBox("Datos del Proyecto")
         g_proy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_proy = QFormLayout()
+        f_proy.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        f_proy.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.ed_cliente = QLineEdit();                self._bind_line("cliente", self.ed_cliente)
         f_proy.addRow("Cliente:", self.ed_cliente)
@@ -127,6 +129,8 @@ class MainScreen(ScreenBase):
         g_ca = QGroupBox("Sistema CA")
         g_ca.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_ca = QFormLayout()
+        f_ca.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        f_ca.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.ed_v_mono = QLineEdit();                 self._bind_line("tension_monofasica", self.ed_v_mono)
         f_ca.addRow("Tensión Monofásica (V):", self.ed_v_mono)
@@ -150,6 +154,8 @@ class MainScreen(ScreenBase):
         g_cc = QGroupBox("Sistema CC")
         g_cc.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         f_cc = QFormLayout()
+        f_cc.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        f_cc.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.ed_nom = QLineEdit();                    self._bind_line("tension_nominal", self.ed_nom)
         f_cc.addRow("Tensión Nominal (V):", self.ed_nom)
@@ -240,4 +246,3 @@ class MainScreen(ScreenBase):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         # This screen writes through on-change bindings; keep as no-op.
         pass
-

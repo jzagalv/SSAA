@@ -639,6 +639,45 @@
       "alimentador": "General",
       "tipo_consumo": "C.C. permanente",
       "fase": "1F"
+    },
+    {
+      "lib_uid": "8c08e37f-793f-47e6-8d76-ab60dd8236be",
+      "code": "",
+      "name": "Equipo de Climatización",
+      "marca": "",
+      "modelo": "",
+      "potencia_w": "4000",
+      "potencia_va": "----",
+      "usar_va": false,
+      "alimentador": "General",
+      "tipo_consumo": "C.A. Esencial",
+      "fase": "3F"
+    },
+    {
+      "lib_uid": "0869a98e-1c70-4c3c-8cf5-00d14ae487db",
+      "code": "",
+      "name": "Ventiladores Transformador",
+      "marca": "",
+      "modelo": "",
+      "potencia_w": "2400",
+      "potencia_va": "----",
+      "usar_va": false,
+      "alimentador": "General",
+      "tipo_consumo": "C.A. Esencial",
+      "fase": "3F"
+    },
+    {
+      "lib_uid": "9fcbcf8b-f166-4570-9f78-cb5134ccfe1a",
+      "code": "",
+      "name": "Alimentación CTBC",
+      "marca": "",
+      "modelo": "",
+      "potencia_w": "600",
+      "potencia_va": "----",
+      "usar_va": false,
+      "alimentador": "General",
+      "tipo_consumo": "C.A. Esencial",
+      "fase": "3F"
     }
   ],
   "schema_version": 1
