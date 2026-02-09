@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.154] - 2026-02-09
+- UI: QComboBox vuelve a mostrar flecha y se corrige recorte de texto en combos (incluye combos en tablas).
+
 ## [1.4.0-alpha.153] - 2026-02-09
 - Consumos C.C.: auto-ajuste de ancho de columnas por contenido (texto más largo) en todas las tablas.
 - Consumos C.C.: pulido final de layout/sorting/validaciones.

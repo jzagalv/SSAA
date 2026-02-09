@@ -96,8 +96,8 @@ QDateEdit {
     border: 1px solid {{BORDER}};
     border-radius: 6px;
     /* Compact, CAD-like */
-    padding: 2px 6px;
-    min-height: 20px;
+    padding: 2px 24px 2px 6px;
+    min-height: 22px;
 }
 
 QLineEdit:focus,
@@ -368,8 +368,8 @@ QComboBox {
     border: 1px solid {{BORDER}};
     border-radius: 8px;
     /* Compacto para que se alinee bien dentro de QTableWidget */
-    padding: 1px 22px 1px 8px;   /* deja espacio para la flecha */
-    min-height: 20px;
+    padding: 2px 24px 2px 8px;   /* deja espacio para la flecha */
+    min-height: 22px;
 }
 
 QComboBox:hover {
@@ -385,14 +385,10 @@ QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
     width: 20px;
-    border: none;
+    border-left: 1px solid {{BORDER}};
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
     background: transparent;
-}
-
-/* Flecha nativa */
-QComboBox::down-arrow {
-    width: 8px;
-    height: 8px;
 }
 
 /* Combos dentro de tablas: sin margen, calce compacto */
@@ -400,9 +396,8 @@ QTableWidget QComboBox,
 QTableView QComboBox {
     margin: 0px;
     border-radius: 6px;
-    min-height: 18px;
-    padding-top: 0px;
-    padding-bottom: 0px;
+    min-height: 20px;
+    padding: 1px 22px 1px 6px;
 }
 
 QTableWidget QCheckBox,
@@ -636,7 +631,8 @@ QWidget[glass="true"] QDoubleSpinBox {
     background: rgba(255, 255, 255, 210);
     border: 1px solid rgba(0, 0, 0, 22);
     border-radius: 10px;
-    padding: 6px 10px;
+    padding: 6px 24px 6px 10px;
+    min-height: 22px;
 }
 
 QWidget[glass="true"] QLineEdit:focus,
