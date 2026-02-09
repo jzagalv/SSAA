@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.137] - 2026-02-08
+### Fixed
+- Alimentacion tableros: fila GENERAL ahora refleja solo consumos generales (derivados de components), evitando duplicidad cuando existen consumos individuales CA/CC.
+
 ## [1.4.0-alpha.136] - 2026-02-08
 ### Fixed
 - Hotfix: Board Feed: restauradas funciones de inferencia a nivel módulo; corregida indentación y eliminado crash en load_data/showEvent.

@@ -362,23 +362,19 @@ class BoardFeedScreen(ScreenBase):
                 # Auto-inferir perfil del gabinete a partir de sus componentes "Generales"
                 comps = g.get("components", []) or []
                 infer_g = _infer_from_components(comps, include_individual=False)
+                if any(bool(g.get(k, False)) for k in ("cc_b1", "cc_b2", "ca_esencial", "ca_no_esencial")) and not any(
+                    infer_g.values()
+                ):
+                    logging.getLogger(__name__).debug(
+                        "Board feed: flags generales sin respaldo en componentes generales (gabinete=%s).",
+                        g.get("tag", ""),
+                    )
 
-                # IMPORTANTE:
-                # Antes se hacía: stored OR inferred. Eso rompe el guardado porque
-                # si el usuario desmarca (False) pero la inferencia da True, al
-                # recargar vuelve a aparecer marcado.
-                # Regla nueva: si el campo existe en JSON, se respeta SIEMPRE.
-                # Si no existe, usamos la inferencia como valor inicial.
-                cc_b1 = bool(g["cc_b1"]) if "cc_b1" in g else bool(infer_g["cc_b1"])
-                cc_b2 = bool(g["cc_b2"]) if "cc_b2" in g else bool(infer_g["cc_b2"])
-                ca_es = bool(g["ca_esencial"]) if "ca_esencial" in g else bool(infer_g["ca_esencial"])
-                ca_noes = bool(g["ca_no_esencial"]) if "ca_no_esencial" in g else bool(infer_g["ca_no_esencial"])
-
-                # Persistir (para que Arquitectura SS/AA vea consistencia sin depender de la UI)
-                g["cc_b1"] = cc_b1
-                g["cc_b2"] = cc_b2
-                g["ca_esencial"] = ca_es
-                g["ca_no_esencial"] = ca_noes
+                # La fila GENERAL refleja solo consumos generales (no individuales).
+                cc_b1 = bool(infer_g["cc_b1"])
+                cc_b2 = bool(infer_g["cc_b2"])
+                ca_es = bool(infer_g["ca_esencial"])
+                ca_noes = bool(infer_g["ca_no_esencial"])
 
                 self._add_checkbox(current_row, COL_CC_B1, cc_b1, "cc_b1")
                 self._add_checkbox(current_row, COL_CC_B2, cc_b2, "cc_b2")
@@ -416,8 +412,7 @@ class BoardFeedScreen(ScreenBase):
                     self.table.setItem(current_row, COL_DESC, it_desc_c)
 
                     # Auto-inferir perfil del consumo Individual (su propio alimentador)
-                    tipo_c = str(data.get("tipo_consumo") or data.get("consumo") or "")
-                    infer_c = _infer_from_tipo(tipo_c)
+                    infer_c = _infer_from_components([comp], include_individual=True)
 
                     # Misma regla que en gabinetes: si el usuario ya definió el flag,
                     # se respeta aunque el inferido sea True.
