@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.143] - 2026-02-08
+### Fixed
+- En modo moderno, la sidebar ahora aplica estilo/seleccion correctamente al inicio (sin requerir cambio de pestana).
+
 ## [1.4.0-alpha.142] - 2026-02-08
 ### Changed
 - Modern UI: estilo "glass claro" (A) para formularios/paneles y estilo tecnico (B) para tablas, activo solo en modo moderno.

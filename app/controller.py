@@ -373,11 +373,29 @@ class MainWindow(QMainWindow):
 
         self._create_menus()
         self.set_nav_mode(get_saved_nav_mode())
+        QTimer.singleShot(0, self._sync_sidebar_initial_state)
 
         # Ventanas flotantes (reutilizables)
         self._lib_manager = None
         self._db_consumos = None
         self._db_materiales = None
+
+    def _sync_sidebar_initial_state(self) -> None:
+        """Asegura estilo/seleccion correctos de sidebar al arranque."""
+        try:
+            if hasattr(self, "app_widget") and hasattr(self, "sidebar"):
+                idx = int(self.app_widget.currentIndex())
+                if hasattr(self.sidebar, "set_active"):
+                    self.sidebar.set_active(idx)
+
+            for w in (self, getattr(self, "sidebar", None), getattr(self, "app_widget", None)):
+                if w is None:
+                    continue
+                w.style().unpolish(w)
+                w.style().polish(w)
+                w.update()
+        except Exception:
+            pass
 
     def _on_sidebar_navigate(self, tab_index: int) -> None:
         try:
