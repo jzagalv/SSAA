@@ -47,7 +47,10 @@ from .graphics import (
     COLOR_FRAME, COLOR_GRID_LIGHT, FONT_ITEM,
     ComponentCardItem, CustomGraphicsView,
 )
-from .widgets import EquipmentListWidget
+try:
+    from SSAA.widgets.grouped_equipment_tree_widget import GroupedEquipmentTreeWidget
+except Exception:  # pragma: no cover - local execution fallback
+    from widgets.grouped_equipment_tree_widget import GroupedEquipmentTreeWidget
 from .persistence import CabinetPersistence
 from .update_pipeline import CabinetUpdatePipeline
 from .cabinet_controller import CabinetController
@@ -238,8 +241,9 @@ class CabinetComponentsScreen(ScreenBase):
         right_group = QGroupBox("Consumos")
         right = QVBoxLayout()
         right.setSpacing(8)
-        self.equipment_list = EquipmentListWidget()
-        right.addWidget(self.equipment_list)
+        self.equipment_tree = GroupedEquipmentTreeWidget(self)
+        self.equipment_tree.equipmentActivated.connect(self._add_equipment_to_cabinet)
+        right.addWidget(self.equipment_tree)
         right_group.setLayout(right)
         root.addWidget(right_group, 1)
 
@@ -249,55 +253,6 @@ class CabinetComponentsScreen(ScreenBase):
     def _load_component_database(self):
         """Wrapper: delega a CabinetPersistence.load_component_database()."""
         return self._persistence.load_component_database()
-
-    def load_equipment(self):
-        self.equipment_list.clear()
-        # Preferimos la librería de consumos cargada (consumos.lib)
-        lib = getattr(self.data_model, "library_data", {}).get("consumos")
-        items = []
-        if isinstance(lib, dict) and lib.get("file_type") == "SSAA_LIB_CONSUMOS":
-            raw_items = lib.get("items", [])
-            if isinstance(raw_items, list):
-                items = [it for it in raw_items if isinstance(it, dict)]
-        else:
-            # Fallback: base antigua en resources/component_database.json
-            items = self._load_component_database()
-
-        seen = set()
-        for comp in items:
-            name = str(comp.get("name", "")).strip()
-            if not name or name in seen:
-                continue
-            seen.add(name)
-
-            it = QListWidgetItem(name)
-            it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled)
-            # Guardamos identidad de librería si existe
-            it.setData(Qt.UserRole, str(comp.get("lib_uid", "") or ""))
-            it.setData(Qt.UserRole + 1, str(comp.get("code", "") or ""))
-            self.equipment_list.addItem(it)
-
-        if self.equipment_list.count() == 0:
-            names = [
-                "Controlador",
-                "Protección Sistema 1",
-                "Protección Sistema 2",
-                "Protección 50BF",
-                "Protección 87B",
-                "Equipo de Facturación",
-                "Switch de Comunicaciones",
-                "Reloj GPS",
-                "RTU",
-                "HMI",
-                "Redbox",
-                "Relés Auxiliares",
-                "Luz Indicadora",
-            ]
-
-            for name in names:
-                item = QListWidgetItem(name)
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled)
-                self.equipment_list.addItem(item)
 
     def load_cabinets(self):
         """
@@ -320,25 +275,32 @@ class CabinetComponentsScreen(ScreenBase):
         for g in gabinetes:
             tag = g.get("tag", "")
             nombre = g.get("nombre", "")
-            self.cabinets_list.addItem(QListWidgetItem(f"{tag} - {nombre}"))
+            it = QListWidgetItem(f"{tag} - {nombre}")
+            it.setData(Qt.UserRole, tag)
+            self.cabinets_list.addItem(it)
+        self.cabinets_list.sortItems(Qt.AscendingOrder)
         self.cabinets_list.blockSignals(False)
 
-        # Determinar qué gabinete dejar seleccionado
-        selected_index = -1
+        # Mantener selección por TAG en la lista ya ordenada
+        selected_row = -1
         if prev_tag:
-            # Buscar el gabinete con el mismo TAG
-            for i, g in enumerate(gabinetes):
-                if g.get("tag", "") == prev_tag:
-                    selected_index = i
+            for i in range(self.cabinets_list.count()):
+                it = self.cabinets_list.item(i)
+                if (it.data(Qt.UserRole) or "") == prev_tag:
+                    selected_row = i
                     break
 
-        # Si no se encontró el anterior (o no había), usar el primero
-        if selected_index == -1 and gabinetes:
-            selected_index = 0
+        if selected_row < 0 and self.cabinets_list.count() > 0:
+            selected_row = 0
 
-        if 0 <= selected_index < len(gabinetes):
-            self.current_cabinet = gabinetes[selected_index]
-            self.cabinets_list.setCurrentRow(selected_index)
+        if selected_row >= 0:
+            self.cabinets_list.setCurrentRow(selected_row)
+            item = self.cabinets_list.item(selected_row)
+            selected_tag = (item.data(Qt.UserRole) or "") if item is not None else ""
+            self.current_cabinet = next(
+                (g for g in gabinetes if str(g.get("tag", "")) == str(selected_tag)),
+                None,
+            )
         else:
             self.current_cabinet = None
 
@@ -354,8 +316,13 @@ class CabinetComponentsScreen(ScreenBase):
         Actualiza el gabinete actual y redibuja la escena y la tabla.
         """
         gabinetes = getattr(self.data_model, "gabinetes", [])
-        if 0 <= row < len(gabinetes):
-            self.current_cabinet = gabinetes[row]
+        item = self.cabinets_list.item(row) if row >= 0 else None
+        tag = item.data(Qt.UserRole) if item is not None else None
+        if tag:
+            self.current_cabinet = next(
+                (g for g in gabinetes if str(g.get("tag", "")) == str(tag)),
+                None,
+            )
         else:
             self.current_cabinet = None
 
@@ -1176,6 +1143,81 @@ class CabinetComponentsScreen(ScreenBase):
         # This screen writes changes through table/drag handlers.
         self.commit_pending_edits()
         return
+
+    # --- Equipment tree integration (overrides legacy flat-list loader) ---
+    def load_equipment(self):
+        # Preferimos la libreria de consumos cargada (consumos.lib)
+        lib = getattr(self.data_model, "library_data", {}).get("consumos")
+        items = []
+        if isinstance(lib, dict) and lib.get("file_type") == "SSAA_LIB_CONSUMOS":
+            raw_items = lib.get("items", [])
+            if isinstance(raw_items, list):
+                items = [it for it in raw_items if isinstance(it, dict)]
+        else:
+            items = self._load_component_database()
+
+        tree_items = []
+        seen = set()
+        for comp in items:
+            if not isinstance(comp, dict):
+                continue
+            name = str(comp.get("name", "")).strip()
+            lib_uid = str(comp.get("lib_uid", "") or "").strip()
+            code = str(comp.get("code", "") or "").strip()
+            norm = " ".join(name.split()).casefold()
+            if not norm or norm in seen:
+                continue
+            seen.add(norm)
+
+            d = self._normalize_comp_data(dict(comp))
+            tree_items.append(
+                {
+                    "name": name,
+                    "lib_uid": lib_uid,
+                    "code": code,
+                    "tipo_consumo": str(d.get("tipo_consumo", "C.C. permanente") or "C.C. permanente"),
+                    "origen": str(d.get("origen", "Generico") or "Generico"),
+                }
+            )
+
+        if not tree_items:
+            defaults = [
+                "Controlador",
+                "Proteccion Sistema 1",
+                "Proteccion Sistema 2",
+                "Proteccion 50BF",
+                "Proteccion 87B",
+                "Equipo de Facturacion",
+                "Switch de Comunicaciones",
+                "Reloj GPS",
+                "RTU",
+                "HMI",
+                "Redbox",
+                "Reles Auxiliares",
+                "Luz Indicadora",
+            ]
+            for name in defaults:
+                tree_items.append(
+                    {
+                        "name": name,
+                        "lib_uid": "",
+                        "code": "",
+                        "tipo_consumo": "C.C. permanente",
+                        "origen": "Generico",
+                    }
+                )
+
+        self.equipment_tree.set_items(tree_items)
+
+    def _add_equipment_to_cabinet(self, payload: dict):
+        if not isinstance(payload, dict):
+            return
+        name = str(payload.get("name", "")).strip()
+        if not name:
+            return
+        lib_uid = str(payload.get("lib_uid", "") or "")
+        code = str(payload.get("code", "") or "")
+        self.add_component_at(name, QPointF(0, 0), lib_uid=lib_uid, code=code)
 
     def closeEvent(self, event):
         try:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-PestaÃ±a de resumen de consumos en Corriente Continua (C.C.).
+Pestaña de resumen de consumos en Corriente Continua (C.C.).
 
 SÃ³lo considera componentes con:
     - tipo_consumo = "C.C. permanente"
@@ -19,7 +19,7 @@ Secciones:
 2) Consumos momentÃ¡neos:
    - Tabla con cargas momentÃ¡neas en C.C.
    - El usuario marca quÃ© cargas incluir y a quÃ© "Escenario" pertenecen.
-   - SpinBox para definir NÂ° de escenarios.
+   - SpinBox para definir N° de escenarios.
    - Tabla de resumen por escenario (con columna de DescripciÃ³n editable).
    - Botones para guardar imagen de ambas tablas.
 
@@ -221,7 +221,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.tabs = QTabWidget()
         root.addWidget(self.tabs)
 
-        # ================== SecciÃ³n 1: Permanentes ==================
+        # ================== Sección 1: Permanentes ==================
         self.grp_perm = QGroupBox("Consumos Permanentes en C.C.")
         g_perm = self.grp_perm
         v_perm = QVBoxLayout(g_perm)
@@ -233,13 +233,13 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         vbox_v = QVBoxLayout()
 
         row_vnom = QHBoxLayout()
-        row_vnom.addWidget(QLabel("TensiÃ³n nominal C.C. [V]:"))
+        row_vnom.addWidget(QLabel("Tensión nominal C.C. [V]:"))
         self.lbl_vcc = QLabel("-")
         row_vnom.addWidget(self.lbl_vcc)
         row_vnom.addStretch()
 
         row_vmin = QHBoxLayout()
-        row_vmin.addWidget(QLabel("Vmin para cÃ¡lculo de corrientes [V]:"))
+        row_vmin.addWidget(QLabel("Vmin para cálculo de corrientes [V]:"))
         self.lbl_vmin = QLabel("-")
         row_vmin.addWidget(self.lbl_vmin)
         row_vmin.addStretch()
@@ -251,7 +251,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # --- Resto de controles ---
         top_perm.addSpacing(20)
-        top_perm.addWidget(QLabel("% UtilizaciÃ³n global:"))
+        top_perm.addWidget(QLabel("% Utilización global:"))
         self.spin_pct_global = QDoubleSpinBox()
         self.spin_pct_global.setRange(0.0, 100.0)
         self.spin_pct_global.setDecimals(2)
@@ -295,23 +295,23 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         bottom_perm.addWidget(self.lbl_perm_total_i_fuera)
 
         bottom_perm.addStretch()
-        self.btn_img_perm = QPushButton("Guardar imagen tabla permanentesâ¦")
+        self.btn_img_perm = QPushButton("Guardar imagen tabla permanentes…")
         bottom_perm.addWidget(self.btn_img_perm)
         v_perm.addLayout(bottom_perm)
 
-        # --- PestaÃ±a "Permanentes" ---
+        # --- Pestaña "Permanentes" ---
         perm_page = QWidget()
         perm_layout = QVBoxLayout(perm_page)
         perm_layout.addWidget(g_perm, 1)
         self.tabs.addTab(perm_page, "Permanentes")
 
-        # ================== SecciÃ³n 2: MomentÃ¡neos ==================
-        self.grp_mom = QGroupBox("Consumos MomentÃ¡neos en C.C. â Escenarios")
+        # ================== Sección 2: Momentáneos ==================
+        self.grp_mom = QGroupBox("Consumos Momentáneos en C.C. – Escenarios")
         g_mom = self.grp_mom
         v_mom = QVBoxLayout(g_mom)
 
         top_mom = QHBoxLayout()
-        top_mom.addWidget(QLabel("NÂ° de escenarios:"))
+        top_mom.addWidget(QLabel("N° de escenarios:"))
         self.spin_escenarios = QSpinBox()
         self.spin_escenarios.setRange(1, 20)
         self.spin_escenarios.setValue(1)
@@ -337,20 +337,20 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         bottom_mom = QHBoxLayout()
         bottom_mom.addStretch()
-        self.btn_img_mom_cargas = QPushButton("Imagen tabla momentÃ¡neosâ¦")
-        self.btn_img_mom_esc = QPushButton("Imagen tabla escenariosâ¦")
+        self.btn_img_mom_cargas = QPushButton("Imagen tabla momentáneos…")
+        self.btn_img_mom_esc = QPushButton("Imagen tabla escenarios…")
         bottom_mom.addWidget(self.btn_img_mom_cargas)
         bottom_mom.addWidget(self.btn_img_mom_esc)
         v_mom.addLayout(bottom_mom)
 
-        # --- PestaÃ±a "MomentÃ¡neos" ---
+        # --- Pestaña "Momentáneos" ---
         mom_page = QWidget()
         mom_layout = QVBoxLayout(mom_page)
         mom_layout.addWidget(g_mom, 1)
-        self.tabs.addTab(mom_page, "MomentÃ¡neos")
+        self.tabs.addTab(mom_page, "Momentáneos")
 
 
-        # ================== SecciÃ³n 3: Aleatorios ==================
+        # ================== Sección 3: Aleatorios ==================
         self.grp_ale = QGroupBox("Consumos Aleatorios en C.C.")
         g_ale = self.grp_ale
         v_ale = QVBoxLayout(g_ale)
@@ -366,11 +366,11 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         bottom_ale.addSpacing(30)
         bottom_ale.addWidget(self.lbl_ale_total_i)
         bottom_ale.addStretch()
-        self.btn_img_ale = QPushButton("Guardar imagen tabla aleatoriosâ¦")
+        self.btn_img_ale = QPushButton("Guardar imagen tabla aleatorios…")
         bottom_ale.addWidget(self.btn_img_ale)
         v_ale.addLayout(bottom_ale)
 
-        # --- PestaÃ±a "Aleatorios" ---
+        # --- Pestaña "Aleatorios" ---
         ale_page = QWidget()
         ale_layout = QVBoxLayout(ale_page)
         ale_layout.addWidget(g_ale, 1)

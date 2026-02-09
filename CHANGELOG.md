@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.151] - 2026-02-09
+- Consumos (gabinetes): lista de gabinetes ordenada A–Z sin desincronizar selección.
+- Consumos C.C.: corrección de textos (acentos, N°, guion largo y ellipsis).
+- Consumos (gabinetes): deduplicación robusta de consumos por normalización de nombre.
+
 ## [1.4.0-alpha.150] - 2026-02-09
 - Consumos (gabinetes): el marco del gabinete se recalcula y se ajusta al contenido (crece y encoge).
 - Consumos (gabinetes): UI alineada con Instalaciones (margenes/spacing y paneles con groupbox).
