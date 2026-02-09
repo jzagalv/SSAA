@@ -1,21 +1,23 @@
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QVBoxLayout,
+    QAbstractItemView,
+    QComboBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QMessageBox,
-    QComboBox,
+    QVBoxLayout,
 )
-from PyQt5.QtCore import pyqtSignal, Qt
 
-from screens.base import ScreenBase
 from app.sections import Section
+from screens.base import ScreenBase
+from screens.project.location_controller import LocationController
 from ui.table_utils import make_table_sortable
 from ui.utils.table_utils import configure_table_autoresize
-from screens.project.location_controller import LocationController
 
 
 class LocationScreen(ScreenBase):
@@ -68,43 +70,74 @@ class LocationScreen(ScreenBase):
                 return gabinete
         return None
 
+    def _has_valid_sala_selection(self) -> bool:
+        fila = self.tabla_salas.currentRow()
+        return 0 <= fila < len(self.data_model.salas)
+
+    def _has_valid_gabinete_selection(self) -> bool:
+        fila = self.tabla_gabinetes.currentRow()
+        if fila < 0:
+            return False
+        cab_id = self._get_selected_gabinete_id(fila)
+        return isinstance(self._find_gabinete_by_id(cab_id), dict)
+
+    def _update_sala_action_buttons(self):
+        enabled = self._has_valid_sala_selection()
+        self.btn_editar_sala.setEnabled(enabled)
+        self.btn_eliminar_sala.setEnabled(enabled)
+
+    def _update_gabinete_action_buttons(self):
+        enabled = self._has_valid_gabinete_selection()
+        self.btn_editar_gabinete.setEnabled(enabled)
+        self.btn_eliminar_gabinete.setEnabled(enabled)
+
     # ------------------------------
     # UI
     # ------------------------------
     def initUI(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
         # ===== Ubicaciones =====
+        ubicaciones_group = QGroupBox("Ubicaciones")
+        ubicaciones_layout = QVBoxLayout()
+        ubicaciones_layout.setSpacing(8)
+
         sala_layout = QVBoxLayout()
+        sala_layout.setSpacing(8)
 
         tag_sala_layout = QHBoxLayout()
+        tag_sala_layout.setSpacing(8)
         tag_sala_layout.addWidget(QLabel("TAG Ubicación:"))
         self.input_tag_sala = QLineEdit()
         self.input_tag_sala.setPlaceholderText("Ej: SALA-01")
         tag_sala_layout.addWidget(self.input_tag_sala)
 
         nombre_sala_layout = QHBoxLayout()
+        nombre_sala_layout.setSpacing(8)
         nombre_sala_layout.addWidget(QLabel("Nombre Ubicación:"))
         self.input_nombre_sala = QLineEdit()
         self.input_nombre_sala.setPlaceholderText("Ej: Patio / Sala / Edificio")
         nombre_sala_layout.addWidget(self.input_nombre_sala)
 
         btn_sala_layout = QHBoxLayout()
-        btn_agregar_sala = QPushButton("Agregar Ubicación")
-        btn_agregar_sala.clicked.connect(self.agregar_sala)
-        btn_editar_sala = QPushButton("Editar Ubicación")
-        btn_editar_sala.clicked.connect(self.editar_sala)
-        btn_eliminar_sala = QPushButton("Eliminar Ubicación")
-        btn_eliminar_sala.clicked.connect(self.eliminar_sala)
-
-        btn_sala_layout.addWidget(btn_agregar_sala)
-        btn_sala_layout.addWidget(btn_editar_sala)
-        btn_sala_layout.addWidget(btn_eliminar_sala)
+        btn_sala_layout.setSpacing(8)
+        self.btn_agregar_sala = QPushButton("Agregar Ubicación")
+        self.btn_agregar_sala.clicked.connect(self.agregar_sala)
+        self.btn_editar_sala = QPushButton("Editar Ubicación")
+        self.btn_editar_sala.clicked.connect(self.editar_sala)
+        self.btn_editar_sala.setProperty("role", "secondary")
+        self.btn_eliminar_sala = QPushButton("Eliminar Ubicación")
+        self.btn_eliminar_sala.clicked.connect(self.eliminar_sala)
+        self.btn_eliminar_sala.setProperty("role", "danger")
+        btn_sala_layout.addWidget(self.btn_agregar_sala)
+        btn_sala_layout.addWidget(self.btn_editar_sala)
+        btn_sala_layout.addWidget(self.btn_eliminar_sala)
 
         sala_layout.addLayout(tag_sala_layout)
         sala_layout.addLayout(nombre_sala_layout)
         sala_layout.addLayout(btn_sala_layout)
-        layout.addLayout(sala_layout)
 
         self.tabla_salas = QTableWidget()
         self.tabla_salas.setColumnCount(2)
@@ -113,19 +146,32 @@ class LocationScreen(ScreenBase):
         make_table_sortable(self.tabla_salas)
         self.tabla_salas.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_salas.setSelectionMode(QTableWidget.SingleSelection)
-        layout.addWidget(self.tabla_salas)
+        self.tabla_salas.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_salas.setMaximumHeight(220)
         self.tabla_salas.itemSelectionChanged.connect(self._on_select_sala)
 
+        ubicaciones_layout.addLayout(sala_layout)
+        ubicaciones_layout.addWidget(self.tabla_salas)
+        ubicaciones_group.setLayout(ubicaciones_layout)
+        layout.addWidget(ubicaciones_group)
+
         # ===== Gabinetes =====
+        gabinetes_group = QGroupBox("Gabinetes")
+        gabinetes_layout = QVBoxLayout()
+        gabinetes_layout.setSpacing(8)
+
         gabinete_layout = QVBoxLayout()
+        gabinete_layout.setSpacing(8)
 
         tag_gabinete_layout = QHBoxLayout()
+        tag_gabinete_layout.setSpacing(8)
         tag_gabinete_layout.addWidget(QLabel("TAG Gabinete:"))
         self.input_tag_gabinete = QLineEdit()
         self.input_tag_gabinete.setPlaceholderText("Ej: GAB-001")
         tag_gabinete_layout.addWidget(self.input_tag_gabinete)
 
         nombre_gabinete_layout = QHBoxLayout()
+        nombre_gabinete_layout.setSpacing(8)
         nombre_gabinete_layout.addWidget(QLabel("Nombre Gabinete:"))
         self.input_nombre_gabinete = QLineEdit()
         self.input_nombre_gabinete.setPlaceholderText("Ej: Tablero Fuerza")
@@ -135,22 +181,23 @@ class LocationScreen(ScreenBase):
         self.combo_salas.setPlaceholderText("Seleccione una ubicación")
 
         btn_gabinete_layout = QHBoxLayout()
-        btn_agregar_gabinete = QPushButton("Agregar Gabinete")
-        btn_agregar_gabinete.clicked.connect(self.agregar_gabinete)
-        btn_editar_gabinete = QPushButton("Editar Gabinete")
-        btn_editar_gabinete.clicked.connect(self.editar_gabinete)
-        btn_eliminar_gabinete = QPushButton("Eliminar Gabinete")
-        btn_eliminar_gabinete.clicked.connect(self.eliminar_gabinete)
-
-        btn_gabinete_layout.addWidget(btn_agregar_gabinete)
-        btn_gabinete_layout.addWidget(btn_editar_gabinete)
-        btn_gabinete_layout.addWidget(btn_eliminar_gabinete)
+        btn_gabinete_layout.setSpacing(8)
+        self.btn_agregar_gabinete = QPushButton("Agregar Gabinete")
+        self.btn_agregar_gabinete.clicked.connect(self.agregar_gabinete)
+        self.btn_editar_gabinete = QPushButton("Editar Gabinete")
+        self.btn_editar_gabinete.clicked.connect(self.editar_gabinete)
+        self.btn_editar_gabinete.setProperty("role", "secondary")
+        self.btn_eliminar_gabinete = QPushButton("Eliminar Gabinete")
+        self.btn_eliminar_gabinete.clicked.connect(self.eliminar_gabinete)
+        self.btn_eliminar_gabinete.setProperty("role", "danger")
+        btn_gabinete_layout.addWidget(self.btn_agregar_gabinete)
+        btn_gabinete_layout.addWidget(self.btn_editar_gabinete)
+        btn_gabinete_layout.addWidget(self.btn_eliminar_gabinete)
 
         gabinete_layout.addLayout(tag_gabinete_layout)
         gabinete_layout.addLayout(nombre_gabinete_layout)
         gabinete_layout.addWidget(self.combo_salas)
         gabinete_layout.addLayout(btn_gabinete_layout)
-        layout.addLayout(gabinete_layout)
 
         self.tabla_gabinetes = QTableWidget()
         self.tabla_gabinetes.setColumnCount(5)
@@ -160,10 +207,20 @@ class LocationScreen(ScreenBase):
         configure_table_autoresize(self.tabla_gabinetes)
         self.tabla_gabinetes.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_gabinetes.setSelectionMode(QTableWidget.SingleSelection)
+        self.tabla_gabinetes.setEditTriggers(QAbstractItemView.NoEditTriggers)
         make_table_sortable(self.tabla_gabinetes)
-        layout.addWidget(self.tabla_gabinetes)
         self.tabla_gabinetes.itemChanged.connect(self._on_gabinete_item_changed)
         self.tabla_gabinetes.itemSelectionChanged.connect(self._on_select_gabinete)
+
+        gabinetes_layout.addLayout(gabinete_layout)
+        gabinetes_layout.addWidget(self.tabla_gabinetes)
+        gabinetes_group.setLayout(gabinetes_layout)
+        layout.addWidget(gabinetes_group)
+
+        self.btn_editar_sala.setEnabled(False)
+        self.btn_eliminar_sala.setEnabled(False)
+        self.btn_editar_gabinete.setEnabled(False)
+        self.btn_eliminar_gabinete.setEnabled(False)
 
         self.setLayout(layout)
 
@@ -187,6 +244,7 @@ class LocationScreen(ScreenBase):
             self.tabla_salas.clearSelection()
         finally:
             self.tabla_salas.blockSignals(False)
+        self._update_sala_action_buttons()
 
     def actualizar_tabla_gabinetes(self):
         self.tabla_gabinetes.blockSignals(True)
@@ -207,11 +265,13 @@ class LocationScreen(ScreenBase):
                 self.tabla_gabinetes.setItem(row, 0, item_tag)
                 self.tabla_gabinetes.setItem(row, 1, item_nombre)
                 self.tabla_gabinetes.setItem(row, 2, item_sala)
+
                 it = QTableWidgetItem("")
                 it.setData(Qt.UserRole, cab_id)
                 it.setFlags((it.flags() | Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable)
                 it.setCheckState(Qt.Checked if bool(gabinete.get("is_board", False)) else Qt.Unchecked)
                 self.tabla_gabinetes.setItem(row, 3, it)
+
                 it2 = QTableWidgetItem("")
                 it2.setData(Qt.UserRole, cab_id)
                 it2.setFlags((it2.flags() | Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable)
@@ -222,6 +282,7 @@ class LocationScreen(ScreenBase):
             self.tabla_gabinetes.clearSelection()
         finally:
             self.tabla_gabinetes.blockSignals(False)
+        self._update_gabinete_action_buttons()
 
     def actualizar_combobox_salas(self):
         self.combo_salas.blockSignals(True)
@@ -237,6 +298,7 @@ class LocationScreen(ScreenBase):
     # Handlers de selección
     # ------------------------------
     def _on_select_sala(self):
+        self._update_sala_action_buttons()
         fila = self.tabla_salas.currentRow()
         if fila < 0 or fila >= len(self.data_model.salas):
             return
@@ -245,6 +307,7 @@ class LocationScreen(ScreenBase):
         self.input_nombre_sala.setText(nombre)
 
     def _on_select_gabinete(self):
+        self._update_gabinete_action_buttons()
         fila = self.tabla_gabinetes.currentRow()
         if fila < 0:
             return
@@ -383,3 +446,4 @@ class LocationScreen(ScreenBase):
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""
         pass
+

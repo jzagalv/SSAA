@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.147] - 2026-02-09
+### Changed
+- Instalaciones: mejora visual con GroupBox, roles de botones y layout.
+### Improved
+- Instalaciones: botones Editar/Eliminar se habilitan solo con selección válida; tablas no editables por defecto (si aplica).
+
 ## [1.4.0-alpha.146] - 2026-02-09
 ### Fixed
 - Instalaciones: operaciones de gabinetes ahora usan ID (compatible con ordenamiento de tabla) evitando editar/eliminar el registro incorrecto.
