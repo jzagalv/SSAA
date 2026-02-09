@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.158] - 2026-02-09
+- Fix: totales permanentes C.C. se actualizan al editar (refresco inmediato).
+- Fix: lista gabinetes ordenada alfabéticamente por TAG de forma determinística.
+
 ## [1.4.0-alpha.157] - 2026-02-09
 - Consumos (gabinetes): se corrige crash y se restablece copiar/pegar consumos (mapeo por TAG con lista ordenada).
 - Consumos C.C.: se corrige crash al editar datos (restaurado iterador robusto de gabinetes en modelo).

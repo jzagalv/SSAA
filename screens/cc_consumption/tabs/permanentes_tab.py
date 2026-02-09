@@ -41,6 +41,7 @@ class PermanentesTabMixin:
             self.spin_pct_global.setValue(float(pct))
         finally:
             self._building = False
+        self._update_permanent_totals()
 
     # =========================================================
     # API pública
@@ -76,6 +77,7 @@ class PermanentesTabMixin:
         self._refresh_pct_editability()
 
         request_autofit(self.tbl_perm)
+        self._update_permanent_totals()
 
     def _refresh_pct_editability(self):
         """
@@ -96,6 +98,7 @@ class PermanentesTabMixin:
 
         if not use_global:
             self._refresh_pct_editability()
+            self._update_permanent_totals()
             return
 
         vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(getattr(self.data_model, "proyecto", {}) or {}) or 0.0
@@ -106,23 +109,30 @@ class PermanentesTabMixin:
             self._controller._emit_input_changed({"perm_pct": True})
         except Exception:
             pass
+        self._update_permanent_totals()
 
     def _update_permanent_totals(self):
+        if getattr(self, "_in_totals_refresh", False):
+            return
+        self._in_totals_refresh = True
         proj = getattr(self.data_model, "proyecto", {}) or {}
-        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
-        totals = self._controller.compute_totals(vmin=float(vmin))
+        try:
+            vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
+            totals = self._controller.compute_totals(vmin=float(vmin))
 
-        p_total = float(totals.get("p_total", 0.0) or 0.0)
-        p_perm = float(totals.get("p_perm", 0.0) or 0.0)
-        i_perm = float(totals.get("i_perm", 0.0) or 0.0)
-        p_mom = float(totals.get("p_mom", 0.0) or 0.0)
-        i_mom = float(totals.get("i_mom", 0.0) or 0.0)
+            p_total = float(totals.get("p_total", 0.0) or 0.0)
+            p_perm = float(totals.get("p_perm", 0.0) or 0.0)
+            i_perm = float(totals.get("i_perm", 0.0) or 0.0)
+            p_mom = float(totals.get("p_mom", 0.0) or 0.0)
+            i_mom = float(totals.get("i_mom", 0.0) or 0.0)
 
-        self.lbl_perm_total_p_total.setText(f"Total P total: {fmt(p_total)} [W]")
-        self.lbl_perm_total_p_perm.setText(f"Total P permanente: {fmt(p_perm)} [W]")
-        self.lbl_perm_total_i.setText(f"Total I permanente: {fmt(i_perm)} [A]")
-        self.lbl_perm_total_p_mom.setText(f"Total P momentánea: {fmt(p_mom)} [W]")
-        self.lbl_perm_total_i_fuera.setText(f"Total I momentánea: {fmt(i_mom)} [A]")
+            self.lbl_perm_total_p_total.setText(f"Total P total: {fmt(p_total)} [W]")
+            self.lbl_perm_total_p_perm.setText(f"Total P permanente: {fmt(p_perm)} [W]")
+            self.lbl_perm_total_i.setText(f"Total I permanente: {fmt(i_perm)} [A]")
+            self.lbl_perm_total_p_mom.setText(f"Total P momentánea: {fmt(p_mom)} [W]")
+            self.lbl_perm_total_i_fuera.setText(f"Total I momentánea: {fmt(i_mom)} [A]")
+        finally:
+            self._in_totals_refresh = False
 
     def _on_perm_data_changed(self, top_left, bottom_right, roles=None):
         if self._building or getattr(self, "_loading", False):
@@ -150,6 +160,7 @@ class PermanentesTabMixin:
             self._controller._emit_input_changed({"perm_pct": True})
         except Exception:
             pass
+        self._update_permanent_totals()
 
     # =========================================================
     # Momentaneos

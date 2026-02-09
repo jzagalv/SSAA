@@ -263,7 +263,13 @@ class CabinetComponentsScreen(ScreenBase):
         - Intenta mantener el gabinete actualmente seleccionado (por TAG).
         """
         gabinetes = getattr(self.data_model, "gabinetes", [])
-
+        gabinetes = sorted(
+            list(gabinetes or []),
+            key=lambda g: (
+                str((g or {}).get("tag", "") or "").casefold(),
+                str((g or {}).get("nombre", "") or "").casefold(),
+            ),
+        )
         # Recordar el TAG del gabinete actualmente seleccionado (si hay)
         prev_tag = None
         if self.current_cabinet is not None:
@@ -278,7 +284,6 @@ class CabinetComponentsScreen(ScreenBase):
             it = QListWidgetItem(f"{tag} - {nombre}")
             it.setData(Qt.UserRole, tag)
             self.cabinets_list.addItem(it)
-        self.cabinets_list.sortItems(Qt.AscendingOrder)
         self.cabinets_list.blockSignals(False)
 
         # Mantener selección por TAG en la lista ya ordenada
