@@ -569,3 +569,102 @@ QWidget[glass="true"][ui_role="table"] QHeaderView::section {
     background: rgba(230,235,240,255);
     border: 1px solid rgba(0,0,0,50);
 }
+
+/* =========================================================
+   MODERN GLASS (A) — SOLO CUANDO glass=true
+   ========================================================= */
+
+/* Fondo general moderno: leve tinte claro (sin afectar clasico) */
+QWidget[glass="true"] {
+    background: rgba(245, 248, 252, 255);
+}
+
+/* Sidebar: en moderno no debe ser verde solido, sino glass claro */
+QWidget[glass="true"] QFrame#Sidebar,
+QWidget[glass="true"] QWidget#Sidebar {
+    background: rgba(255, 255, 255, 170);
+    border-right: 1px solid rgba(0, 0, 0, 18);
+}
+
+/* Botones sidebar */
+QWidget[glass="true"] QToolButton#SidebarItem {
+    background: rgba(255, 255, 255, 60);
+    border: 1px solid rgba(0, 0, 0, 18);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 6px 10px;
+    text-align: left;
+}
+
+QWidget[glass="true"] QToolButton#SidebarItem:hover {
+    background: rgba(255, 255, 255, 110);
+}
+
+QWidget[glass="true"] QToolButton#SidebarItem[active="true"] {
+    background: rgba(255, 255, 255, 150);
+    border-left: 4px solid rgba(0, 160, 90, 220);
+}
+
+/* Cards suaves: groupboxes y frames */
+QWidget[glass="true"] QGroupBox {
+    background: rgba(255, 255, 255, 170);
+    border: 1px solid rgba(0, 0, 0, 18);
+    border-radius: 14px;
+    margin-top: 10px;
+    padding: 12px;
+}
+
+QWidget[glass="true"] QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 6px;
+    color: rgba(20, 35, 50, 220);
+    background: rgba(245, 248, 252, 255);
+}
+
+/* Inputs modernos */
+QWidget[glass="true"] QLineEdit,
+QWidget[glass="true"] QComboBox,
+QWidget[glass="true"] QTextEdit,
+QWidget[glass="true"] QSpinBox,
+QWidget[glass="true"] QDoubleSpinBox {
+    background: rgba(255, 255, 255, 210);
+    border: 1px solid rgba(0, 0, 0, 22);
+    border-radius: 10px;
+    padding: 6px 10px;
+}
+
+QWidget[glass="true"] QLineEdit:focus,
+QWidget[glass="true"] QComboBox:focus,
+QWidget[glass="true"] QTextEdit:focus,
+QWidget[glass="true"] QSpinBox:focus,
+QWidget[glass="true"] QDoubleSpinBox:focus {
+    border: 1px solid rgba(0, 160, 90, 200);
+}
+
+/* Neutralizacion de comportamiento legacy */
+QWidget[glass="true"] QLineEdit,
+QWidget[glass="true"] QSpinBox,
+QWidget[glass="true"] QDoubleSpinBox,
+QWidget[glass="true"] QTextEdit {
+    selection-background-color: rgba(0, 160, 90, 120);
+}
+
+/* =========================================================
+   MODERN TABLES (B) — legibles y exportables
+   ========================================================= */
+
+QWidget[glass="true"] QTableWidget {
+    background: rgba(255, 255, 255, 235);
+    alternate-background-color: rgba(245, 247, 250, 255);
+    gridline-color: rgba(0, 0, 0, 45);
+    selection-background-color: rgba(0, 160, 90, 110);
+    selection-color: black;
+}
+
+QWidget[glass="true"] QHeaderView::section {
+    background: rgba(228, 234, 240, 255);
+    color: rgba(20, 30, 40, 240);
+    border: 1px solid rgba(0, 0, 0, 55);
+    padding: 5px 8px;
+}

@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.142] - 2026-02-08
+### Changed
+- Modern UI: estilo "glass claro" (A) para formularios/paneles y estilo tecnico (B) para tablas, activo solo en modo moderno.
+### Unchanged
+- Modo clasico sin cambios visuales.
+
 ## [1.4.0-alpha.141] - 2026-02-08
 ### Added
 - Modern UI glass A/B system (forms vs tables), active only in modern mode.
