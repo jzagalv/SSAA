@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget,
-    QComboBox, QTableWidget, QTableWidgetItem, QGroupBox, QSizePolicy, QCheckBox
+    QComboBox, QTableWidget, QTableWidgetItem, QGroupBox, QSizePolicy, QCheckBox, QScrollArea, QSpinBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLineEdit, QDoubleSpinBox
@@ -183,97 +183,131 @@ class LoadTablesScreen(ScreenBase):
         w = QWidget()
         lay = QVBoxLayout(w)
 
-        self.lbl_ca_empty = QLabel("No hay datos para generar cuadros de carga C.A.\n\n- Verifica que existan nodos en capas CA_ES / CA_NOES en Arquitectura SS/AA.\n- Verifica que hayas agregado alimentadores desde 'Alimentación tableros' y los hayas conectado." )
+        self.lbl_ca_empty = QLabel(
+            "No hay datos para generar cuadros de carga C.A.\n\n"
+            "- Verifica que existan nodos en capas CA_ES / CA_NOES en Arquitectura SS/AA.\n"
+            "- Verifica que hayas agregado alimentadores desde 'Alimentacion tableros' y los hayas conectado."
+        )
         self.lbl_ca_empty.setWordWrap(True)
         self.lbl_ca_empty.setProperty("mutedHint", True)
         self.lbl_ca_empty.setVisible(False)
         lay.addWidget(self.lbl_ca_empty)
 
-        # Esencial
+        # Esencial (auto por tableros con cargas)
         self.grp_ca_es = QGroupBox("Cargas C.A. Esenciales")
         gl = QVBoxLayout(self.grp_ca_es)
         sel = QHBoxLayout()
-        sel.addWidget(QLabel("Tablero:"))
-        self.cmb_ca_es = QComboBox()
-        self.cmb_ca_es.currentIndexChanged.connect(self._refresh_ca_es_table)
-        sel.addWidget(self.cmb_ca_es, 1)
-        self.chk_balance_ca_es = QCheckBox("Balance automático por fases (usa VA)")
+        self.chk_balance_ca_es = QCheckBox("Balance automatico por fases (usa VA)")
         self.chk_balance_ca_es.setChecked(True)
         self.chk_balance_ca_es.toggled.connect(lambda v: self._on_balance_toggle("CA_ES", v))
         sel.addWidget(self.chk_balance_ca_es)
+        sel.addStretch()
         gl.addLayout(sel)
 
-        self.tbl_ca_es = QTableWidget()
-        _set_header_style(self.tbl_ca_es)
-        restore_header_state(self.tbl_ca_es.horizontalHeader(), "load_tables.tbl_ca_es.header")
-        gl.addWidget(self.tbl_ca_es, 1)
+        self.ca_es_scroll = QScrollArea()
+        self.ca_es_scroll.setWidgetResizable(True)
+        self.ca_es_container = QWidget()
+        self.ca_es_layout = QVBoxLayout(self.ca_es_container)
+        self.ca_es_layout.setContentsMargins(0, 0, 0, 0)
+        self.ca_es_layout.setSpacing(10)
+        self.ca_es_scroll.setWidget(self.ca_es_container)
+        gl.addWidget(self.ca_es_scroll, 1)
 
-        # No esencial
+        # No esencial (auto por tableros con cargas)
         self.grp_ca_no = QGroupBox("Cargas C.A. No Esenciales")
         gl2 = QVBoxLayout(self.grp_ca_no)
         sel2 = QHBoxLayout()
-        sel2.addWidget(QLabel("Tablero:"))
-        self.cmb_ca_no = QComboBox()
-        self.cmb_ca_no.currentIndexChanged.connect(self._refresh_ca_no_table)
-        sel2.addWidget(self.cmb_ca_no, 1)
-        self.chk_balance_ca_no = QCheckBox("Balance automático por fases (usa VA)")
+        self.chk_balance_ca_no = QCheckBox("Balance automatico por fases (usa VA)")
         self.chk_balance_ca_no.setChecked(True)
         self.chk_balance_ca_no.toggled.connect(lambda v: self._on_balance_toggle("CA_NOES", v))
         sel2.addWidget(self.chk_balance_ca_no)
+        sel2.addStretch()
         gl2.addLayout(sel2)
 
-        self.tbl_ca_no = QTableWidget()
-        _set_header_style(self.tbl_ca_no)
-        restore_header_state(self.tbl_ca_no.horizontalHeader(), "load_tables.tbl_ca_no.header")
-        gl2.addWidget(self.tbl_ca_no, 1)
+        self.ca_no_scroll = QScrollArea()
+        self.ca_no_scroll.setWidgetResizable(True)
+        self.ca_no_container = QWidget()
+        self.ca_no_layout = QVBoxLayout(self.ca_no_container)
+        self.ca_no_layout.setContentsMargins(0, 0, 0, 0)
+        self.ca_no_layout.setSpacing(10)
+        self.ca_no_scroll.setWidget(self.ca_no_container)
+        gl2.addWidget(self.ca_no_scroll, 1)
 
         lay.addWidget(self.grp_ca_es, 1)
         lay.addWidget(self.grp_ca_no, 1)
 
         self.tabs.addTab(w, "C.A.")
 
+    def _clear_layout(self, layout: QVBoxLayout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+
     def _refresh_ca(self):
-        # combos desde topología
-        self._fill_combo(self.cmb_ca_es, list_board_nodes(self.data_model, workspace="CA_ES"))
-        self._fill_combo(self.cmb_ca_no, list_board_nodes(self.data_model, workspace="CA_NOES"))
+        n_es = self._refresh_ca_workspace("CA_ES", self.ca_es_layout, self.grp_ca_es, self.chk_balance_ca_es)
+        n_no = self._refresh_ca_workspace("CA_NOES", self.ca_no_layout, self.grp_ca_no, self.chk_balance_ca_no)
+        self.lbl_ca_empty.setVisible((n_es + n_no) == 0)
 
-        # tablas
-        self._refresh_ca_es_table()
-        self._refresh_ca_no_table()
+    def _refresh_ca_workspace(self, workspace: str, layout: QVBoxLayout, group: QGroupBox, chk_balance: QCheckBox) -> int:
+        if hasattr(chk_balance, "blockSignals"):
+            chk_balance.blockSignals(True)
+            chk_balance.setChecked(self._get_balance_auto(workspace))
+            chk_balance.blockSignals(False)
 
-    def _refresh_ca_es_table(self):
-        node_id = self._combo_node_id(self.cmb_ca_es)
-        if hasattr(self, "chk_balance_ca_es"):
-            self.chk_balance_ca_es.blockSignals(True)
-            self.chk_balance_ca_es.setChecked(self._get_balance_auto("CA_ES"))
-            self.chk_balance_ca_es.blockSignals(False)
-        rows = build_ac_table(self.data_model, workspace="CA_ES", board_node_id=node_id) if node_id else []
-        self._render_ac_table(self.tbl_ca_es, rows)
-        self.grp_ca_es.setVisible(len(rows) > 0)
+        self._clear_layout(layout)
+        boards = list_board_nodes(self.data_model, workspace=workspace)
+        count = 0
+        for node_id, label in boards:
+            rows = build_ac_table(self.data_model, workspace=workspace, board_node_id=node_id)
+            if not rows:
+                continue
+            grp = QGroupBox(f"Tablero: {label}")
+            gl = QVBoxLayout(grp)
+            table = QTableWidget()
+            _set_header_style(table)
+            restore_header_state(table.horizontalHeader(), f"load_tables.tbl_{workspace.lower()}.header")
+            self._render_ac_table(table, rows, workspace)
+            gl.addWidget(table, 1)
+            layout.addWidget(grp)
+            count += 1
 
-    def _refresh_ca_no_table(self):
-        node_id = self._combo_node_id(self.cmb_ca_no)
-        if hasattr(self, "chk_balance_ca_no"):
-            self.chk_balance_ca_no.blockSignals(True)
-            self.chk_balance_ca_no.setChecked(self._get_balance_auto("CA_NOES"))
-            self.chk_balance_ca_no.blockSignals(False)
-        rows = build_ac_table(self.data_model, workspace="CA_NOES", board_node_id=node_id) if node_id else []
-        self._render_ac_table(self.tbl_ca_no, rows)
-        self.grp_ca_no.setVisible(len(rows) > 0)
+        layout.addStretch()
+        group.setVisible(count > 0)
+        return count
 
-    def _render_ac_table(self, table: QTableWidget, rows):
+    def _render_ac_table(self, table: QTableWidget, rows, workspace: str):
         headers = [
-            "Descripción de las Cargas",
+            "Descripci?n de las Cargas",
             "TAG",
-            "Ubicación",
-            "N° ITM",
+            "Ubicaci?n",
+            "Cantidad",
+            "N? ITM",
             "Capacidad ITM",
             "Capacidad Diferencial",
             "Fases",
-            "Potencia [W]",
             "Factor de potencia",
             "Factor de diversidad",
-            "Consumo total [VA]",
+            "Reserva [%]",
+            "Carga conectada - 1? Sec. arranque [VA]",
+            "Carga conectada - Potencia total [W]",
+            "Carga conectada - Reserva carga [VA]",
+            "Carga operando - 1? Sec. arranque [VA]",
+            "Secuencia 2 (mult)",
+            "Carga operando - 2? Sec. arranque [VA]",
+            "Carga operando - Total [VA]",
+            "Carga operando - Factor servicio",
+            "Carga operando - Reserva [VA]",
+            "Vacante [VA]",
+            "Carga vacante - 1? Sec. arranque [VA]",
+            "Carga vacante - 2? Sec. arranque [VA]",
+            "Carga vacante - Total [VA]",
+            "Carga vacante - Factor servicio",
+            "Carga vacante - Reserva [VA]",
+            "Demanda m?xima - 1? Sec. arranque [VA]",
+            "Demanda m?xima - 2? Sec. arranque [VA]",
+            "Demanda m?xima - Total [VA]",
             "Corriente Fase R [A]",
             "Corriente Fase S [A]",
             "Corriente Fase T [A]",
@@ -283,11 +317,12 @@ class LoadTablesScreen(ScreenBase):
         table.setHorizontalHeaderLabels(headers)
         table.setRowCount(0)
 
-        table.setProperty("_lt_workspace", "CA_ES" if table is self.tbl_ca_es else "CA_NOES")
-        balance_auto = self._get_balance_auto(table.property("_lt_workspace"))
+        table.setProperty("_lt_workspace", workspace)
+        table.setProperty("_mcb_col", 4)
+        balance_auto = self._get_balance_auto(workspace)
 
         for r in rows:
-            fields = self._get_row_fields(table.property("_lt_workspace"), r.node_id)
+            fields = self._get_row_fields(workspace, r.node_id)
             i = table.rowCount()
             table.insertRow(i)
             it0 = _item(r.descripcion)
@@ -296,17 +331,35 @@ class LoadTablesScreen(ScreenBase):
             table.setItem(i, 1, _item(r.tag))
             table.setItem(i, 2, _item(r.ubicacion))
             # Campos usuario
-            self._set_mcb_no_widget(table, i, 3, table.property("_lt_workspace"), r.node_id, fields.get("mcb_no", r.n_itm if r.n_itm != "-" else ""))
-            self._set_combo_widget(table, i, 4, table.property("_lt_workspace"), r.node_id, "mcb_type", fields.get("mcb_type", ""), MCB_OPTIONS, editable=True)
-            table.setItem(i, 5, _item(r.cap_dif))
-            self._set_combo_widget(table, i, 6, table.property("_lt_workspace"), r.node_id, "phase", fields.get("phase", r.fases), PHASE_OPTIONS, editable=(not balance_auto), enabled=(not balance_auto))
-            table.setItem(i, 7, _item(f"{r.p_total_w:.2f}"))
-            self._set_spin_widget(table, i, 8, table.property("_lt_workspace"), r.node_id, "fp", float(fields.get("fp", r.fp)), default=0.90)
-            self._set_spin_widget(table, i, 9, table.property("_lt_workspace"), r.node_id, "fd", float(fields.get("fd", r.fd)), default=1.00)
-            table.setItem(i, 10, _item(f"{r.consumo_va:.2f}"))
-            table.setItem(i, 11, _item(f"{r.i_r:.2f}"))
-            table.setItem(i, 12, _item(f"{r.i_s:.2f}"))
-            table.setItem(i, 13, _item(f"{r.i_t:.2f}"))
+            self._set_int_widget(table, i, 3, workspace, r.node_id, "qty", int(fields.get("qty", r.cantidad)), default=int(r.cantidad or 1))
+            self._set_mcb_no_widget(table, i, 4, workspace, r.node_id, fields.get("mcb_no", r.n_itm if r.n_itm != "-" else ""))
+            self._set_combo_widget(table, i, 5, workspace, r.node_id, "mcb_type", fields.get("mcb_type", ""), MCB_OPTIONS, editable=True)
+            table.setItem(i, 6, _item(r.cap_dif))
+            self._set_combo_widget(table, i, 7, workspace, r.node_id, "phase", fields.get("phase", r.fases), PHASE_OPTIONS, editable=(not balance_auto), enabled=(not balance_auto))
+            self._set_spin_widget(table, i, 8, workspace, r.node_id, "fp", float(fields.get("fp", r.fp)), default=0.90)
+            self._set_spin_widget(table, i, 9, workspace, r.node_id, "fd", float(fields.get("fd", r.fd)), default=1.00)
+            self._set_spin_widget(table, i, 10, workspace, r.node_id, "reserva_pct", float(fields.get("reserva_pct", 0.0)), default=0.0)
+            table.setItem(i, 11, _item(f"{r.cc_seq1_va:.2f}"))
+            table.setItem(i, 12, _item(f"{r.cc_p_total_w:.2f}"))
+            table.setItem(i, 13, _item(f"{r.cc_reserva_va:.2f}"))
+            table.setItem(i, 14, _item(f"{r.op_seq1_va:.2f}"))
+            self._set_spin_widget(table, i, 15, workspace, r.node_id, "seq2_mult", float(fields.get("seq2_mult", 1.0)), default=1.0)
+            table.setItem(i, 16, _item(f"{r.op_seq2_va:.2f}"))
+            table.setItem(i, 17, _item(f"{r.op_va:.2f}"))
+            self._set_spin_widget(table, i, 18, workspace, r.node_id, "factor_servicio", float(fields.get("factor_servicio", r.factor_servicio)), default=1.0)
+            table.setItem(i, 19, _item(f"{r.op_reserva_va:.2f}"))
+            self._set_spin_widget(table, i, 20, workspace, r.node_id, "vacante_va", float(fields.get("vacante_va", 0.0)), default=0.0)
+            table.setItem(i, 21, _item(f"{r.vac_seq1_va:.2f}"))
+            table.setItem(i, 22, _item(f"{r.vac_seq2_va:.2f}"))
+            table.setItem(i, 23, _item(f"{r.vac_va:.2f}"))
+            table.setItem(i, 24, _item(f"{r.vac_factor_servicio:.2f}"))
+            table.setItem(i, 25, _item(f"{r.vac_reserva_va:.2f}"))
+            table.setItem(i, 26, _item(f"{r.dm_seq1_va:.2f}"))
+            table.setItem(i, 27, _item(f"{r.dm_seq2_va:.2f}"))
+            table.setItem(i, 28, _item(f"{r.dm_va:.2f}"))
+            table.setItem(i, 29, _item(f"{r.i_r:.2f}"))
+            table.setItem(i, 30, _item(f"{r.i_s:.2f}"))
+            table.setItem(i, 31, _item(f"{r.i_t:.2f}"))
 
         configure_table_autoresize(table)
 
@@ -400,6 +453,7 @@ class LoadTablesScreen(ScreenBase):
         table.setRowCount(0)
 
         table.setProperty("_lt_workspace", "CC_B1" if table is self.tbl_cc_b1 else "CC_B2")
+        table.setProperty("_mcb_col", 8)
 
         for r in rows:
             fields = self._get_row_fields(table.property("_lt_workspace"), r.node_id)
@@ -481,15 +535,28 @@ class LoadTablesScreen(ScreenBase):
         table.setCellWidget(row, col, ed)
 
     def _set_spin_widget(self, table: QTableWidget, row: int, col: int, workspace: str, node_id: str,
-                         key: str, value: float, default: float = 1.0):
+                          key: str, value: float, default: float = 1.0, *, decimals: int = 2,
+                          step: float = 0.05, min_v: float = 0.0, max_v: float = 100000.0):
         sp = QDoubleSpinBox()
-        sp.setDecimals(2)
-        sp.setSingleStep(0.05)
-        sp.setRange(0.0, 1000.0)
+        sp.setDecimals(int(decimals))
+        sp.setSingleStep(float(step))
+        sp.setRange(float(min_v), float(max_v))
         try:
             sp.setValue(float(value))
         except Exception:
             sp.setValue(float(default))
+        sp.valueChanged.connect(lambda v: self._on_spin_changed(workspace, node_id, key, float(v)))
+        table.setCellWidget(row, col, sp)
+
+    def _set_int_widget(self, table: QTableWidget, row: int, col: int, workspace: str, node_id: str,
+                         key: str, value: int, default: int = 1):
+        sp = QSpinBox()
+        sp.setSingleStep(1)
+        sp.setRange(0, 9999)
+        try:
+            sp.setValue(int(value))
+        except Exception:
+            sp.setValue(int(default))
         sp.valueChanged.connect(lambda v: self._on_spin_changed(workspace, node_id, key, float(v)))
         table.setCellWidget(row, col, sp)
 
@@ -498,11 +565,8 @@ class LoadTablesScreen(ScreenBase):
 
     def _on_spin_changed(self, workspace: str, node_id: str, key: str, val: float):
         self._set_row_field(workspace, node_id, key, float(val))
-        if key in ("fp", "fd"):
-            if workspace == "CA_ES":
-                self._refresh_ca_es_table()
-            elif workspace == "CA_NOES":
-                self._refresh_ca_no_table()
+        if key in ("fp", "fd", "qty", "reserva_pct", "factor_servicio", "seq2_mult", "vacante_va"):
+            self._refresh_ca()
 
     def _on_mcb_no_changed(self, table: QTableWidget, workspace: str, node_id: str, ed: QLineEdit):
         txt = ed.text().strip()
@@ -511,17 +575,15 @@ class LoadTablesScreen(ScreenBase):
 
     def _on_balance_toggle(self, workspace: str, value: bool):
         self._set_balance_auto(workspace, bool(value))
-        if workspace == "CA_ES":
-            self._refresh_ca_es_table()
-        elif workspace == "CA_NOES":
-            self._refresh_ca_no_table()
+        self._refresh_ca()
 
     def _autofill_mcb_numbers(self, table: QTableWidget):
         """Autocompleta correlativo hacia abajo en la misma tabla, desde el primer MCB válido."""
+        col = int(table.property("_mcb_col") or 3)
         # buscar primera celda con formato PREFIJO+NUM
         first = None
         for r in range(table.rowCount()):
-            w = table.cellWidget(r, 3) if table is self.tbl_ca_es or table is self.tbl_ca_no else table.cellWidget(r, 8)
+            w = table.cellWidget(r, col)
             if isinstance(w, QLineEdit):
                 txt = (w.text() or "").strip()
                 if txt:
@@ -534,7 +596,6 @@ class LoadTablesScreen(ScreenBase):
             return
         r0, prefix, num0, width = first
         n = num0
-        col = 3 if (table is self.tbl_ca_es or table is self.tbl_ca_no) else 8
         workspace = str(table.property("_lt_workspace") or "")
         for r in range(r0 + 1, table.rowCount()):
             w = table.cellWidget(r, col)
@@ -567,10 +628,6 @@ class LoadTablesScreen(ScreenBase):
     def closeEvent(self, event):
         """Persist header state (best-effort)."""
         try:
-            if hasattr(self, "tbl_ca_es") and self.tbl_ca_es is not None:
-                save_header_state(self.tbl_ca_es.horizontalHeader(), "load_tables.tbl_ca_es.header")
-            if hasattr(self, "tbl_ca_no") and self.tbl_ca_no is not None:
-                save_header_state(self.tbl_ca_no.horizontalHeader(), "load_tables.tbl_ca_no.header")
             if hasattr(self, "tbl_cc_b1") and self.tbl_cc_b1 is not None:
                 save_header_state(self.tbl_cc_b1.horizontalHeader(), "load_tables.tbl_cc_b1.header")
             if hasattr(self, "tbl_cc_b2") and self.tbl_cc_b2 is not None:

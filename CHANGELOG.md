@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.138] - 2026-02-08
+### Added
+- Cuadros de carga C.A.: columnas completas segun template de planilla.
+### Changed
+- C.A. ahora se genera automaticamente para todos los tableros TD/TG con cargas en Arquitectura.
+### Tech
+- Motor `load_tables_engine` filtra tableros sin cargas alcanzables.
+
 ## [1.4.0-alpha.137] - 2026-02-08
 ### Fixed
 - Alimentacion tableros: fila GENERAL ahora refleja solo consumos generales (derivados de components), evitando duplicidad cuando existen consumos individuales CA/CC.
