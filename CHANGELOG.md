@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.164] - 2026-02-10
+- Fix: Perfil de cargas ahora persiste correctamente al agregar cargas desde escenario C.C.
+
+## [1.4.0-alpha.163] - 2026-02-10
+- Fixed: Selección Banco de Baterías toma la capacidad comercial desde materiales filtrando por tensión nominal de celda (sin redondeo artificial).
+- Added: sección “Batería seleccionada” con combobox Marca/Modelo filtrados por tensión y persistencia en proyecto.
+- Improved: banner de advertencia no intrusivo cuando no existe capacidad exacta o cuando Ah requerido supera el máximo disponible.
+
+## [1.4.0-alpha.162] - 2026-02-10
+- Fixed: Selección banco baterías: K1/K2/K3 reordenados y editables en tabla.
+- Fixed: Capacidad comercial de banco ahora se elige desde materiales filtrando por tensión nominal.
+- Added: Selector manual de batería (Marca/Modelo) con persistencia en proyecto.
+- Refactor: limpieza de lógica duplicada/ociosa en selección de banco y flujo unificado screen/presenter/engine.
+
 ## [1.4.0-alpha.161] - 2026-02-10
 - Consumos C.C. (Permanentes): totales momentáneos unificados a `Ptotal - Ppermanente` con corriente derivada por `Vmin`.
 - Consumos C.C. (Momentáneos): checkbox exclusivo por escenario para asignar la cola derivada de permanentes.

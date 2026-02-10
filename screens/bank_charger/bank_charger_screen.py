@@ -34,7 +34,7 @@ from app.sections import Section
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QTableWidgetItem,
     QComboBox, QPushButton, QInputDialog, QMessageBox, QLabel,
     QTabWidget, QSplitter
 )
@@ -118,6 +118,8 @@ class BankChargerSizingScreen(ScreenBase):
         self._render_startup_state()
 
         self._schedule_updates()
+        self._refresh_battery_selector()
+        self._refresh_battery_warning()
 
     def _render_startup_state(self) -> None:
         """Render a safe initial UI state without running calculations.
@@ -334,6 +336,35 @@ class BankChargerSizingScreen(ScreenBase):
         v_sb.addWidget(self.btn_cap_tbl_sel_bank)
         v_sb.addWidget(self.tbl_sel_bank)
 
+        self.grp_battery_selected = QGroupBox("Batería seleccionada")
+        battery_row = QHBoxLayout(self.grp_battery_selected)
+        battery_row.addWidget(QLabel("Marca"))
+        self.cmb_battery_brand = QComboBox()
+        battery_row.addWidget(self.cmb_battery_brand, 1)
+        battery_row.addWidget(QLabel("Modelo"))
+        self.cmb_battery_model = QComboBox()
+        battery_row.addWidget(self.cmb_battery_model, 1)
+        battery_row.addWidget(QLabel("Ah"))
+        self.lbl_battery_ah = QLabel("—")
+        battery_row.addWidget(self.lbl_battery_ah)
+        self.btn_apply_battery = QPushButton("Aplicar selección")
+        battery_row.addWidget(self.btn_apply_battery)
+        v_sb.addWidget(self.grp_battery_selected)
+
+        self.lbl_battery_warning = QLabel("")
+        self.lbl_battery_warning.setWordWrap(True)
+        self.lbl_battery_warning.setVisible(False)
+        self.lbl_battery_warning.setStyleSheet(
+            "QLabel {"
+            "background: #FFF4CE;"
+            "color: #5C3B00;"
+            "border: 1px solid #F0C36D;"
+            "border-radius: 6px;"
+            "padding: 6px 8px;"
+            "}"
+        )
+        v_sb.addWidget(self.lbl_battery_warning)
+
         # Cargador de baterías
         self.grp_sel_charger = QGroupBox("Selección Cargador de Baterías")
         v_sc = QVBoxLayout(self.grp_sel_charger)
@@ -353,15 +384,10 @@ class BankChargerSizingScreen(ScreenBase):
         split_sel.setStretchFactor(1, 1)
 
         btns = QHBoxLayout()
-        self.btn_edit_factors = QPushButton("Editar factores…")
-        self.btn_edit_factors.setVisible(False)  # edición directa en tablas
         self.btn_export_all = QPushButton("Exportar todo (un clic)")
         # Edición directa en tablas de selección
-        self.tbl_sel_bank.itemChanged.connect(self._on_sel_bank_item_changed)
         self.tbl_sel_charger.itemChanged.connect(self._on_sel_charger_item_changed)
-        self.tbl_sel_bank.cellDoubleClicked.connect(lambda r,c: self._edit_selection_cell(self.tbl_sel_bank, r, c))
         self.tbl_sel_charger.cellDoubleClicked.connect(lambda r,c: self._edit_selection_cell(self.tbl_sel_charger, r, c))
-        btns.addWidget(self.btn_edit_factors)
         btns.addWidget(self.btn_export_all)
         btns.addStretch()
         page_sel_layout.addLayout(btns)
@@ -408,8 +434,10 @@ class BankChargerSizingScreen(ScreenBase):
             self.cmb_cells_mode.currentTextChanged.connect(self._on_cells_mode_changed)
         self.btn_add_from_scenario.clicked.connect(self._add_area_from_scenario)
         self.btn_del_area.clicked.connect(self._remove_selected_area)
-        
-        self.btn_edit_factors.clicked.connect(self._edit_factors_dialog)
+
+        self.cmb_battery_brand.currentTextChanged.connect(self._on_battery_brand_changed)
+        self.cmb_battery_model.currentTextChanged.connect(self._on_battery_model_changed)
+        self.btn_apply_battery.clicked.connect(self._on_apply_battery_selected)
         self.btn_export_all.clicked.connect(self._export_all_one_click)
 
     # =================== helpers =========================
@@ -428,8 +456,12 @@ class BankChargerSizingScreen(ScreenBase):
             return bundle
 
         proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        self._sync_bank_charger_factor_keys()
         periods = list(getattr(self, "_cycle_periods_cache", []) or [])
         rnd = getattr(self, "_cycle_random_cache", None)
+        nominal_v = self._get_battery_nominal_v()
+        available_battery_ah = self._materials_battery_capacities(nominal_v)
+        selected_battery_ah = self._get_selected_battery_ah(nominal_v)
 
         # i_perm desde L1 (tabla permanentes)
         i_perm = 0.0
@@ -455,7 +487,13 @@ class BankChargerSizingScreen(ScreenBase):
         try:
             cs = getattr(self.data_model, "calc_service", None)
             if cs and hasattr(cs, "recalc_bank_charger"):
-                cs.recalc_bank_charger(periods=periods, rnd=rnd, i_perm=float(i_perm or 0.0))
+                cs.recalc_bank_charger(
+                    periods=periods,
+                    rnd=rnd,
+                    i_perm=float(i_perm or 0.0),
+                    available_battery_ah=available_battery_ah,
+                    selected_battery_ah=selected_battery_ah,
+                )
                 bundle = getattr(cs, "runtime_cache", {}).get("bank_charger_bundle")
                 if bundle is not None:
                     self._bc_bundle = bundle
@@ -472,6 +510,8 @@ class BankChargerSizingScreen(ScreenBase):
                 periods=periods,
                 rnd=rnd,
                 i_perm=float(i_perm or 0.0),
+                available_battery_ah=available_battery_ah,
+                selected_battery_ah=selected_battery_ah,
             )
             self._last_engine_issues = list((getattr(res, "issues", None) or []))
             bundle = getattr(res, "bank_charger", None)
@@ -515,40 +555,6 @@ class BankChargerSizingScreen(ScreenBase):
                     missing_keys.append(key)
         return {"missing": bool(missing_keys), "details": missing_keys}
 
-    def _edit_factors_dialog(self):
-        self.commit_pending_edits()
-        proyecto = getattr(self.data_model, "proyecto", {}) or {}
-
-        def getd(title, label, key, default, decimals=2, minv=0.0, maxv=999.0):
-            cur = default
-            try:
-                cur = float(str(proyecto.get(key, default)).replace(",", "."))
-            except Exception:
-                cur = float(default)
-            val, ok = QInputDialog.getDouble(self, title, label, cur, minv, maxv, decimals)
-            if ok:
-                proyecto[key] = val
-            return ok
-
-        # Banco
-        if not getd("Factores Banco", "K2 Temperatura", "bb_k2_temp", 1.0): return
-        if not getd("Factores Banco", "Margen de diseño", "bb_margen_diseno", 1.15): return
-        if not getd("Factores Banco", "Factor envejecimiento", "bb_factor_envejec", 1.25): return
-
-        # Cargador
-        if not getd("Factores Cargador", "Tiempo recarga (h)", "charger_t_rec_h", 10.0, decimals=0, minv=1.0, maxv=999.0): return
-        if not getd("Factores Cargador", "K pérdidas", "charger_k_loss", 1.15): return
-        if not getd("Factores Cargador", "K altura", "charger_k_alt", 1.0): return
-        if not getd("Factores Cargador", "K temperatura", "charger_k_temp", 1.0): return
-        if not getd("Factores Cargador", "K seguridad", "charger_k_seg", 1.25): return
-        if not getd("Factores Cargador", "Eficiencia (0-1)", "charger_eff", 0.90, decimals=2, minv=0.1, maxv=1.0): return
-
-        if hasattr(self.data_model, "mark_dirty"):
-            self.data_model.mark_dirty(True)
-
-        self._update_selection_tables()
-        self._update_summary_table()
-    
     def _set_table_value_or_widget(self, table, row, col, text):
         w = table.cellWidget(row, col)
         if w is not None:
@@ -712,6 +718,7 @@ class BankChargerSizingScreen(ScreenBase):
         if hasattr(self.data_model, "mark_dirty"):
             self.data_model.mark_dirty(True)
         self.recalculate_all()
+        self._refresh_battery_selector()
 
     def _on_float_combo_changed(self, _text: str):
         if self._updating:
@@ -1333,6 +1340,19 @@ class BankChargerSizingScreen(ScreenBase):
     def _save_perfil_cargas_to_model(self):
         return self._controller.save_perfil_cargas_to_model()
 
+    def _finalize_profile_programmatic_change(self):
+        """Persist + refresh dependencias tras mutaciones programáticas de tbl_cargas."""
+        try:
+            self._controller.pipeline.on_profile_changed()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(
+                self,
+                "Error en Perfil de cargas",
+                f"Ocurrió un error al persistir/actualizar el Perfil de cargas.\n\n{e}",
+            )
+
     def _next_load_id(self) -> str:
         existing_nums = set()
         for r in range(self.tbl_cargas.rowCount()):
@@ -1372,11 +1392,7 @@ class BankChargerSizingScreen(ScreenBase):
         finally:
             self._updating = False
 
-        self._refresh_perfil_autocalc()
-        self._save_perfil_cargas_to_model()
-        self._update_cycle_table()
-        self._update_ieee485_table()
-        self._schedule_updates()
+        self._finalize_profile_programmatic_change()
 
     def _add_area_from_scenario(self):
         self.commit_pending_edits()
@@ -1465,11 +1481,7 @@ class BankChargerSizingScreen(ScreenBase):
             self._updating = False
 
         self._apply_perfil_editability()
-        self._refresh_perfil_autocalc()
-        self._save_perfil_cargas_to_model()
-        self._update_cycle_table()
-        self._update_ieee485_table()
-        self._schedule_updates()
+        self._finalize_profile_programmatic_change()
 
     # ===================== Tabla Ciclo de trabajo =====================
     def _extract_segments(self):
@@ -1595,6 +1607,141 @@ class BankChargerSizingScreen(ScreenBase):
         proyecto["bc_overrides"] = ov
         self.data_model.mark_dirty(True)
 
+    @staticmethod
+    def _as_float(value):
+        try:
+            return float(str(value).replace(",", "."))
+        except Exception:
+            return None
+
+    def _bank_charger_cfg(self) -> dict:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = proyecto.get("bank_charger", {})
+        if not isinstance(cfg, dict):
+            cfg = {}
+            proyecto["bank_charger"] = cfg
+        return cfg
+
+    def _sync_bank_charger_factor_keys(self) -> None:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = self._bank_charger_cfg()
+        mappings = (
+            ("k1_margen", "bb_margen_diseno", 1.15),
+            ("k2_altitud", "bb_k2_temp", 1.0),
+            ("k3_envejecimiento", "bb_factor_envejec", 1.25),
+        )
+        for cfg_key, legacy_key, default in mappings:
+            cfg_val = self._as_float(cfg.get(cfg_key, None))
+            if cfg_val is not None and cfg_val > 0:
+                proyecto[legacy_key] = cfg_val
+                continue
+            legacy_val = self._as_float(proyecto.get(legacy_key, default))
+            if legacy_val is None or legacy_val <= 0:
+                legacy_val = float(default)
+            proyecto[legacy_key] = legacy_val
+            cfg[cfg_key] = legacy_val
+
+    def _set_bank_factor(self, cfg_key: str, legacy_key: str, value: float) -> None:
+        val = self._as_float(value)
+        if val is None or val <= 0:
+            return
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = self._bank_charger_cfg()
+        old = self._as_float(cfg.get(cfg_key, None))
+        if old is not None and abs(old - val) < 1e-9:
+            return
+        cfg[cfg_key] = val
+        proyecto[legacy_key] = val
+        if hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        self._invalidate_bc_bundle()
+        self._update_selection_tables()
+        self._update_summary_table()
+
+    def _on_bank_k1_changed(self, value: float) -> None:
+        self._set_bank_factor("k1_margen", "bb_margen_diseno", value)
+
+    def _on_bank_k2_changed(self, value: float) -> None:
+        self._set_bank_factor("k2_altitud", "bb_k2_temp", value)
+
+    def _on_bank_k3_changed(self, value: float) -> None:
+        self._set_bank_factor("k3_envejecimiento", "bb_factor_envejec", value)
+
+    def _get_battery_nominal_v(self) -> float:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        v_nom = self._as_float(proyecto.get("bateria_tension_nominal", 0.0))
+        return float(v_nom or 0.0)
+
+    def _iter_material_batteries(self) -> list:
+        lib = (self.data_model.library_data or {}).get("materiales", {})
+        items = (lib.get("items", {}) if isinstance(lib, dict) else {})
+        bats = items.get("batteries", []) if isinstance(items, dict) else []
+        out = []
+        seen = set()
+        for b in bats:
+            if not isinstance(b, dict):
+                continue
+            brand = str(
+                b.get("brand")
+                or b.get("marca")
+                or b.get("Marca")
+                or ""
+            ).strip()
+            model = str(
+                b.get("model")
+                or b.get("modelo")
+                or b.get("Modelo")
+                or ""
+            ).strip()
+            v_nom = (
+                self._as_float(b.get("nominal_voltage_v"))
+                or self._as_float(b.get("tension_nominal_v"))
+                or self._as_float(b.get("Tensión Nominal [V]"))
+                or self._as_float(b.get("tension_nominal"))
+            )
+            ah = (
+                self._as_float(b.get("nominal_capacity_ah"))
+                or self._as_float(b.get("capacity_ah"))
+                or self._as_float(b.get("Ah"))
+                or self._as_float(b.get("ah"))
+            )
+            ri = (
+                self._as_float(b.get("ri_mohm"))
+                or self._as_float(b.get("ri"))
+                or self._as_float(b.get("internal_resistance_mohm"))
+            )
+            float_min = (
+                self._as_float(b.get("float_min_vpc"))
+                or self._as_float(b.get("float_min"))
+                or self._as_float(b.get("v_float_min"))
+            )
+            rate = (
+                self._as_float(b.get("rate"))
+                or self._as_float(b.get("discharge_rate"))
+                or self._as_float(b.get("c_rate"))
+            )
+            if not brand or not model or v_nom is None or ah is None:
+                continue
+            if v_nom <= 0 or ah <= 0:
+                continue
+            key = (brand.casefold(), model.casefold(), round(v_nom, 4), round(ah, 4))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(
+                {
+                    "marca": brand,
+                    "modelo": model,
+                    "v_nom": float(v_nom),
+                    "ah": float(ah),
+                    "ri_mohm": ri,
+                    "float_min_vpc": float_min,
+                    "rate": rate,
+                }
+            )
+        out.sort(key=lambda x: (x["ah"], x["marca"].casefold(), x["modelo"].casefold()))
+        return out
+
     def _edit_selection_cell(self, table: QTableWidget, row: int, col: int) -> None:
         if col != 1:
             return
@@ -1604,19 +1751,181 @@ class BankChargerSizingScreen(ScreenBase):
         if (it.flags() & Qt.ItemIsEditable):
             table.editItem(it)
 
-    def _materials_battery_capacities(self):
-        lib = (self.data_model.library_data or {}).get("materiales", {})
-        items = (lib.get("items", {}) if isinstance(lib, dict) else {})
-        bats = items.get("batteries", []) if isinstance(items, dict) else []
+    def get_available_batteries(self, v_nom_cell: float):
+        out = []
+        for b in self._iter_material_batteries():
+            if v_nom_cell > 0 and abs(float(b["v_nom"]) - float(v_nom_cell)) > 0.01:
+                continue
+            out.append(b)
+        return out
+
+    def _materials_battery_capacities(self, nominal_v: float | None = None):
         caps = []
-        for b in bats:
-            if not isinstance(b, dict):
-                continue
-            try:
-                caps.append(float(b.get("nominal_capacity_ah", 0)))
-            except Exception:
-                continue
+        for b in self.get_available_batteries(float(nominal_v or 0.0)):
+            caps.append(float(b["ah"]))
         return sorted(set([c for c in caps if c > 0]))
+
+    def _materials_batteries_for_nominal(self, nominal_v: float):
+        return self.get_available_batteries(float(nominal_v or 0.0))
+
+    def pick_capacity_from_materials(self, required_ah: float, v_nom_cell: float):
+        caps = self._materials_battery_capacities(v_nom_cell)
+        req = float(required_ah or 0.0)
+        if not caps:
+            return {"selected_ah": None, "exact_match": False, "insufficient": False, "available": []}
+        if req <= 0:
+            return {"selected_ah": caps[0], "exact_match": True, "insufficient": False, "available": caps}
+
+        exact = any(abs(c - req) <= 1e-9 for c in caps)
+        for c in caps:
+            if c >= req:
+                return {
+                    "selected_ah": c,
+                    "exact_match": exact,
+                    "insufficient": False,
+                    "available": caps,
+                }
+        return {
+            "selected_ah": caps[-1],
+            "exact_match": exact,
+            "insufficient": True,
+            "available": caps,
+        }
+
+    @staticmethod
+    def _fmt_ah(v: float | None) -> str:
+        if v is None:
+            return "—"
+        if float(v).is_integer():
+            return f"{int(v)}"
+        return f"{float(v):.2f}"
+
+    def _selected_battery_from_cfg(self, nominal_v: float):
+        cfg = self._bank_charger_cfg()
+        sel = cfg.get("battery_selected", {})
+        if not isinstance(sel, dict):
+            return None
+        marca = str(sel.get("marca", "")).strip()
+        modelo = str(sel.get("modelo", "")).strip()
+        if not marca or not modelo:
+            return None
+        for b in self._materials_batteries_for_nominal(nominal_v):
+            if b["marca"] == marca and b["modelo"] == modelo:
+                return b
+        return None
+
+    def _get_selected_battery_ah(self, nominal_v: float) -> float | None:
+        b = self._selected_battery_from_cfg(nominal_v)
+        return float(b["ah"]) if b is not None else None
+
+    def _find_default_battery_for_capacity(self, nominal_v: float, target_ah: float | None):
+        batteries = self._materials_batteries_for_nominal(nominal_v)
+        if not batteries:
+            return None
+        if target_ah is not None:
+            for b in batteries:
+                if abs(float(b["ah"]) - float(target_ah)) <= 1e-9:
+                    return b
+        return batteries[0]
+
+    def _capacity_from_current_bundle(self) -> float | None:
+        bundle = getattr(self, "_bc_bundle", None)
+        if bundle is None:
+            return None
+        return self._as_float(getattr(bundle, "ah_commercial_str", None))
+
+    def _refresh_battery_selector(self) -> None:
+        nominal_v = self._get_battery_nominal_v()
+        batteries = self._materials_batteries_for_nominal(nominal_v)
+        selected = self._selected_battery_from_cfg(nominal_v)
+
+        if selected is None:
+            selected = self._find_default_battery_for_capacity(
+                nominal_v,
+                self._capacity_from_current_bundle(),
+            )
+
+        selected_brand = str(selected["marca"]).strip() if selected else ""
+        selected_model = str(selected["modelo"]).strip() if selected else ""
+
+        self.cmb_battery_brand.blockSignals(True)
+        self.cmb_battery_model.blockSignals(True)
+        try:
+            self.cmb_battery_brand.clear()
+            brands = sorted({b["marca"] for b in batteries}, key=lambda x: x.casefold())
+            self.cmb_battery_brand.addItems(brands)
+            if selected_brand in brands:
+                self.cmb_battery_brand.setCurrentText(selected_brand)
+            elif brands:
+                self.cmb_battery_brand.setCurrentIndex(0)
+            self._reload_model_combo(selected_model)
+        finally:
+            self.cmb_battery_brand.blockSignals(False)
+            self.cmb_battery_model.blockSignals(False)
+
+        enabled = bool(batteries)
+        self.cmb_battery_brand.setEnabled(enabled)
+        self.cmb_battery_model.setEnabled(enabled)
+        self.btn_apply_battery.setEnabled(enabled)
+        if not enabled:
+            self.lbl_battery_ah.setText("—")
+
+    def _reload_model_combo(self, preferred_model: str = "") -> None:
+        nominal_v = self._get_battery_nominal_v()
+        brand = str(self.cmb_battery_brand.currentText() or "").strip()
+        batteries = [b for b in self._materials_batteries_for_nominal(nominal_v) if b["marca"] == brand]
+        self.cmb_battery_model.clear()
+        models = [b["modelo"] for b in batteries]
+        self.cmb_battery_model.addItems(models)
+        if preferred_model and preferred_model in models:
+            self.cmb_battery_model.setCurrentText(preferred_model)
+        elif models:
+            self.cmb_battery_model.setCurrentIndex(0)
+        self._on_battery_model_changed(self.cmb_battery_model.currentText())
+
+    def _current_selected_battery(self):
+        nominal_v = self._get_battery_nominal_v()
+        brand = str(self.cmb_battery_brand.currentText() or "").strip()
+        model = str(self.cmb_battery_model.currentText() or "").strip()
+        for b in self._materials_batteries_for_nominal(nominal_v):
+            if b["marca"] == brand and b["modelo"] == model:
+                return b
+        return None
+
+    def _on_battery_brand_changed(self, _text: str) -> None:
+        self.cmb_battery_model.blockSignals(True)
+        try:
+            self._reload_model_combo("")
+        finally:
+            self.cmb_battery_model.blockSignals(False)
+        self._on_battery_model_changed(self.cmb_battery_model.currentText())
+
+    def _on_battery_model_changed(self, _text: str) -> None:
+        battery = self._current_selected_battery()
+        if battery is None:
+            self.lbl_battery_ah.setText("—")
+            return
+        self.lbl_battery_ah.setText(f"{self._fmt_ah(float(battery['ah']))} Ah")
+
+    def _on_apply_battery_selected(self) -> None:
+        battery = self._current_selected_battery()
+        if battery is None:
+            return
+        cfg = self._bank_charger_cfg()
+        cfg["battery_selected"] = {
+            "marca": battery["marca"],
+            "modelo": battery["modelo"],
+            "ah": battery["ah"],
+            "v_nom": battery["v_nom"],
+            "ri_mohm": battery.get("ri_mohm"),
+            "float_min_vpc": battery.get("float_min_vpc"),
+            "rate": battery.get("rate"),
+        }
+        if hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        self._invalidate_bc_bundle()
+        self._update_selection_tables()
+        self._update_summary_table()
 
     def _materials_charger_currents(self, vdc: float, phases: str):
         lib = (self.data_model.library_data or {}).get("materiales", {})
@@ -1643,12 +1952,6 @@ class BankChargerSizingScreen(ScreenBase):
                 continue
         return sorted(set([x for x in out if x > 0]))
 
-    def _nearest_ge(self, values, target):
-        for v in values:
-            if v >= target:
-                return v
-        return None
-
     def _paint_cell(self, item: QTableWidgetItem, kind: str):
         if item is None:
             return
@@ -1659,30 +1962,9 @@ class BankChargerSizingScreen(ScreenBase):
         else:
             item.setBackground(_theme_color("SURFACE", "#FFFFFF"))
 
-    def _on_sel_bank_item_changed(self, item: QTableWidgetItem):
-        if item is None or item.column() != 1:
-            return
-        label_item = self.tbl_sel_bank.item(item.row(), 0)
-        label = label_item.text().strip() if label_item else ""
-        ov = self._get_bc_overrides()
-        if label in ("Capacidad Comercial","Capacidad Comercial [Ah]"):
-            try:
-                val = float(item.text().replace(",", "."))
-            except Exception:
-                return
-            ov["bank_commercial_ah"] = val
-            self._set_bc_overrides(ov)
-            self._validate_selection_tables()
-        # otros factores editables
-        if label in ("Factor de Envejecimiento",):
-            try:
-                val = float(item.text().replace(",", "."))
-            except Exception:
-                return
-            ov["bb_factor_envejec"] = val
-            self._set_bc_overrides(ov)
-
     def _on_sel_charger_item_changed(self, item: QTableWidgetItem):
+        if self._updating:
+            return
         if item is None or item.column() != 1:
             return
         label_item = self.tbl_sel_charger.item(item.row(), 0)
@@ -1768,25 +2050,6 @@ class BankChargerSizingScreen(ScreenBase):
 
         return nets, rnd_net
 
-    def _round_commercial(self, value: float, step=10, mode="ceil"):
-        if value is None:
-            return "—"
-        try:
-            v = float(value)
-        except Exception:
-            return "—"
-        if v <= 0:
-            return "—"
-
-        step = float(step) if step else 10.0
-
-        if mode == "ceil":
-            return int(math.ceil(v / step) * step)
-        if mode == "floor":
-            return int(math.floor(v / step) * step)
-        # nearest
-        return int(round(v / step) * step)
-
     # ===================== Selección / Resumen (UI) =====================
     
     def _on_charger_phases_changed(self, idx: int):
@@ -1799,37 +2062,55 @@ class BankChargerSizingScreen(ScreenBase):
             pass
         self._update_selection_tables()
 
-    def _make_selection_editable(self):
-        # Banco: Capacidad Comercial editable; Factor envejecimiento editable
-        for r in range(self.tbl_sel_bank.rowCount()):
-            l = self.tbl_sel_bank.item(r, 0)
-            v = self.tbl_sel_bank.item(r, 1)
-            if not l or not v:
-                continue
-            lab = l.text().strip()
-            if lab in ("Capacidad Comercial [Ah]", "Capacidad Comercial"):
-                v.setFlags(v.flags() | Qt.ItemIsEditable)
-                self._paint_cell(v, "editable")
-                l.setFlags(l.flags() & ~Qt.ItemIsEditable)
-            if lab in ("Factor de Envejecimiento",):
-                v.setFlags(v.flags() | Qt.ItemIsEditable)
-                self._paint_cell(v, "editable")
-        # Cargador: pérdidas/altura y Capacidad Comercial editable
-        for r in range(self.tbl_sel_charger.rowCount()):
-            l = self.tbl_sel_charger.item(r, 0)
-            v = self.tbl_sel_charger.item(r, 1)
-            if not l or not v:
-                continue
-            lab = l.text().strip()
-            if lab in ("Capacidad Comercial [A]", "Capacidad Comercial"):
-                v.setFlags(v.flags() | Qt.ItemIsEditable)
-                self._paint_cell(v, "editable")
-            if lab in ("Constante pérdidas durante la carga", "Factor por altura geográfica"):
-                v.setFlags(v.flags() | Qt.ItemIsEditable)
-                self._paint_cell(v, "editable")
+    def _refresh_battery_warning(self) -> None:
+        nominal_v = self._get_battery_nominal_v()
+        bundle = getattr(self, "_bc_bundle", None)
+        bank = getattr(bundle, "bank", None) if bundle is not None else None
+        req = self._as_float(getattr(bank, "ah_required", None)) if bank is not None else None
+        pick = self.pick_capacity_from_materials(float(req or 0.0), nominal_v)
+
+        cap_sel = pick.get("selected_ah", None)
+        exact_match = bool(pick.get("exact_match", False))
+        insufficient = bool(pick.get("insufficient", False))
+        caps = list(pick.get("available", []) or [])
+
+        battery = self._current_selected_battery()
+        marca_modelo = ""
+        if battery is not None:
+            marca_modelo = f"{battery.get('marca','')} {battery.get('modelo','')}".strip()
+        if not marca_modelo:
+            marca_modelo = "batería seleccionada"
+
+        msgs = []
+        if nominal_v > 0 and not caps:
+            msgs.append(f"No hay baterías disponibles a {nominal_v:.0f}V en la librería cargada.")
+        elif req and cap_sel:
+            if insufficient:
+                msgs.append(
+                    f"Ah requerido {req:.0f}Ah excede máximo disponible {max(caps):.0f}Ah "
+                    f"a {nominal_v:.0f}V. Se seleccionó {cap_sel:.0f}Ah ({marca_modelo}) "
+                    "y el diseño podría no cumplir."
+                )
+            elif not exact_match:
+                msgs.append(
+                    f"No existe {req:.0f}Ah a {nominal_v:.0f}V. "
+                    f"Se seleccionó {cap_sel:.0f}Ah ({marca_modelo})."
+                )
+
+        text = "\n".join(dict.fromkeys(msgs))
+        self.lbl_battery_warning.setText(text)
+        self.lbl_battery_warning.setVisible(bool(text.strip()))
 
     def _update_selection_tables(self):
-        return self._controller.update_selection_tables()
+        prev = getattr(self, "_updating", False)
+        self._updating = True
+        try:
+            out = self._controller.update_selection_tables()
+        finally:
+            self._updating = prev
+        self._refresh_battery_selector()
+        self._refresh_battery_warning()
+        return out
 
     def _update_summary_table(self):
         return self._controller.update_summary_table()

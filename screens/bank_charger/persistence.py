@@ -25,7 +25,13 @@ class BankChargerPersistence:
 
     def _proyecto(self) -> Dict[str, Any]:
         scr = self.screen
-        return getattr(scr.data_model, "proyecto", {}) or {}
+        dm = getattr(scr, "data_model", None)
+        proyecto = getattr(dm, "proyecto", None)
+        if not isinstance(proyecto, dict):
+            proyecto = {}
+            if dm is not None:
+                dm.proyecto = proyecto
+        return proyecto
 
     @staticmethod
     def _to_number_or_str(text: str) -> Any:
