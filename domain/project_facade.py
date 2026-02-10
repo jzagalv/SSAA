@@ -78,6 +78,27 @@ class ProjectFacade:
         scenarios[esc] = str(desc)
         self.set_cc_scenarios(scenarios)
 
+    def get_cc_scenarios_enabled(self) -> Dict[str, bool]:
+        v = self._get(K.CC_SCENARIOS_ENABLED, {}) or {}
+        if not isinstance(v, dict):
+            return {}
+        out: Dict[str, bool] = {}
+        for k, val in v.items():
+            out[str(k)] = bool(val)
+        return out
+
+    def set_cc_scenarios_enabled(self, enabled_map: Dict[str, bool]) -> None:
+        out: Dict[str, bool] = {}
+        for k, val in (enabled_map or {}).items():
+            out[str(k)] = bool(val)
+        self._set(K.CC_SCENARIOS_ENABLED, out)
+
+    def update_cc_scenario_enabled(self, esc: str, enabled: bool) -> None:
+        esc = str(esc)
+        enabled_map = self.get_cc_scenarios_enabled()
+        enabled_map[esc] = bool(enabled)
+        self.set_cc_scenarios_enabled(enabled_map)
+
     def get_cc_scenarios_summary(self) -> List[Dict[str, Any]]:
         v = self._get(K.CC_SCENARIOS_SUMMARY, [])
         return v if isinstance(v, list) else []

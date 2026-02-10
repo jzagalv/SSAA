@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover - optional for test environments
     QtCore = None
 
 from screens.cc_consumption.table_schema import (
+    MOMR_COL_USE,
     MOMR_COL_ESC,
     MOMR_COL_DESC,
     MOMR_COL_PT,
@@ -26,6 +27,7 @@ class ScenarioRow:
     desc: str
     p_total: float
     i_total: float
+    enabled: bool = True
 
 
 class MomentaneosScenariosTableLogic:
@@ -52,6 +54,12 @@ class MomentaneosScenariosTableLogic:
         setter = getattr(self._controller, "set_scenario_desc", None)
         if callable(setter):
             return bool(setter(int(n), desc, notify=False))
+        return False
+
+    def set_enabled(self, n: int, enabled: bool) -> bool:
+        setter = getattr(self._controller, "set_scenario_enabled", None)
+        if callable(setter):
+            return bool(setter(int(n), bool(enabled), notify=True))
         return False
 
 
@@ -89,6 +97,8 @@ if QtCore is not None:
             if not index.isValid():
                 return QtCore.Qt.NoItemFlags
             flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+            if index.column() == MOMR_COL_USE:
+                flags |= QtCore.Qt.ItemIsUserCheckable
             if index.column() == MOMR_COL_DESC:
                 flags |= QtCore.Qt.ItemIsEditable
             return flags
@@ -101,6 +111,8 @@ if QtCore is not None:
                 return None
 
             col = index.column()
+            if col == MOMR_COL_USE and role == QtCore.Qt.CheckStateRole:
+                return QtCore.Qt.Checked if bool(row.enabled) else QtCore.Qt.Unchecked
             if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
@@ -117,13 +129,24 @@ if QtCore is not None:
         def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
             if not index.isValid():
                 return False
-            if index.column() != MOMR_COL_DESC:
-                return False
-            if role not in (QtCore.Qt.EditRole, QtCore.Qt.DisplayRole):
-                return False
 
             row = self._logic.row_at(index.row())
             if row is None:
+                return False
+
+            if index.column() == MOMR_COL_USE and role == QtCore.Qt.CheckStateRole:
+                enabled = value == QtCore.Qt.Checked
+                if bool(row.enabled) == bool(enabled):
+                    return False
+                if not self._logic.set_enabled(row.n, enabled):
+                    return False
+                row.enabled = bool(enabled)
+                self.dataChanged.emit(index, index, [QtCore.Qt.CheckStateRole, QtCore.Qt.DisplayRole])
+                return True
+
+            if index.column() != MOMR_COL_DESC:
+                return False
+            if role not in (QtCore.Qt.EditRole, QtCore.Qt.DisplayRole):
                 return False
 
             desc = str(value or "").strip()
@@ -137,6 +160,8 @@ if QtCore is not None:
             reverse = order == QtCore.Qt.DescendingOrder
 
             def key_fn(r: ScenarioRow):
+                if column == MOMR_COL_USE:
+                    return 1 if bool(r.enabled) else 0
                 if column == MOMR_COL_ESC:
                     return int(r.n or 0)
                 if column == MOMR_COL_DESC:

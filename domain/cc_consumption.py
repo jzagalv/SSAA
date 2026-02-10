@@ -23,6 +23,7 @@ import hashlib
 import json
 
 from .parse import to_float
+from core.keys import ProjectKeys as K
 
 # -------------------------
 # Cast / helpers
@@ -666,9 +667,9 @@ def compute_cc_permanentes_totals(
     Totales para la sección de Permanentes (los que muestra la UI):
       - p_total: suma de p_eff de permanentes
       - p_perm : suma de p_eff * pct/100
-      - p_mom  : suma de p_eff * (100-pct)/100   (momentánea derivada)
+      - p_mom  : máximo escenario momentáneo habilitado
       - i_perm : p_perm / vmin
-      - i_mom  : p_mom  / vmin
+      - i_mom  : corriente del máximo escenario habilitado
 
     Nota: 'p_mom' aquí es la parte NO utilizada (100-pct), tal como tu tabla.
     """
@@ -696,12 +697,53 @@ def compute_cc_permanentes_totals(
             p_perm += p_eff * (pct / 100.0)
             p_mom += p_eff * ((100.0 - pct) / 100.0)
 
+    # p_mom/i_mom se toman del máximo de escenarios habilitados.
+    # Si no hay mapa de enabled (proyectos viejos), todos quedan habilitados por default.
+    # Si por alguna razón no hay candidatos habilitados, fallback al set completo.
+    enabled_raw = (proyecto or {}).get(K.CC_SCENARIOS_ENABLED, {})
+    enabled_map: Dict[str, bool] = {}
+    if isinstance(enabled_raw, dict):
+        for k, v in enabled_raw.items():
+            ks = str(k)
+            if isinstance(v, str):
+                vv = v.strip().casefold()
+                if vv in ("0", "false", "no", "off"):
+                    enabled_map[ks] = False
+                elif vv in ("1", "true", "yes", "on"):
+                    enabled_map[ks] = True
+                else:
+                    enabled_map[ks] = True
+            else:
+                enabled_map[ks] = bool(v)
+
+    momentary_scenarios = compute_momentary_scenarios(proyecto, gabinetes, vmin)
+    candidates: List[Dict[str, float]] = []
+    if isinstance(momentary_scenarios, dict):
+        for esc, d in momentary_scenarios.items():
+            if not isinstance(d, dict):
+                continue
+            esc_key = str(esc)
+            if enabled_map.get(esc_key, True):
+                candidates.append(d)
+    if not candidates and isinstance(momentary_scenarios, dict):
+        candidates = [d for d in momentary_scenarios.values() if isinstance(d, dict)]
+
+    if candidates:
+        best = max(candidates, key=lambda d: float(d.get("p_total", 0.0) or 0.0))
+        p_mom_total = float(best.get("p_total", 0.0) or 0.0)
+        i_mom_total = float(best.get("i_total", 0.0) or 0.0)
+        if i_mom_total <= 0.0 and vmin > 0:
+            i_mom_total = float(p_mom_total / vmin)
+    else:
+        p_mom_total = float(p_mom)
+        i_mom_total = float(p_mom_total / vmin)
+
     return {
         "p_total": float(p_total),
         "p_perm": float(p_perm),
-        "p_mom": float(p_mom),
+        "p_mom": float(p_mom_total),
         "i_perm": float(p_perm / vmin),
-        "i_mom": float(p_mom / vmin),
+        "i_mom": float(i_mom_total),
     }
 
 def compute_momentary_scenarios_full(

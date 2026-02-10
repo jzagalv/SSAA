@@ -21,6 +21,7 @@ class ProjectKeys:
     UTILIZATION_PCT_GLOBAL = "porcentaje_utilizacion"
     CC_USE_PCT_GLOBAL = "cc_usar_pct_global"
     CC_SCENARIOS = "cc_escenarios"
+    CC_SCENARIOS_ENABLED = "cc_escenarios_enabled"
     CC_SCENARIOS_SUMMARY = "cc_scenarios_summary"
 
     CC_PERM_PCT_CUSTOM = "cc_perm_pct_custom"

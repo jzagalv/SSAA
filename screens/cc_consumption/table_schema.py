@@ -60,12 +60,14 @@ MOM_HEADERS = [
 ]
 
 # Resumen de escenarios
-MOMR_COL_ESC = 0
-MOMR_COL_DESC = 1
-MOMR_COL_PT = 2
-MOMR_COL_IT = 3
+MOMR_COL_USE = 0
+MOMR_COL_ESC = 1
+MOMR_COL_DESC = 2
+MOMR_COL_PT = 3
+MOMR_COL_IT = 4
 
 MOMR_HEADERS = [
+    "Usar",
     "Escenario",
     "Descripcion",
     "P total [W]",
