@@ -23,6 +23,7 @@ from screens.cc_consumption.table_schema import (
     PERM_HEADERS,
 )
 from screens.cc_consumption.utils import fmt
+from domain.parse import to_float
 
 
 @dataclass
@@ -212,9 +213,8 @@ if QtCore is not None:
                 return False
             if role != QtCore.Qt.EditRole:
                 return False
-            try:
-                pct = float(str(value).replace(",", "."))
-            except Exception:
+            pct = to_float(value, default=None)
+            if pct is None:
                 return False
             if pct < 0.0:
                 pct = 0.0

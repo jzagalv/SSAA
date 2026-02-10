@@ -16,6 +16,7 @@ from domain.cc_consumption import (
     get_pct_global,
     get_usar_pct_global,
 )
+from core.keys import ProjectKeys
 from screens.cc_consumption.utils import fmt
 
 from screens.cc_consumption.widgets import (
@@ -118,26 +119,15 @@ class PermanentesTabMixin:
         if hasattr(self, "invalidate_calculated_cc"):
             self.invalidate_calculated_cc()
 
-        if not use_global:
-            # Volver a porcentaje por fila desde modelo persistido (custom o global default).
-            proyecto = getattr(self.data_model, "proyecto", {}) or {}
-            if model is not None:
-                for row in range(model.rowCount()):
-                    rr = model.get_row(row)
-                    if rr is None:
-                        continue
-                    comp = self._find_comp_by_id(rr.comp_id)
-                    comp_data = comp.get("data", {}) if isinstance(comp, dict) else {}
-                    pct_row = float(get_pct_for_permanent(proyecto, comp_data))
-                    model.set_row_pct(row, pct_row, float(vmin))
-            self._refresh_pct_editability()
-            self._update_permanent_totals()
-            request_autofit(self.tbl_perm)
-            return
-
         if model is not None:
             model.apply_global_pct(float(pct_global), float(vmin))
+
+        changed = self._persist_global_pct_as_custom(float(pct_global))
+
         self._refresh_pct_editability()
+
+        if changed and hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
 
         try:
             self._controller._emit_input_changed({"perm_pct": True})
@@ -145,6 +135,26 @@ class PermanentesTabMixin:
             pass
         self._update_permanent_totals()
         request_autofit(self.tbl_perm)
+
+    def _persist_global_pct_as_custom(self, pct_value: float) -> bool:
+        model = getattr(self, "_perm_model", None)
+        if model is None:
+            return False
+        pct = max(0.0, min(100.0, float(pct_value)))
+        new_val = f"{pct:.2f}"
+        changed = False
+        for row in range(model.rowCount()):
+            rr = model.get_row(row)
+            if rr is None or not rr.comp_id:
+                continue
+            comp = self._find_comp_by_id(rr.comp_id)
+            if not isinstance(comp, dict):
+                continue
+            data = comp.setdefault("data", {})
+            if data.get(ProjectKeys.CC_PERM_PCT_CUSTOM) != new_val:
+                data[ProjectKeys.CC_PERM_PCT_CUSTOM] = new_val
+                changed = True
+        return changed
 
     def _update_permanent_totals(self):
         if getattr(self, "_in_totals_refresh", False):
@@ -188,8 +198,8 @@ class PermanentesTabMixin:
             pct = max(0.0, min(100.0, float(r.pct)))
             new_val = f"{pct:.2f}"
             data = comp.setdefault("data", {})
-            if data.get("cc_perm_pct_custom") != new_val:
-                data["cc_perm_pct_custom"] = new_val
+            if data.get(ProjectKeys.CC_PERM_PCT_CUSTOM) != new_val:
+                data[ProjectKeys.CC_PERM_PCT_CUSTOM] = new_val
                 changed = True
                 if hasattr(self.data_model, "mark_dirty"):
                     self.data_model.mark_dirty(True)
