@@ -397,7 +397,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.tbl_mom_resumen = QTableView(self)
         self.tbl_mom_resumen._autofit_extra_px = 20
         self.tbl_mom_resumen._autofit_max_px = 320
-        self.tbl_mom_resumen._autofit_column_caps = {0: 72, 1: 120, 2: 520, 3: 180, 4: 180}
+        self.tbl_mom_resumen._autofit_column_caps = {0: 110, 1: 90, 2: 520, 3: 180, 4: 180}
         configure_table_autoresize(self.tbl_mom_resumen)
         self.tbl_mom_resumen.setSortingEnabled(True)
         self.tbl_mom_resumen.setEditTriggers(QAbstractItemView.AllEditTriggers)

@@ -596,7 +596,7 @@ def compute_momentary_scenarios(
     Construye escenarios momentáneos:
       1) Base: consumos tipo "C.C. momentáneo" con cc_mom_incluir=True y cc_mom_escenario
       2) Potencia momentánea derivada de permanentes: p_eff * ((100 - pct)/100)
-         se suma al escenario 1 sólo si > 0.
+         se suma al escenario objetivo (cc_mom_perm_target_scenario).
     Retorna:
       {esc: {"p_total": W, "i_total": A}}
     """
@@ -626,9 +626,17 @@ def compute_momentary_scenarios(
             sum_p[esc] = sum_p.get(esc, 0.0) + p_eff
 
     # momentáneo derivado desde permanentes (mismo criterio en toda la app)
+    n_scenarios = get_num_escenarios(proyecto, default=1)
+    try:
+        target_esc = int((proyecto or {}).get(K.CC_MOM_PERM_TARGET_SCENARIO, 1) or 1)
+    except Exception:
+        target_esc = 1
+    if target_esc < 1 or target_esc > int(n_scenarios):
+        target_esc = 1
+
     p_mom_perm_total = compute_momentary_from_permanents(proyecto, gabinetes)
     if p_mom_perm_total > 0:
-        sum_p[1] = sum_p.get(1, 0.0) + float(p_mom_perm_total)
+        sum_p[target_esc] = sum_p.get(target_esc, 0.0) + float(p_mom_perm_total)
 
     out: Dict[int, Dict[str, float]] = {}
     for esc, p in sum_p.items():
@@ -667,9 +675,9 @@ def compute_cc_permanentes_totals(
     Totales para la sección de Permanentes (los que muestra la UI):
       - p_total: suma de p_eff de permanentes
       - p_perm : suma de p_eff * pct/100
-      - p_mom  : máximo escenario momentáneo habilitado
+      - p_mom  : p_total - p_perm
       - i_perm : p_perm / vmin
-      - i_mom  : corriente del máximo escenario habilitado
+      - i_mom  : p_mom / vmin
 
     Nota: 'p_mom' aquí es la parte NO utilizada (100-pct), tal como tu tabla.
     """
@@ -678,7 +686,6 @@ def compute_cc_permanentes_totals(
 
     p_total = 0.0
     p_perm = 0.0
-    p_mom = 0.0
 
     for cab in gabinetes or []:
         for comp in (cab.get("components", []) or []):
@@ -695,48 +702,9 @@ def compute_cc_permanentes_totals(
 
             p_total += p_eff
             p_perm += p_eff * (pct / 100.0)
-            p_mom += p_eff * ((100.0 - pct) / 100.0)
 
-    # p_mom/i_mom se toman del máximo de escenarios habilitados.
-    # Si no hay mapa de enabled (proyectos viejos), todos quedan habilitados por default.
-    # Si por alguna razón no hay candidatos habilitados, fallback al set completo.
-    enabled_raw = (proyecto or {}).get(K.CC_SCENARIOS_ENABLED, {})
-    enabled_map: Dict[str, bool] = {}
-    if isinstance(enabled_raw, dict):
-        for k, v in enabled_raw.items():
-            ks = str(k)
-            if isinstance(v, str):
-                vv = v.strip().casefold()
-                if vv in ("0", "false", "no", "off"):
-                    enabled_map[ks] = False
-                elif vv in ("1", "true", "yes", "on"):
-                    enabled_map[ks] = True
-                else:
-                    enabled_map[ks] = True
-            else:
-                enabled_map[ks] = bool(v)
-
-    momentary_scenarios = compute_momentary_scenarios(proyecto, gabinetes, vmin)
-    candidates: List[Dict[str, float]] = []
-    if isinstance(momentary_scenarios, dict):
-        for esc, d in momentary_scenarios.items():
-            if not isinstance(d, dict):
-                continue
-            esc_key = str(esc)
-            if enabled_map.get(esc_key, True):
-                candidates.append(d)
-    if not candidates and isinstance(momentary_scenarios, dict):
-        candidates = [d for d in momentary_scenarios.values() if isinstance(d, dict)]
-
-    if candidates:
-        best = max(candidates, key=lambda d: float(d.get("p_total", 0.0) or 0.0))
-        p_mom_total = float(best.get("p_total", 0.0) or 0.0)
-        i_mom_total = float(best.get("i_total", 0.0) or 0.0)
-        if i_mom_total <= 0.0 and vmin > 0:
-            i_mom_total = float(p_mom_total / vmin)
-    else:
-        p_mom_total = float(p_mom)
-        i_mom_total = float(p_mom_total / vmin)
+    p_mom_total = max(0.0, float(p_total - p_perm))
+    i_mom_total = float(p_mom_total / vmin)
 
     return {
         "p_total": float(p_total),
@@ -754,7 +722,7 @@ def compute_momentary_scenarios_full(
 ) -> Dict[int, Dict[str, float]]:
     """
     Wrapper: entrega escenarios 1..n_escenarios siempre, aunque no haya cargas.
-    Usa compute_momentary_scenarios (que ya incluye el "momento derivado" de permanentes a escenario 1).
+    Usa compute_momentary_scenarios (incluye cola derivada de permanentes al escenario objetivo).
     """
     try:
         n = int(n_escenarios or 1)

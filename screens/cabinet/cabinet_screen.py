@@ -266,9 +266,9 @@ class CabinetComponentsScreen(ScreenBase):
         gabinetes = sorted(
             list(gabinetes or []),
             key=lambda g: (
-                str((g or {}).get("tag", "") or "").casefold(),
-                str((g or {}).get("nombre", "") or "").casefold(),
-            ),
+                f"{str((g or {}).get('tag', '') or '').strip()} - "
+                f"{str((g or {}).get('nombre', '') or '').strip()}"
+            ).casefold(),
         )
         # Recordar el TAG del gabinete actualmente seleccionado (si hay)
         prev_tag = None

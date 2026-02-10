@@ -78,33 +78,28 @@ class ProjectFacade:
         scenarios[esc] = str(desc)
         self.set_cc_scenarios(scenarios)
 
-    def get_cc_scenarios_enabled(self) -> Dict[str, bool]:
-        v = self._get(K.CC_SCENARIOS_ENABLED, {}) or {}
-        if not isinstance(v, dict):
-            return {}
-        out: Dict[str, bool] = {}
-        for k, val in v.items():
-            out[str(k)] = bool(val)
-        return out
-
-    def set_cc_scenarios_enabled(self, enabled_map: Dict[str, bool]) -> None:
-        out: Dict[str, bool] = {}
-        for k, val in (enabled_map or {}).items():
-            out[str(k)] = bool(val)
-        self._set(K.CC_SCENARIOS_ENABLED, out)
-
-    def update_cc_scenario_enabled(self, esc: str, enabled: bool) -> None:
-        esc = str(esc)
-        enabled_map = self.get_cc_scenarios_enabled()
-        enabled_map[esc] = bool(enabled)
-        self.set_cc_scenarios_enabled(enabled_map)
-
     def get_cc_scenarios_summary(self) -> List[Dict[str, Any]]:
         v = self._get(K.CC_SCENARIOS_SUMMARY, [])
         return v if isinstance(v, list) else []
 
     def set_cc_scenarios_summary(self, summary: List[Dict[str, Any]]) -> None:
         self._set(K.CC_SCENARIOS_SUMMARY, list(summary))
+
+    def get_cc_mom_perm_target_scenario(self, default: int = 1) -> int:
+        try:
+            v = int(self._get(K.CC_MOM_PERM_TARGET_SCENARIO, default) or default)
+        except Exception:
+            v = int(default)
+        return 1 if v < 1 else v
+
+    def set_cc_mom_perm_target_scenario(self, esc: int) -> None:
+        try:
+            v = int(esc or 1)
+        except Exception:
+            v = 1
+        if v < 1:
+            v = 1
+        self._set(K.CC_MOM_PERM_TARGET_SCENARIO, v)
 
     def get_cc_perm_pct_custom(self, default: float = 40.0) -> float:
         try:

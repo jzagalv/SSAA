@@ -7,6 +7,8 @@ No construyen el QTabWidget; operan sobre 'self' (CCConsumptionScreen), que prov
 Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict {"1": "..."}.
 """
 
+import logging
+
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
 from domain.cc_consumption import (
@@ -24,6 +26,8 @@ from screens.cc_consumption.widgets import (
 )
 from screens.cc_consumption.models.permanentes_table_model import PermanentesTableModel
 from ui.utils.table_utils import configure_table_autoresize, request_autofit
+
+log = logging.getLogger(__name__)
 
 class PermanentesTabMixin:
     def _ensure_perm_model(self):
@@ -163,13 +167,20 @@ class PermanentesTabMixin:
         proj = getattr(self.data_model, "proyecto", {}) or {}
         try:
             vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
+            try:
+                vmin = float(vmin or 0.0)
+            except Exception:
+                vmin = 0.0
+            if vmin <= 0.0:
+                log.warning("CC Permanentes: vmin<=0 detectado; usando fallback 1.0")
+                vmin = 1.0
             totals = self._controller.compute_totals(vmin=float(vmin))
 
             p_total = float(totals.get("p_total", 0.0) or 0.0)
             p_perm = float(totals.get("p_perm", 0.0) or 0.0)
-            i_perm = float(totals.get("i_perm", 0.0) or 0.0)
-            p_mom = float(totals.get("p_mom", 0.0) or 0.0)
-            i_mom = float(totals.get("i_mom", 0.0) or 0.0)
+            p_mom = max(0.0, float(p_total - p_perm))
+            i_perm = float(p_perm / vmin)
+            i_mom = float(p_mom / vmin)
 
             self.lbl_perm_total_p_total.setText(f"Total P total: {fmt(p_total)} [W]")
             self.lbl_perm_total_p_perm.setText(f"Total P permanente: {fmt(p_perm)} [W]")

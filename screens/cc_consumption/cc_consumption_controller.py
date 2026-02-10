@@ -160,50 +160,25 @@ class CCConsumptionController(BaseController):
         scenarios = fac.get_cc_scenarios() or {}
         return str(scenarios.get(str(esc_i), "") or "")
 
-    def set_scenario_enabled(self, esc: int, enabled: bool, notify: bool = False) -> bool:
-        """Actualiza habilitación de escenario para cálculo de totales momentáneos."""
+    def set_mom_perm_target_scenario(self, esc: int, notify: bool = False) -> bool:
+        """Define escenario objetivo que recibe la cola de momentáneos de permanentes."""
         fac = self.facade()
-
         esc_i = int(esc) if esc else 1
         if esc_i < 1:
             esc_i = 1
-        esc_key = str(esc_i)
-
-        enabled_map = fac.get_cc_scenarios_enabled() or {}
-        before = bool(enabled_map.get(esc_key, True))
-        after = bool(enabled)
-        if before == after:
+        before = fac.get_cc_mom_perm_target_scenario(default=1)
+        if before == esc_i:
             return False
-
-        fac.update_cc_scenario_enabled(esc_key, after)
-
-        # Compatibilidad legacy: mantener cc_scenarios_summary sincronizado si existe.
-        summary = fac.get_cc_scenarios_summary()
-        if not isinstance(summary, list):
-            summary = []
-        updated = False
-        for row in summary:
-            if isinstance(row, dict) and str(row.get("escenario", "")) == esc_key:
-                row["enabled"] = after
-                updated = True
-                break
-        if not updated:
-            summary.append({"escenario": esc_key, "enabled": after})
-        fac.set_cc_scenarios_summary(summary)
-
+        fac.set_cc_mom_perm_target_scenario(esc_i)
         self.mark_dirty()
         if notify:
             self.notify_changed()
-        self._emit_input_changed({"scenario_enabled": esc_i})
+        self._emit_input_changed({"mom_perm_target_scenario": esc_i})
         return True
 
-    def get_scenario_enabled(self, esc: int) -> bool:
-        esc_i = int(esc) if esc else 1
-        if esc_i < 1:
-            esc_i = 1
+    def get_mom_perm_target_scenario(self) -> int:
         fac = self.facade()
-        enabled_map = fac.get_cc_scenarios_enabled() or {}
-        return bool(enabled_map.get(str(esc_i), True))
+        return fac.get_cc_mom_perm_target_scenario(default=1)
 
     def normalize_cc_scenarios_storage(self, n_esc: int | None = None) -> bool:
         """Normaliza almacenamiento de nombres de escenarios a formato dict (sin legacy list).

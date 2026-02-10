@@ -23,7 +23,7 @@ from screens.cc_consumption.utils import resolve_scenario_desc
 from ui.utils.table_utils import configure_table_autoresize, request_autofit
 from screens.cc_consumption.table_schema import (
     MOM_COL_GAB, MOM_COL_TAG, MOM_COL_DESC, MOM_COL_PEFF, MOM_COL_I, MOM_COL_INCLUIR, MOM_COL_ESC,
-    MOMR_COL_USE, MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
+    MOMR_COL_PERM, MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
 )
 
 
@@ -45,7 +45,7 @@ class MomentaneosTabMixin:
             self.tbl_mom_resumen.setModel(self._mom_scenarios_model)
             configure_table_autoresize(self.tbl_mom_resumen)
             header = self.tbl_mom_resumen.horizontalHeader()
-            header.setSectionResizeMode(MOMR_COL_USE, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(MOMR_COL_PERM, QHeaderView.ResizeToContents)
             header.setSectionResizeMode(MOMR_COL_DESC, QHeaderView.Stretch)
             self._mom_scenarios_model.dataChanged.connect(self._on_mom_scenarios_changed)
 
@@ -107,10 +107,12 @@ class MomentaneosTabMixin:
     def _on_mom_scenarios_changed(self, top_left, bottom_right, roles=None):
         if self._building or getattr(self, "_loading", False):
             return
-        if top_left.column() > MOMR_COL_USE or bottom_right.column() < MOMR_COL_USE:
+        if top_left.column() > MOMR_COL_PERM or bottom_right.column() < MOMR_COL_PERM:
             return
+        self._mom_force_recalc = True
         if hasattr(self, "invalidate_calculated_cc"):
             self.invalidate_calculated_cc()
+        self._update_momentary_summary_display()
         if hasattr(self, "_update_permanent_totals"):
             self._update_permanent_totals()
         if hasattr(self, "_autosave_project_best_effort"):
@@ -204,25 +206,27 @@ class MomentaneosTabMixin:
         # actualizar tabla resumen
         self._ensure_mom_scenarios_model()
         rows = []
+        try:
+            target_scenario = int(self._controller.get_mom_perm_target_scenario() or 1)
+        except Exception:
+            target_scenario = 1
+        if target_scenario < 1 or target_scenario > n_esc:
+            target_scenario = 1
         for n in range(1, n_esc + 1):
             desc_db = ""
             try:
                 desc_db = self._controller.get_scenario_desc(n)
             except Exception:
                 desc_db = ""
-            try:
-                enabled = bool(self._controller.get_scenario_enabled(n))
-            except Exception:
-                enabled = True
             desc = resolve_scenario_desc(n, "", desc_db)
             d = by_scenario.get(str(n), by_scenario.get(n, {})) or {}
             rows.append(
                 ScenarioRow(
                     n=int(n),
+                    perm_target=(int(n) == int(target_scenario)),
                     desc=desc,
                     p_total=float(d.get("p_total", 0.0) or 0.0),
                     i_total=float(d.get("i_total", 0.0) or 0.0),
-                    enabled=enabled,
                 )
             )
         if getattr(self, "_mom_scenarios_model", None) is not None:

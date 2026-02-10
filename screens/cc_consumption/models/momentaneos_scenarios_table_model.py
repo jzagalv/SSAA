@@ -11,8 +11,8 @@ except Exception:  # pragma: no cover - optional for test environments
     QtCore = None
 
 from screens.cc_consumption.table_schema import (
-    MOMR_COL_USE,
     MOMR_COL_ESC,
+    MOMR_COL_PERM,
     MOMR_COL_DESC,
     MOMR_COL_PT,
     MOMR_COL_IT,
@@ -24,10 +24,10 @@ from screens.cc_consumption.utils import should_persist_scenario_desc, fmt
 @dataclass
 class ScenarioRow:
     n: int
+    perm_target: bool
     desc: str
     p_total: float
     i_total: float
-    enabled: bool = True
 
 
 class MomentaneosScenariosTableLogic:
@@ -56,10 +56,10 @@ class MomentaneosScenariosTableLogic:
             return bool(setter(int(n), desc, notify=False))
         return False
 
-    def set_enabled(self, n: int, enabled: bool) -> bool:
-        setter = getattr(self._controller, "set_scenario_enabled", None)
+    def set_perm_target(self, n: int) -> bool:
+        setter = getattr(self._controller, "set_mom_perm_target_scenario", None)
         if callable(setter):
-            return bool(setter(int(n), bool(enabled), notify=True))
+            return bool(setter(int(n), notify=True))
         return False
 
 
@@ -97,7 +97,7 @@ if QtCore is not None:
             if not index.isValid():
                 return QtCore.Qt.NoItemFlags
             flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-            if index.column() == MOMR_COL_USE:
+            if index.column() == MOMR_COL_PERM:
                 flags |= QtCore.Qt.ItemIsUserCheckable
             if index.column() == MOMR_COL_DESC:
                 flags |= QtCore.Qt.ItemIsEditable
@@ -111,13 +111,15 @@ if QtCore is not None:
                 return None
 
             col = index.column()
-            if col == MOMR_COL_USE and role == QtCore.Qt.CheckStateRole:
-                return QtCore.Qt.Checked if bool(row.enabled) else QtCore.Qt.Unchecked
+            if col == MOMR_COL_PERM and role == QtCore.Qt.CheckStateRole:
+                return QtCore.Qt.Checked if bool(row.perm_target) else QtCore.Qt.Unchecked
             if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
             if col == MOMR_COL_ESC:
                 return int(row.n) if role == QtCore.Qt.EditRole else str(int(row.n))
+            if col == MOMR_COL_PERM:
+                return ""
             if col == MOMR_COL_DESC:
                 return row.desc
             if col == MOMR_COL_PT:
@@ -129,19 +131,24 @@ if QtCore is not None:
         def setData(self, index: QtCore.QModelIndex, value, role: int = QtCore.Qt.EditRole) -> bool:
             if not index.isValid():
                 return False
-
             row = self._logic.row_at(index.row())
             if row is None:
                 return False
 
-            if index.column() == MOMR_COL_USE and role == QtCore.Qt.CheckStateRole:
-                enabled = value == QtCore.Qt.Checked
-                if bool(row.enabled) == bool(enabled):
+            if index.column() == MOMR_COL_PERM and role == QtCore.Qt.CheckStateRole:
+                checked = value == QtCore.Qt.Checked
+                if not checked:
+                    # Exclusivo: siempre debe quedar un target activo.
                     return False
-                if not self._logic.set_enabled(row.n, enabled):
+                if row.perm_target:
                     return False
-                row.enabled = bool(enabled)
-                self.dataChanged.emit(index, index, [QtCore.Qt.CheckStateRole, QtCore.Qt.DisplayRole])
+                if not self._logic.set_perm_target(row.n):
+                    return False
+                for rr in self._logic._rows:
+                    rr.perm_target = (int(rr.n) == int(row.n))
+                left = self.index(0, MOMR_COL_PERM)
+                right = self.index(self.rowCount() - 1, MOMR_COL_PERM)
+                self.dataChanged.emit(left, right, [QtCore.Qt.CheckStateRole, QtCore.Qt.DisplayRole])
                 return True
 
             if index.column() != MOMR_COL_DESC:
@@ -160,10 +167,10 @@ if QtCore is not None:
             reverse = order == QtCore.Qt.DescendingOrder
 
             def key_fn(r: ScenarioRow):
-                if column == MOMR_COL_USE:
-                    return 1 if bool(r.enabled) else 0
                 if column == MOMR_COL_ESC:
                     return int(r.n or 0)
+                if column == MOMR_COL_PERM:
+                    return 1 if bool(r.perm_target) else 0
                 if column == MOMR_COL_DESC:
                     return (r.desc or "").casefold()
                 if column == MOMR_COL_PT:

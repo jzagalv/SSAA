@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.161] - 2026-02-10
+- Consumos C.C. (Permanentes): totales momentáneos unificados a `Ptotal - Ppermanente` con corriente derivada por `Vmin`.
+- Consumos C.C. (Momentáneos): checkbox exclusivo por escenario para asignar la cola derivada de permanentes.
+- UI: QComboBox en tablas con flecha nativa visible y menor recorte vertical de texto.
+- Consumos (gabinetes): orden alfabético estable de la lista izquierda por texto visible.
+
 ## [1.4.0-alpha.160] - 2026-02-10
 - Consumos C.C. (Permanentes): recálculo inmediato de totales desde modelo actual (sin quedar pegado a cache stale).
 - Consumos C.C. (Permanentes): persistencia robusta de `% global`, `cc_usar_pct_global` y `% por fila` con autosave best-effort.

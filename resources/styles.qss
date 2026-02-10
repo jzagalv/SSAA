@@ -391,41 +391,18 @@ QComboBox::drop-down {
     background: transparent;
 }
 
-/* Flecha nítida sin depender de imágenes externas */
-QComboBox::down-arrow {
-    width: 0px;
-    height: 0px;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid {{TEXT_MUTED}};
-    margin-right: 6px;
-    margin-top: 1px;
-}
-
-QComboBox::down-arrow:on {
-    margin-top: 2px;
-}
-
 /* Combos dentro de tablas: sin margen, calce compacto */
 QTableWidget QComboBox,
 QTableView QComboBox {
     margin: 0px;
     border-radius: 6px;
-    min-height: 20px;
-    padding: 1px 22px 1px 6px;
+    min-height: 24px;
+    padding: 2px 22px 2px 6px;
 }
 
 QTableWidget QComboBox::drop-down,
 QTableView QComboBox::drop-down {
     width: 18px;
-}
-
-QTableWidget QComboBox::down-arrow,
-QTableView QComboBox::down-arrow {
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid {{TEXT_MUTED}};
-    margin-right: 5px;
 }
 
 QTableWidget QCheckBox,

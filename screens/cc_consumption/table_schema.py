@@ -60,15 +60,17 @@ MOM_HEADERS = [
 ]
 
 # Resumen de escenarios
-MOMR_COL_USE = 0
-MOMR_COL_ESC = 1
+MOMR_COL_ESC = 0
+MOMR_COL_PERM = 1
 MOMR_COL_DESC = 2
 MOMR_COL_PT = 3
 MOMR_COL_IT = 4
+# Compat alias (código previo)
+MOMR_COL_USE = MOMR_COL_PERM
 
 MOMR_HEADERS = [
-    "Usar",
     "Escenario",
+    "Incl. perm.",
     "Descripcion",
     "P total [W]",
     "I total [A]",
