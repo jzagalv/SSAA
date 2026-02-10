@@ -544,6 +544,37 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         # Delegar en controller (centraliza mutaciones y dirty flag)
         return self._controller.set_project_value(key, value)
 
+    def invalidate_calculated_cc(self):
+        """Invalida cache calculado de C.C. para forzar recálculo desde modelo."""
+        dm = getattr(self, "data_model", None)
+        if dm is None:
+            return
+        proj = getattr(dm, "project", None)
+        if not isinstance(proj, dict):
+            proj = getattr(dm, "proyecto", None)
+        if not isinstance(proj, dict):
+            return
+        calc = proj.get("calculated")
+        if isinstance(calc, dict) and "cc" in calc:
+            calc.pop("cc", None)
+
+    def _autosave_project_best_effort(self) -> bool:
+        """Autosave no bloqueante: guarda sólo si hay ruta de proyecto activa."""
+        dm = getattr(self, "data_model", None)
+        if dm is None:
+            return False
+        target = str(getattr(dm, "file_path", "") or "").strip()
+        if not target and hasattr(dm, "has_project_file") and dm.has_project_file():
+            target = ""
+        if not target and not (hasattr(dm, "has_project_file") and dm.has_project_file()):
+            return False
+        try:
+            dm.save_to_file(target)
+            return True
+        except Exception:
+            log.debug("CC autosave failed (best-effort).", exc_info=True)
+            return False
+
     def load_from_model(self):
         # ScreenBase hook: cargar datos desde el modelo a la UI
         self.reload_data()
@@ -712,10 +743,12 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         # Guardar en el modelo
         proj = getattr(self.data_model, "proyecto", {})
         self._controller.set_use_pct_global(bool(checked))
+        self.invalidate_calculated_cc()
         if hasattr(self.data_model, "mark_dirty"):
             self.data_model.mark_dirty(True)
 
         self._apply_global_pct_mode()
+        self._autosave_project_best_effort()
 
     def _on_global_pct_changed(self, value: float):
         if getattr(self, "_building", False):
@@ -723,14 +756,23 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         try:
             # Persist input via controller (emits InputChanged(CC))
             self._controller.set_pct_global(float(value))
+            self.invalidate_calculated_cc()
             if hasattr(self.data_model, "mark_dirty"):
                 self.data_model.mark_dirty(True)
+            try:
+                self.porcentaje_util_changed.emit(float(value))
+            except Exception:
+                pass
             # If global mode is active, update UI-only state
             if getattr(self, "chk_usar_global", None) is not None and self.chk_usar_global.isChecked():
                 try:
                     self._apply_global_pct_mode()
                 except Exception:
                     pass
+            else:
+                # Aunque no aplique por fila, los totales dependen del estado actual.
+                self._update_permanent_totals()
+            self._autosave_project_best_effort()
         except Exception:
             import logging
             logging.getLogger(__name__).exception("Failed to handle global pct change")

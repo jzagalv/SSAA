@@ -9,7 +9,13 @@ Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict 
 
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
-from domain.cc_consumption import get_pct_for_permanent, get_vcc_for_currents, get_vcc_nominal
+from domain.cc_consumption import (
+    get_pct_for_permanent,
+    get_vcc_for_currents,
+    get_vcc_nominal,
+    get_pct_global,
+    get_usar_pct_global,
+)
 from screens.cc_consumption.utils import fmt
 
 from screens.cc_consumption.widgets import (
@@ -41,7 +47,19 @@ class PermanentesTabMixin:
             self.spin_pct_global.setValue(float(pct))
         finally:
             self._building = False
-        self._update_permanent_totals()
+        # Mantener fuente de verdad del proyecto alineada aunque venga desde otra pantalla.
+        try:
+            self._controller.set_pct_global(float(pct))
+        except Exception:
+            pass
+        if hasattr(self, "invalidate_calculated_cc"):
+            self.invalidate_calculated_cc()
+        if self.chk_usar_global.isChecked() and getattr(self, "_perm_model", None) is not None:
+            self._apply_global_pct_mode()
+        else:
+            self._update_permanent_totals()
+        if hasattr(self, "_autosave_project_best_effort"):
+            self._autosave_project_best_effort()
 
     # =========================================================
     # API pública
@@ -52,8 +70,8 @@ class PermanentesTabMixin:
         """
         UI-only table fill. Business rules live in domain/services.
         """
-        usar_global = self.chk_usar_global.isChecked()
-        pct_global = self.spin_pct_global.value()
+        usar_global = bool(get_usar_pct_global(proyecto))
+        pct_global = float(get_pct_global(proyecto))
         vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proyecto) or get_vcc_nominal(proyecto)
 
         def _get_custom_pct(comp_data: dict) -> float:
@@ -95,21 +113,38 @@ class PermanentesTabMixin:
     def _apply_global_pct_mode(self):
         use_global = self.chk_usar_global.isChecked()
         pct_global = self.spin_pct_global.value()
+        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(getattr(self.data_model, "proyecto", {}) or {}) or 0.0
+        model = getattr(self, "_perm_model", None)
+        if hasattr(self, "invalidate_calculated_cc"):
+            self.invalidate_calculated_cc()
 
         if not use_global:
+            # Volver a porcentaje por fila desde modelo persistido (custom o global default).
+            proyecto = getattr(self.data_model, "proyecto", {}) or {}
+            if model is not None:
+                for row in range(model.rowCount()):
+                    rr = model.get_row(row)
+                    if rr is None:
+                        continue
+                    comp = self._find_comp_by_id(rr.comp_id)
+                    comp_data = comp.get("data", {}) if isinstance(comp, dict) else {}
+                    pct_row = float(get_pct_for_permanent(proyecto, comp_data))
+                    model.set_row_pct(row, pct_row, float(vmin))
             self._refresh_pct_editability()
             self._update_permanent_totals()
+            request_autofit(self.tbl_perm)
             return
 
-        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(getattr(self.data_model, "proyecto", {}) or {}) or 0.0
-        if getattr(self, "_perm_model", None) is not None:
-            self._perm_model.apply_global_pct(float(pct_global), float(vmin))
+        if model is not None:
+            model.apply_global_pct(float(pct_global), float(vmin))
+        self._refresh_pct_editability()
 
         try:
             self._controller._emit_input_changed({"perm_pct": True})
         except Exception:
             pass
         self._update_permanent_totals()
+        request_autofit(self.tbl_perm)
 
     def _update_permanent_totals(self):
         if getattr(self, "_in_totals_refresh", False):
@@ -142,6 +177,7 @@ class PermanentesTabMixin:
         model = getattr(self, "_perm_model", None)
         if model is None:
             return
+        changed = False
         for row in range(top_left.row(), bottom_right.row() + 1):
             r = model.get_row(row)
             if r is None or not r.comp_id:
@@ -154,13 +190,24 @@ class PermanentesTabMixin:
             data = comp.setdefault("data", {})
             if data.get("cc_perm_pct_custom") != new_val:
                 data["cc_perm_pct_custom"] = new_val
+                changed = True
                 if hasattr(self.data_model, "mark_dirty"):
                     self.data_model.mark_dirty(True)
+        if changed:
+            try:
+                self.porcentaje_util_changed.emit(float(self.spin_pct_global.value()))
+            except Exception:
+                pass
+        if hasattr(self, "invalidate_calculated_cc"):
+            self.invalidate_calculated_cc()
         try:
             self._controller._emit_input_changed({"perm_pct": True})
         except Exception:
             pass
         self._update_permanent_totals()
+        request_autofit(self.tbl_perm)
+        if changed and hasattr(self, "_autosave_project_best_effort"):
+            self._autosave_project_best_effort()
 
     # =========================================================
     # Momentaneos

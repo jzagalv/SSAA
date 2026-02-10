@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.160] - 2026-02-10
+- Consumos C.C. (Permanentes): recálculo inmediato de totales desde modelo actual (sin quedar pegado a cache stale).
+- Consumos C.C. (Permanentes): persistencia robusta de `% global`, `cc_usar_pct_global` y `% por fila` con autosave best-effort.
+- UI tablas: autoajuste de columnas por texto más largo (headers + muestra de filas) para QTableView/QTableWidget.
+- UI: QComboBox con flecha visible y ajuste compacto en tablas para evitar recorte de texto.
+
 ## [1.4.0-alpha.158] - 2026-02-09
 - Fix: totales permanentes C.C. se actualizan al editar (refresco inmediato).
 - Fix: lista gabinetes ordenada alfabéticamente por TAG de forma determinística.

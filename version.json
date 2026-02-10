@@ -5,11 +5,11 @@
   "description": "Modern UI glass A completo: estilo A para formularios/paneles y estilo tecnico B para tablas, solo en modo moderno.",
   "breaking_changes": false,
   "frozen": false,
-  "semver": "1.4.0-alpha.158",
-  "version": "1.4.0-alpha.158.0",
-  "build": 129,
-  "notes": "Fix: totales permanentes C.C. en refresco inmediato + orden determinístico de gabinetes por TAG.",
+  "semver": "1.4.0-alpha.160",
+  "version": "1.4.0-alpha.160.0",
+  "build": 131,
+  "notes": "CC tabs: fix persistencia/recalculo de Permanentes + autoajuste columnas y QComboBox visible.",
   "name": "SSAA_stage1_step_4A7",
-  "date": "2026-02-09",
+  "date": "2026-02-10",
   "channel": "alpha"
 }

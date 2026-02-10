@@ -270,6 +270,13 @@ class CCConsumptionController(BaseController):
         gabinetes = get_model_gabinetes(self.data_model)
         return compute_cc_aleatorios_totals(gabinetes, vmin)
 
+    # Aliases semánticos (ES) para mantener claridad en callers nuevos.
+    def compute_momentaneos(self, *, vmin: float) -> Dict[str, Any]:
+        return self.compute_momentary(vmin=vmin)
+
+    def compute_aleatorios(self, *, vmin: float) -> Dict[str, Any]:
+        return self.compute_random(vmin=vmin)
+
     def _find_comp_by_id(self, comp_id: str) -> Dict[str, Any] | None:
         if not comp_id:
             return None
@@ -317,62 +324,86 @@ class CCConsumptionController(BaseController):
         self._emit_input_changed({"momentaneo_flags": True})
         return True
 
-    def compute_totals(self, *, vmin: float) -> Dict[str, float]:
-        """Totales (P/I) para permanentes + momentaneos.
+    def compute_totals(self, *, vmin: float) -> Dict[str, Any]:
+        """Recalcula SIEMPRE totales C.C. desde el modelo actual.
 
-        Siempre devuelve:
-            p_total, i_total, p_perm, i_perm, p_mom, i_mom, p_sel, i_sel
+        Importante:
+        - NO usa project['calculated']['cc'] como fuente de verdad.
+        - Mantiene salida legacy plana para la UI actual.
+        - También devuelve secciones anidadas (permanentes/momentaneos/aleatorios).
+        - Actualiza el cache calculated.cc luego del recálculo.
         """
-        proj = self.project()
-        calc_cc = ((proj.get("calculated") or {}) if isinstance(proj, dict) else {}).get("cc") or {}
-        summary = calc_cc.get("summary") if isinstance(calc_cc, dict) else None
+        perm_raw = self.compute_permanentes(vmin=vmin)
+        mom_raw = self.compute_momentaneos(vmin=vmin)
+        rnd_raw = self.compute_aleatorios(vmin=vmin)
 
-        if isinstance(summary, dict):
-            try:
-                # Formato nuevo (core): *_w y *_a
-                p_perm = float(summary.get("p_perm_w", summary.get("p_perm", 0.0)) or 0.0)
-                i_perm = float(summary.get("i_perm_a", summary.get("i_perm", 0.0)) or 0.0)
-                p_mom = float(summary.get("p_mom_w", summary.get("p_mom", 0.0)) or 0.0)
-                i_mom = float(summary.get("i_mom_a", summary.get("i_mom", 0.0)) or 0.0)
+        perm_raw = perm_raw if isinstance(perm_raw, dict) else {}
+        mom_raw = mom_raw if isinstance(mom_raw, dict) else {}
+        rnd_raw = rnd_raw if isinstance(rnd_raw, dict) else {}
 
-                # Totales
-                p_total = float(summary.get("p_total_w", summary.get("p_total", p_perm + p_mom)) or 0.0)
-                i_total = float(summary.get("i_total_a", summary.get("i_total", i_perm + i_mom)) or 0.0)
-
-                # Seleccion aleatoria (si existe)
-                p_sel = float(summary.get("p_sel_w", summary.get("p_sel", 0.0)) or 0.0)
-                i_sel = float(summary.get("i_sel_a", summary.get("i_sel", 0.0)) or 0.0)
-
-                return {
-                    "p_total": p_total,
-                    "i_total": i_total,
-                    "p_perm": p_perm,
-                    "i_perm": i_perm,
-                    "p_mom": p_mom,
-                    "i_mom": i_mom,
-                    "p_sel": p_sel,
-                    "i_sel": i_sel,
-                }
-            except Exception:
-                pass
-
-        # fallback: compute quickly (best-effort)
-        perm = self.compute_permanentes(vmin=vmin)
-        mom = self.compute_momentary(vmin=vmin)
-        rnd = self.compute_random(vmin=vmin)
-
-        p_perm = float(perm.get("p_total", 0.0) or 0.0)
-        i_perm = float(perm.get("i_total", 0.0) or 0.0)
-        p_mom = float(mom.get("p_total", 0.0) or 0.0)
-        i_mom = float(mom.get("i_total", 0.0) or 0.0)
-
-        return {
-            "p_total": p_perm + p_mom,
-            "i_total": i_perm + i_mom,
-            "p_perm": p_perm,
-            "i_perm": i_perm,
-            "p_mom": p_mom,
-            "i_mom": i_mom,
-            "p_sel": float(rnd.get("p_sel", 0.0) or 0.0),
-            "i_sel": float(rnd.get("i_sel", 0.0) or 0.0),
+        permanentes = {
+            "p_total": float(perm_raw.get("p_total", 0.0) or 0.0),
+            "p_perm": float(perm_raw.get("p_perm", 0.0) or 0.0),
+            "p_mom": float(perm_raw.get("p_mom", 0.0) or 0.0),
+            "i_perm": float(perm_raw.get("i_perm", 0.0) or 0.0),
+            "i_mom": float(perm_raw.get("i_mom", 0.0) or 0.0),
         }
+
+        # Momentáneos: fuente principal por escenarios; totales rápidos del escenario 1.
+        mom_scn1 = None
+        if isinstance(mom_raw.get(1), dict):
+            mom_scn1 = mom_raw.get(1)
+        elif isinstance(mom_raw.get("1"), dict):
+            mom_scn1 = mom_raw.get("1")
+        else:
+            mom_scn1 = {}
+
+        momentaneos = {
+            "scenarios": mom_raw,
+            "p_total": float(mom_scn1.get("p_total", 0.0) or 0.0),
+            "i_total": float(mom_scn1.get("i_total", 0.0) or 0.0),
+        }
+
+        aleatorios = {
+            "p_sel": float(rnd_raw.get("p_sel", 0.0) or 0.0),
+            "i_sel": float(rnd_raw.get("i_sel", 0.0) or 0.0),
+        }
+
+        # Salida plana legacy (la usa la pestaña Permanentes para labels inferiores).
+        flat = {
+            "p_total": float(permanentes["p_total"]),
+            "i_total": float(permanentes["i_perm"] + permanentes["i_mom"]),
+            "p_perm": float(permanentes["p_perm"]),
+            "i_perm": float(permanentes["i_perm"]),
+            "p_mom": float(permanentes["p_mom"]),
+            "i_mom": float(permanentes["i_mom"]),
+            "p_sel": float(aleatorios["p_sel"]),
+            "i_sel": float(aleatorios["i_sel"]),
+        }
+
+        # Mantener cache sincronizado (nunca como source-of-truth).
+        proj = self.project()
+        if isinstance(proj, dict):
+            calc = proj.setdefault("calculated", {})
+            if isinstance(calc, dict):
+                cc = calc.setdefault("cc", {})
+                if isinstance(cc, dict):
+                    cc["permanentes"] = dict(permanentes)
+                    cc["momentaneos"] = dict(momentaneos)
+                    cc["aleatorios"] = dict(aleatorios)
+                    cc["summary"] = {
+                        "p_total": flat["p_total"],
+                        "i_total": flat["i_total"],
+                        "p_perm": flat["p_perm"],
+                        "i_perm": flat["i_perm"],
+                        "p_mom": flat["p_mom"],
+                        "i_mom": flat["i_mom"],
+                        "p_sel": flat["p_sel"],
+                        "i_sel": flat["i_sel"],
+                    }
+
+        out: Dict[str, Any] = dict(flat)
+        out["permanentes"] = permanentes
+        out["momentaneos"] = momentaneos
+        out["aleatorios"] = aleatorios
+        return out
