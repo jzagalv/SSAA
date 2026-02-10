@@ -23,6 +23,7 @@ class ProjectKeys:
     CC_SCENARIOS = "cc_escenarios"
     CC_SCENARIOS_SUMMARY = "cc_scenarios_summary"
     CC_MOM_PERM_TARGET_SCENARIO = "cc_mom_perm_target_scenario"
+    CC_MOM_INCL_PERM = "cc_mom_incl_perm"
 
     CC_PERM_PCT_CUSTOM = "cc_perm_pct_custom"
     CC_MOM_INCLUDE = "cc_mom_incluir"

@@ -180,6 +180,31 @@ class CCConsumptionController(BaseController):
         fac = self.facade()
         return fac.get_cc_mom_perm_target_scenario(default=1)
 
+    def get_mom_scenario_include_perm(self, scn: int) -> bool:
+        scn_i = int(scn) if scn else 1
+        if scn_i < 1:
+            scn_i = 1
+        fac = self.facade()
+        include_map = fac.get_cc_mom_incl_perm()
+        return bool(include_map.get(str(scn_i), False))
+
+    def set_mom_scenario_include_perm(self, scn: int, value: bool, notify: bool = True) -> bool:
+        scn_i = int(scn) if scn else 1
+        if scn_i < 1:
+            scn_i = 1
+        fac = self.facade()
+        include_map = fac.get_cc_mom_incl_perm()
+        key = str(scn_i)
+        new_val = bool(value)
+        if bool(include_map.get(key, False)) == new_val:
+            return False
+        fac.update_cc_mom_incl_perm(key, new_val)
+        self.mark_dirty()
+        if notify:
+            self.notify_changed()
+        self._emit_input_changed({"mom_include_perm": {key: new_val}})
+        return True
+
     def normalize_cc_scenarios_storage(self, n_esc: int | None = None) -> bool:
         """Normaliza almacenamiento de nombres de escenarios a formato dict (sin legacy list).
 

@@ -52,7 +52,6 @@ from services.ssaa_engine import SSAAEngine
 from domain.cc_consumption import (
     get_model_gabinetes as cc_get_model_gabinetes,
     compute_cc_profile_totals,
-    compute_momentary_from_permanents,
     compute_momentary_scenarios,
 )
 
@@ -62,8 +61,6 @@ from ui.theme import get_theme_token
 DURACION_MIN_GRAFICA_MIN = 10.0
 CODE_L1 = "L1"
 CODE_LAL = "L(al)"
-CODE_LMOM_AUTO = "L2"
-DESC_LMOM_AUTO = "Carga Momentáneas Equipos C&P"
 
 
 def _theme_color(token: str, fallback: str) -> QColor:
@@ -231,10 +228,8 @@ class BankChargerSizingScreen(ScreenBase):
         v_cargas = QVBoxLayout()
 
         btn_row = QHBoxLayout()
-        self.btn_add_area = QPushButton("Agregar carga")
         self.btn_add_from_scenario = QPushButton("Agregar desde escenario C.C.")
         self.btn_del_area = QPushButton("Eliminar carga seleccionada")
-        btn_row.addWidget(self.btn_add_area)
         btn_row.addWidget(self.btn_add_from_scenario)
         btn_row.addWidget(self.btn_del_area)
         btn_row.addStretch()
@@ -411,8 +406,6 @@ class BankChargerSizingScreen(ScreenBase):
             self.cmb_vpc_mode.currentTextChanged.connect(self._on_vpc_mode_changed)
         if getattr(self, "cmb_cells_mode", None) is not None:
             self.cmb_cells_mode.currentTextChanged.connect(self._on_cells_mode_changed)
-
-        self.btn_add_area.clicked.connect(self._add_area_row)
         self.btn_add_from_scenario.clicked.connect(self._add_area_from_scenario)
         self.btn_del_area.clicked.connect(self._remove_selected_area)
         
@@ -1357,28 +1350,6 @@ class BankChargerSizingScreen(ScreenBase):
         while n in existing_nums or n == 1:
             n += 1
         return f"L{n}"
-
-    def _add_area_row(self):
-        row_lal = self._row_index_of_lal()
-        row = row_lal if row_lal >= 0 else self.tbl_cargas.rowCount()
-
-        self._updating = True
-        try:
-            self.tbl_cargas.insertRow(row)
-            code = self._next_load_id()
-            defaults = [code, "", "—", "—", "—", "—"]
-            for c, v in enumerate(defaults):
-                self.tbl_cargas.setItem(row, c, QTableWidgetItem(str(v)))
-        finally:
-            self._updating = False
-
-        self._apply_perfil_editability()
-        self._refresh_perfil_autocalc()
-        self._save_perfil_cargas_to_model()
-        self._update_cycle_table()
-        self._update_ieee485_table()
-        self._schedule_updates()
-
     def _remove_selected_area(self):
         row = self.tbl_cargas.currentRow()
         if row < 0:
@@ -1878,9 +1849,6 @@ class BankChargerSizingScreen(ScreenBase):
     # ========================= API =========================
     def reload_from_project(self):
         return self._controller.reload_from_project()
-
-    def _ensure_auto_momentary_load_in_profile(self, save_to_model: bool = True):
-        return self._controller.ensure_auto_momentary_load_in_profile(save_to_model)
 
 
 

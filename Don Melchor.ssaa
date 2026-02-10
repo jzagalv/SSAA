@@ -21,24 +21,25 @@
     "max_voltaje": "10",
     "min_voltaje": "10",
     "frecuencia_hz": null,
-    "tension_nominal": "110",
+    "tension_nominal": "125",
     "max_voltaje_cc": "10",
     "min_voltaje_cc": "15",
     "num_cargadores": "2",
     "num_bancos": "2",
-    "porcentaje_utilizacion": 80.0,
-    "tension_flotacion_celda": 2.3,
-    "num_celdas_usuario": 53,
+    "porcentaje_utilizacion": 85.0,
+    "tension_flotacion_celda": 2.25,
+    "num_celdas_usuario": 62,
     "cc_usar_pct_global": false,
-    "cc_num_escenarios": 2,
+    "cc_num_escenarios": 1,
     "cc_escenarios": {
-      "1": "fdsf",
+      "1": "Operación por 87B en 110kV",
       "2": "55 2"
     },
     "cc_scenarios_summary": [
       {
         "escenario": "1",
-        "descripcion": "fdsf"
+        "descripcion": "Operación por 87B en 110kV",
+        "enabled": true
       },
       {
         "escenario": "2",
@@ -49,18 +50,27 @@
       {
         "item": "L1",
         "desc": "Cargas Permanentes",
-        "p": 0.0,
-        "i": 0.0,
+        "p": 3490.5,
+        "i": 32.85,
         "t_inicio": 0.0,
-        "duracion": ""
+        "duracion": 480.0
+      },
+      {
+        "item": "L2",
+        "desc": "Escenario 1 – Operación por 87B en 110kV",
+        "p": 4939.5,
+        "i": 46.49,
+        "t_inicio": 479.0,
+        "duracion": 1.0,
+        "scenario_id": 1
       },
       {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
-        "p": 0.0,
-        "i": 0.0,
-        "t_inicio": "",
-        "duracion": ""
+        "p": 738.0,
+        "i": 6.95,
+        "t_inicio": 490.0,
+        "duracion": 1.0
       }
     ],
     "ssaa_topology_layers": {
@@ -89,18 +99,27 @@
       "L1": {
         "item": "L1",
         "desc": "Cargas Permanentes",
-        "p": 0.0,
-        "i": 0.0,
+        "p": 3490.5,
+        "i": 32.85,
         "t_inicio": 0.0,
-        "duracion": ""
+        "duracion": 480.0
+      },
+      "L2": {
+        "item": "L2",
+        "desc": "Escenario 1 – Operación por 87B en 110kV",
+        "p": 4939.5,
+        "i": 46.49,
+        "t_inicio": 479.0,
+        "duracion": 1.0,
+        "scenario_id": 1
       },
       "L(AL)": {
         "item": "L(al)",
         "desc": "Cargas Aleatorias",
-        "p": 0.0,
-        "i": 0.0,
-        "t_inicio": "",
-        "duracion": ""
+        "p": 738.0,
+        "i": 6.95,
+        "t_inicio": 490.0,
+        "duracion": 1.0
       }
     },
     "ieee485_kt": {
@@ -115,71 +134,69 @@
         "missing_kt_keys": [],
         "warnings": [],
         "bank": {
-          "base_ah": 0.0,
-          "critical_section": null,
+          "base_ah": 263.5403,
+          "critical_section": 2,
           "k2": 1.0,
           "margen": 1.15,
           "enve": 1.25,
           "factor_total": 1.4375,
-          "ah_required": 0.0,
-          "ah_commercial": null
+          "ah_required": 378.83918125,
+          "ah_commercial": 380.0
         },
         "charger": {
-          "i_perm": 0.0,
+          "i_perm": 32.85,
           "t_rec_h": 10.0,
           "k_loss": 1.15,
           "k_alt": 1.0,
           "k_temp": 1.0,
           "k_seg": 1.25,
-          "i_calc": 0.0,
-          "i_commercial": null,
-          "v_nom": 110.0,
+          "i_calc": 95.6875,
+          "i_commercial": 100.0,
+          "v_nom": 125.0,
           "eff": 0.9,
-          "p_cc_w": 0.0,
-          "p_ca_w": 0.0
+          "p_cc_w": 12500.0,
+          "p_ca_w": 13888.888888888889
         }
       },
       "cc": {
         "summary": {
-          "p_total_w": 4930.0,
-          "p_perm_w": 3490.5,
-          "p_mom_w": 1439.5,
-          "i_perm_a": 37.331550802139034,
-          "i_mom_a": 15.39572192513369,
-          "vmin": 93.5
+          "p_total": 4930.0,
+          "i_total": 46.4,
+          "p_perm": 3490.5,
+          "i_perm": 32.85176470588235,
+          "p_mom": 1439.5,
+          "i_mom": 13.548235294117648,
+          "p_sel": 738.0,
+          "i_sel": 6.945882352941177
         },
         "permanentes": {
           "p_total": 4930.0,
           "p_perm": 3490.5,
           "p_mom": 1439.5,
-          "i_perm": 37.331550802139034,
-          "i_mom": 15.39572192513369
+          "i_perm": 32.85176470588235,
+          "i_mom": 13.548235294117648
         },
         "momentaneos": {
-          "1": {
-            "p_total": 3500.0,
-            "i_total": 37.4331550802139
+          "scenarios": {
+            "1": {
+              "p_total": 4939.5,
+              "i_total": 46.489411764705885
+            }
           },
-          "2": {
-            "p_total": 350.0,
-            "i_total": 3.7433155080213902
-          }
+          "p_total": 4939.5,
+          "i_total": 46.489411764705885
         },
         "aleatorios": {
-          "p_sel": 870.0,
-          "i_sel": 9.304812834224599
+          "p_sel": 738.0,
+          "i_sel": 6.945882352941177
         },
         "scenarios_totals": {
           "1": {
-            "p_total": 4933.5,
-            "i_total": 52.76470588235294
-          },
-          "2": {
-            "p_total": 350.0,
-            "i_total": 3.7433155080213902
+            "p_total": 4939.5,
+            "i_total": 46.489411764705885
           }
         },
-        "momentary_signature": "4bdc33a18cc620020fa54904ab168119e09fd097"
+        "momentary_signature": "9b5be61e4768d33ace739ea0a29526219400cd73"
       }
     },
     "bb_ah_calculada": 430.50408125,
@@ -196,12 +213,12 @@
     "charger_p_ca_w": 13444.444444444443,
     "charger_eff": 0.9,
     "charger_v_nom": 110.0,
-    "v_max": 121.00000000000001,
-    "v_min": 93.5,
-    "v_celda_sel_usuario": "1.77",
+    "v_max": 137.5,
+    "v_min": 106.25,
+    "v_celda_sel_usuario": "1.75",
     "bc_overrides": {
       "bb_factor_envejec": 1.25,
-      "bank_commercial_ah": 440.0,
+      "bank_commercial_ah": 380.0,
       "charger_k_loss": 1.15,
       "charger_k_alt": 1.0
     },
@@ -266,7 +283,16 @@
       }
     ],
     "load_table_balance_auto": {},
-    "load_table_user_fields": {}
+    "load_table_user_fields": {},
+    "vpc_final_mode": "manual",
+    "cc_escenarios_enabled": {
+      "1": true
+    },
+    "cc_mom_perm_target_scenario": 1,
+    "cc_mom_incl_perm": {
+      "1": true,
+      "2": false
+    }
   },
   "instalaciones": {
     "ubicaciones": [
@@ -4510,8 +4536,8 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "cc_mom_incluir": true,
-              "cc_mom_escenario": 2,
+              "cc_mom_incluir": false,
+              "cc_mom_escenario": 1,
               "feed_ca_no_esencial": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_perm_pct_custom": null,
@@ -4550,7 +4576,7 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "cc_mom_incluir": true,
+              "cc_mom_incluir": false,
               "cc_mom_escenario": 1,
               "feed_ca_no_esencial": false,
               "feed_tablero_padre_ca_noes": "",
@@ -4590,7 +4616,7 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "cc_mom_incluir": true,
+              "cc_mom_incluir": false,
               "cc_mom_escenario": 1,
               "feed_ca_no_esencial": false,
               "feed_tablero_padre_ca_noes": "",
@@ -5101,7 +5127,322 @@
         "sala": "Patio Subestación - Patio Subestación",
         "ubicacion_id": "87a5e493-20da-41fe-a73f-19aaae57cab5",
         "is_board": false,
-        "components": [],
+        "components": [
+          {
+            "id": "5b9c3b1e-9113-4bf1-947c-0d09f19d65e6",
+            "base": "Merging Unit",
+            "name": "Merging Unit",
+            "pos": {
+              "x": 60.0,
+              "y": 60.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "f2a6f32e-0663-40ad-b787-7fa52cfc758a",
+              "code": "",
+              "name": "Merging Unit",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "20.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.C. permanente",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": "85.00",
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            }
+          },
+          {
+            "id": "d7d8a767-5451-4889-9f12-59278b2b8e61",
+            "base": "Merging Unit",
+            "name": "Merging Unit (2)",
+            "pos": {
+              "x": 360.0,
+              "y": 60.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "f2a6f32e-0663-40ad-b787-7fa52cfc758a",
+              "code": "",
+              "name": "Merging Unit",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "20.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.C. permanente",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": "85.00",
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            }
+          },
+          {
+            "id": "7293b74d-124e-465b-a8d5-cec2b49311fe",
+            "base": "Bobina Cierre Interuptor 110kV (Tripolar)",
+            "name": "Bobina Cierre Interuptor 110kV (Tripolar)",
+            "pos": {
+              "x": 60.0,
+              "y": 220.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "e3028486-fa18-49e2-89a0-247a8dfa2ff1",
+              "code": "",
+              "name": "Bobina Cierre Interuptor 110kV (Tripolar)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "350.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Indirecta",
+              "tipo_consumo": "C.C. momentáneo",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": false,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "e3028486-fa18-49e2-89a0-247a8dfa2ff1",
+              "code": "",
+              "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "83cf8d0b-1fb0-41d2-af43-8afc6387d2f9",
+            "base": "Bobina Apertura Interuptor 110kV (Tripolar)",
+            "name": "Bobina Apertura Interuptor 110kV (Tripolar)",
+            "pos": {
+              "x": 60.0,
+              "y": 380.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "acbcaa3b-44b1-4de8-848a-73d0aca5d92a",
+              "code": "",
+              "name": "Bobina Apertura Interuptor 110kV (Tripolar)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "350.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Indirecta",
+              "tipo_consumo": "C.C. momentáneo",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "acbcaa3b-44b1-4de8-848a-73d0aca5d92a",
+              "code": "",
+              "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "665b1a28-0be3-42c2-bd00-b436c4af51cc",
+            "base": "Bobina Apertura Interuptor 110kV (Tripolar)",
+            "name": "Bobina Apertura Interuptor 110kV (Tripolar) (2)",
+            "pos": {
+              "x": 360.0,
+              "y": 380.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "acbcaa3b-44b1-4de8-848a-73d0aca5d92a",
+              "code": "",
+              "name": "Bobina Apertura Interuptor 110kV (Tripolar)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "350.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Indirecta",
+              "tipo_consumo": "C.C. momentáneo",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "acbcaa3b-44b1-4de8-848a-73d0aca5d92a",
+              "code": "",
+              "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "660c246c-94a3-4619-bb6f-b7f1a6321a95",
+            "base": "Motores Interruptor 110kV (C.C.)",
+            "name": "Motores Interruptor 110kV (C.C.)",
+            "pos": {
+              "x": 60.0,
+              "y": 540.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "3b0d455e-f0c4-4e5c-a5ea-9c5ba571f6a0",
+              "code": "",
+              "name": "Motores Interruptor 110kV (C.C.)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "738.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Individual",
+              "tipo_consumo": "C.C. aleatorio",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_cc_b1": false,
+              "feed_cc_b2": true,
+              "feed_ca_esencial": false,
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "3b0d455e-f0c4-4e5c-a5ea-9c5ba571f6a0",
+              "code": "",
+              "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "1cddf663-8ea6-4bf4-91ed-86bb0f7ff8dc",
+            "base": "Motores Desconectador 110kV (C.C.)",
+            "name": "Motores Desconectador 110kV (C.C.)",
+            "pos": {
+              "x": 360.0,
+              "y": 540.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "1e286da4-8e38-49c9-a611-8baf3c29274e",
+              "code": "",
+              "name": "Motores Desconectador 110kV (C.C.)",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "132.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "Individual",
+              "tipo_consumo": "C.C. aleatorio",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_cc_b1": false,
+              "feed_cc_b2": true,
+              "feed_ca_esencial": false,
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "1e286da4-8e38-49c9-a611-8baf3c29274e",
+              "code": "",
+              "lib_path": "C:\\Users\\Laptop156\\Desktop\\SSAA\\resources\\consumos.lib"
+            }
+          },
+          {
+            "id": "9ea79dc1-8292-4d5a-9f3c-24dd30e35d79",
+            "base": "Calefacción y alumbrado",
+            "name": "Calefacción y alumbrado",
+            "pos": {
+              "x": 60.0,
+              "y": 700.0
+            },
+            "size": {
+              "w": 260.0,
+              "h": 120.0
+            },
+            "data": {
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "name": "Calefacción y alumbrado",
+              "marca": "Genérico",
+              "modelo": "",
+              "potencia_w": "200.0",
+              "potencia_va": "----",
+              "usar_va": false,
+              "alimentador": "General",
+              "tipo_consumo": "C.A. No Esencial",
+              "fase": "1F",
+              "tag": "",
+              "origen": "Genérico",
+              "feed_ca_no_esencial": false,
+              "feed_tablero_padre_ca_noes": "",
+              "cc_perm_pct_custom": null,
+              "cc_mom_incluir": true,
+              "cc_mom_escenario": 1,
+              "cc_aleatorio_sel": false
+            },
+            "source": {
+              "type": "consumos_lib",
+              "lib_uid": "c93a139e-b637-4be9-a210-7fd310acb6ba",
+              "code": "",
+              "lib_path": "C:\\Users\\jorge\\OneDrive\\Documentos\\Python\\SSAA\\resources\\consumos.lib"
+            }
+          }
+        ],
         "cc_b1": false,
         "cc_b2": false,
         "ca_esencial": false,
@@ -6387,7 +6728,7 @@
               "fase": "1F",
               "tag": "",
               "origen": "Genérico",
-              "cc_perm_pct_custom": "100.00",
+              "cc_perm_pct_custom": "50.00",
               "feed_ca_no_esencial": false,
               "feed_tablero_padre_ca_noes": "",
               "cc_mom_incluir": true,

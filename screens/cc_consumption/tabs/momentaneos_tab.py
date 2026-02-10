@@ -9,7 +9,11 @@ Regla: la fuente de verdad de escenarios es proyecto['cc_escenarios'] como dict 
 
 from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
-from domain.cc_consumption import get_vcc_for_currents, momentary_state_signature
+from domain.cc_consumption import (
+    get_vcc_for_currents,
+    get_model_gabinetes,
+    compute_momentary_from_permanents,
+)
 
 from screens.cc_consumption.models.momentaneos_loads_table_model import (
     MomentaneosLoadsTableModel,
@@ -94,10 +98,105 @@ class MomentaneosTabMixin:
 
         return raw
 
+    def _ensure_cc_mom_incl_perm(self, n_esc: int) -> dict:
+        """
+        Asegura proyecto['cc_mom_incl_perm'] como dict {"1": bool, ...}.
+
+        Migración legacy:
+        - Si no existe cc_mom_incl_perm pero existe cc_mom_perm_target_scenario,
+          crea mapa con todo False y sólo ese escenario en True.
+        """
+        proj = getattr(self.data_model, "proyecto", {}) or {}
+        changed = False
+        include_map = proj.get("cc_mom_incl_perm")
+        had_map = isinstance(include_map, dict)
+
+        try:
+            n = int(n_esc)
+        except Exception:
+            n = 1
+        if n < 1:
+            n = 1
+
+        if not isinstance(include_map, dict):
+            include_map = {}
+            legacy_target = proj.get("cc_mom_perm_target_scenario", None)
+            if legacy_target is not None:
+                try:
+                    target = int(legacy_target or 1)
+                except Exception:
+                    target = 1
+                if target < 1 or target > n:
+                    target = 1
+                for i in range(1, n + 1):
+                    include_map[str(i)] = (i == target)
+            proj["cc_mom_incl_perm"] = include_map
+            changed = True
+
+        for i in range(1, n + 1):
+            k = str(i)
+            if k not in include_map:
+                include_map[k] = False
+                changed = True
+                continue
+            raw = include_map.get(k)
+            if isinstance(raw, str):
+                val = raw.strip().casefold() in ("1", "true", "yes", "on")
+            else:
+                val = bool(raw)
+            if include_map.get(k) is not val:
+                include_map[k] = val
+                changed = True
+
+        if changed and hasattr(self.data_model, "mark_dirty"):
+            # Al migrar desde legacy, persistimos el nuevo esquema.
+            self.data_model.mark_dirty(True)
+
+        if not had_map and hasattr(self, "_autosave_project_best_effort"):
+            self._autosave_project_best_effort()
+
+        return include_map
+
+    def _compute_scenario_totals(self, scenario_idx: int, include_perm: bool) -> dict:
+        proj = getattr(self.data_model, "proyecto", {}) or {}
+        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
+        try:
+            vmin = float(vmin or 0.0)
+        except Exception:
+            vmin = 1.0
+        if vmin <= 0:
+            vmin = 1.0
+
+        scenario = int(scenario_idx or 1)
+        if scenario < 1:
+            scenario = 1
+
+        p_explicit = 0.0
+        model = getattr(self, "_mom_model", None)
+        if model is not None:
+            for r in range(model.rowCount()):
+                row = model.get_row(r)
+                if row is None:
+                    continue
+                if not bool(row.incluir):
+                    continue
+                esc = int(row.escenario or 1)
+                if esc != scenario:
+                    continue
+                p_explicit += float(row.p_eff or 0.0)
+
+        p_perm_tail = 0.0
+        if include_perm:
+            gabinetes = get_model_gabinetes(self.data_model)
+            p_perm_tail = float(compute_momentary_from_permanents(proj, gabinetes) or 0.0)
+
+        p_total = float(p_explicit + p_perm_tail)
+        i_total = float(p_total / vmin)
+        return {"p_total": p_total, "i_total": i_total}
+
     def _on_mom_loads_changed(self, *args):
         if self._building or getattr(self, "_loading", False):
             return
-        self._mom_force_recalc = True
         try:
             from PyQt5.QtCore import QTimer
             QTimer.singleShot(0, self._update_momentary_summary_display)
@@ -109,7 +208,6 @@ class MomentaneosTabMixin:
             return
         if top_left.column() > MOMR_COL_PERM or bottom_right.column() < MOMR_COL_PERM:
             return
-        self._mom_force_recalc = True
         if hasattr(self, "invalidate_calculated_cc"):
             self.invalidate_calculated_cc()
         self._update_momentary_summary_display()
@@ -135,83 +233,27 @@ class MomentaneosTabMixin:
 
     def _update_momentary_summary_display(self):
         """
-        Display-only: reads computed results from calculated.cc.scenarios_totals,
-        with controller fallback when missing.
+        Render de resumen por escenario usando estado actual del modelo
+        y bandera por escenario `cc_mom_incl_perm`.
         """
         if getattr(self, "_loading", False):
             return
-        # Aseguramos que cualquier edición pendiente se materialice
+        # Aseguramos que cualquier edición pendiente se materialice.
         self._commit_table_edits()
 
         proj = getattr(self.data_model, "proyecto", {}) or {}
         n_esc = int(self.spin_escenarios.value() or 1)
         self._ensure_cc_escenarios(n_esc)
+        include_map = self._ensure_cc_mom_incl_perm(n_esc)
 
         by_scenario = {}
-        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
-        force = bool(getattr(self, "_mom_force_recalc", False))
-
-        model = getattr(self, "_mom_model", None)
-        rows = []
-        if model is not None:
-            for r in range(model.rowCount()):
-                row = model.get_row(r)
-                if row is None:
-                    continue
-                rows.append({
-                    "comp_id": row.comp_id,
-                    "incluir": bool(row.incluir),
-                    "escenario": int(row.escenario or 1),
-                    "p_efectiva_w": float(row.p_eff or 0.0),
-                    "i_a": float(row.i_eff or 0.0),
-                })
-
-        sig_now = momentary_state_signature(rows, vmin=float(vmin), n_scenarios=int(n_esc))
-
-        calc = proj.get("calculated")
-        if not isinstance(calc, dict):
-            calc = {}
-            proj["calculated"] = calc
-        cc_calc = calc.get("cc")
-        if not isinstance(cc_calc, dict):
-            cc_calc = {}
-            calc["cc"] = cc_calc
-
-        cached_totals = cc_calc.get("scenarios_totals")
-        cached_sig = cc_calc.get("momentary_signature")
-        use_cache = (
-            isinstance(cached_totals, dict)
-            and cached_totals
-            and cached_sig == sig_now
-            and not force
-        )
-
-        if use_cache:
-            by_scenario = cached_totals
-        else:
-            computed = self._controller.compute_momentary(vmin=float(vmin))
-            if isinstance(computed, dict):
-                by_scenario = {}
-                for k, v in (computed or {}).items():
-                    try:
-                        by_scenario[str(int(k))] = v
-                    except Exception:
-                        continue
-                cc_calc["scenarios_totals"] = by_scenario
-                cc_calc["momentary_signature"] = sig_now
-                if hasattr(self.data_model, "mark_dirty"):
-                    self.data_model.mark_dirty(True)
-            self._mom_force_recalc = False
+        for n in range(1, n_esc + 1):
+            include_perm = bool(include_map.get(str(n), False))
+            by_scenario[str(n)] = self._compute_scenario_totals(n, include_perm=include_perm)
 
         # actualizar tabla resumen
         self._ensure_mom_scenarios_model()
         rows = []
-        try:
-            target_scenario = int(self._controller.get_mom_perm_target_scenario() or 1)
-        except Exception:
-            target_scenario = 1
-        if target_scenario < 1 or target_scenario > n_esc:
-            target_scenario = 1
         for n in range(1, n_esc + 1):
             desc_db = ""
             try:
@@ -223,7 +265,7 @@ class MomentaneosTabMixin:
             rows.append(
                 ScenarioRow(
                     n=int(n),
-                    perm_target=(int(n) == int(target_scenario)),
+                    include_perm=bool(include_map.get(str(n), False)),
                     desc=desc,
                     p_total=float(d.get("p_total", 0.0) or 0.0),
                     i_total=float(d.get("i_total", 0.0) or 0.0),
@@ -233,6 +275,14 @@ class MomentaneosTabMixin:
             self._mom_scenarios_model.set_rows(rows)
 
         # guardar resumen de totales en calculated.cc.scenarios_totals (no cc_scenarios_summary)
+        calc = proj.get("calculated")
+        if not isinstance(calc, dict):
+            calc = {}
+            proj["calculated"] = calc
+        cc_calc = calc.get("cc")
+        if not isinstance(cc_calc, dict):
+            cc_calc = {}
+            calc["cc"] = cc_calc
         scenarios_totals = {}
         for k in range(1, n_esc + 1):
             d = by_scenario.get(str(k), by_scenario.get(k, {})) or {}

@@ -31,14 +31,11 @@ from PyQt5.QtWidgets import (
 )
 
 
-from domain.cc_consumption import compute_momentary_from_permanents
 
 # Constants shared with bank_charger_screen
 DURACION_MIN_GRAFICA_MIN = 10.0
 CODE_L1 = "L1"
 CODE_LAL = "L(al)"
-CODE_LMOM_AUTO = "L2"
-DESC_LMOM_AUTO = "Carga Momentáneas Equipos C&P"
 
 
 from services.bank_charger_service import compute_and_update_project
@@ -228,8 +225,6 @@ class BankChargerController(BaseController):
         s = self.screen
         s._fill_perfil_cargas(save_to_model=False)
         s._load_perfil_cargas_from_model()
-        # Asegurar carga automática L2 (momentáneas derivadas de permanentes), si aplica
-        s._ensure_auto_momentary_load_in_profile(save_to_model=False)
         s._refresh_perfil_autocalc()
         s._update_cycle_table()
         s._perfil_loaded = True
@@ -278,138 +273,6 @@ class BankChargerController(BaseController):
                 self._refresh_resumen()
             s._schedule_updates()
             return
-
-
-    def ensure_auto_momentary_load_in_profile(self, save_to_model: bool = True):
-        s = self.screen
-        """Inserta/actualiza una carga automática en el Perfil de cargas.
-
-        Regla:
-        - Si existe potencia momentánea derivada de consumos C.C. permanentes (>0),
-          debe existir una fila con código L2 y descripción DESC_LMOM_AUTO.
-        - Si el usuario ya tenía una L2, esta se desplaza a L3 (y así sucesivamente).
-        - No modifica L1 ni L(al).
-        """
-
-        proyecto = getattr(s.data_model, "proyecto", {}) or {}
-        gabinetes = s._get_model_gabinetes()
-
-        p_mom = float(compute_momentary_from_permanents(proyecto=proyecto, gabinetes=gabinetes) or 0.0)
-
-        # Si no hay potencia momentánea derivada de permanentes, NO debe existir la carga automática.
-        # Además, si hay cargas L>=3 (por ejemplo escenarios) deben correrse hacia abajo para liberar L2.
-        if p_mom <= 0:
-            row_l2 = s._row_index_of_code(CODE_LMOM_AUTO)
-            if row_l2 >= 0:
-                desc_existing = (s.tbl_cargas.item(row_l2, 1).text().strip() if s.tbl_cargas.item(row_l2, 1) else "")
-                if desc_existing == DESC_LMOM_AUTO:
-                    # eliminar la fila automática
-                    s._updating = True
-                    try:
-                        s.tbl_cargas.removeRow(row_l2)
-                    finally:
-                        s._updating = False
-
-                    # correr L>=3 -> L>=2 (para que el primer escenario pase a ser L2)
-                    def parse_l_num(code_text: str):
-                        cn = s._norm_code(code_text)
-                        if cn.startswith("L") and cn[1:].isdigit():
-                            return int(cn[1:])
-                        return None
-
-                    nums = []
-                    for r in range(s.tbl_cargas.rowCount()):
-                        code = s.tbl_cargas.item(r, 0).text().strip() if s.tbl_cargas.item(r, 0) else ""
-                        n = parse_l_num(code)
-                        if n is not None and n >= 3:
-                            nums.append((n, r))
-
-                    # orden ascendente para evitar colisiones al decrementar
-                    for n, r in sorted(nums, key=lambda x: x[0]):
-                        s._set_text_cell(s.tbl_cargas, r, 0, f"L{n-1}", editable=False)
-
-                    s._apply_perfil_editability()
-                    if save_to_model:
-                        s._save_perfil_cargas_to_model()
-
-            return
-
-        vmin = s._get_vmin_cc()
-        if vmin <= 0:
-            vmin = 1.0
-        i_mom = p_mom / vmin
-        def parse_l_num(code_text: str):
-            cn = s._norm_code(code_text)
-            if cn.startswith("L") and cn[1:].isdigit():
-                return int(cn[1:])
-            return None
-
-        # ¿Ya existe una fila L2?
-        row_l2 = s._row_index_of_code(CODE_LMOM_AUTO)
-        if row_l2 >= 0:
-            desc_existing = (s.tbl_cargas.item(row_l2, 1).text().strip() if s.tbl_cargas.item(row_l2, 1) else "")
-            if desc_existing != DESC_LMOM_AUTO:
-                # L2 es del usuario -> desplazar todas L>=2 una posición hacia arriba
-                # (hacerlo desde el máximo para no pisar)
-                nums = []
-                for r in range(s.tbl_cargas.rowCount()):
-                    code = s.tbl_cargas.item(r, 0).text().strip() if s.tbl_cargas.item(r, 0) else ""
-                    n = parse_l_num(code)
-                    if n is not None and n >= 2:
-                        nums.append((n, r))
-
-                # orden descendente por n
-                for n, r in sorted(nums, key=lambda x: x[0], reverse=True):
-                    s._set_text_cell(s.tbl_cargas, r, 0, f"L{n+1}", editable=False)
-
-                # Recalcular fila L2 después del shift
-                row_l2 = s._row_index_of_code(CODE_LMOM_AUTO)
-
-        # Si no existe fila L2 (o se desplazó), insertarla justo después de L1
-        if row_l2 < 0:
-            row_l1 = s._row_index_of_code(CODE_L1)
-            insert_at = (row_l1 + 1) if row_l1 >= 0 else 0
-
-            # Propuesta inicial de tiempos: al final de la autonomía (1 min)
-            t_aut = s._get_autonomia_min()
-            t0_def = max(0.0, float(t_aut) - 1.0) if (t_aut and float(t_aut) > 0) else None
-            dur_def = 1.0 if t0_def is not None else None
-
-            s._updating = True
-            try:
-                s.tbl_cargas.insertRow(insert_at)
-                vals = [
-                    CODE_LMOM_AUTO,
-                    DESC_LMOM_AUTO,
-                    f"{p_mom:.2f}",
-                    f"{i_mom:.2f}",
-                    (f"{t0_def:.0f}" if t0_def is not None else "—"),
-                    (f"{dur_def:.0f}" if dur_def is not None else "—"),
-                ]
-                for c, v in enumerate(vals):
-                    s.tbl_cargas.setItem(insert_at, c, QTableWidgetItem(str(v)))
-            finally:
-                s._updating = False
-        else:
-            # Existe y es la automática: actualizar P/I
-            s._set_text_cell(s.tbl_cargas, row_l2, 1, DESC_LMOM_AUTO, editable=False)
-            s._set_text_cell(s.tbl_cargas, row_l2, 2, f"{p_mom:.2f}", editable=False)
-            s._set_text_cell(s.tbl_cargas, row_l2, 3, f"{i_mom:.2f}", editable=False)
-
-            # Si el usuario no ha definido tiempos, aplicar propuesta inicial
-            t4 = (s.tbl_cargas.item(row_l2, 4).text().strip() if s.tbl_cargas.item(row_l2, 4) else "")
-            t5 = (s.tbl_cargas.item(row_l2, 5).text().strip() if s.tbl_cargas.item(row_l2, 5) else "")
-            if (not t4 or t4 == "—") and (not t5 or t5 == "—"):
-                t_aut = s._get_autonomia_min()
-                if t_aut and float(t_aut) > 0:
-                    t0_def = max(0.0, float(t_aut) - 1.0)
-                    s._set_text_cell(s.tbl_cargas, row_l2, 4, f"{t0_def:.0f}", editable=False)
-                    s._set_text_cell(s.tbl_cargas, row_l2, 5, "1", editable=False)
-
-        s._apply_perfil_editability()
-        if save_to_model:
-            s._save_perfil_cargas_to_model()
-
     def run_battery_sizing(self, proyecto: dict) -> object:
         """Compute sizing, update project and mark DataModel dirty if needed."""
         res, changed = compute_and_update_project(proyecto)

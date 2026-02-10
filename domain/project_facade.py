@@ -101,6 +101,33 @@ class ProjectFacade:
             v = 1
         self._set(K.CC_MOM_PERM_TARGET_SCENARIO, v)
 
+    def get_cc_mom_incl_perm(self) -> Dict[str, bool]:
+        v = self._get(K.CC_MOM_INCL_PERM, {}) or {}
+        if not isinstance(v, dict):
+            return {}
+        out: Dict[str, bool] = {}
+        for k, raw in v.items():
+            if isinstance(raw, str):
+                out[str(k)] = raw.strip().casefold() in ("1", "true", "yes", "on")
+            else:
+                out[str(k)] = bool(raw)
+        return out
+
+    def set_cc_mom_incl_perm(self, include_map: Dict[str, bool]) -> None:
+        out: Dict[str, bool] = {}
+        for k, raw in (include_map or {}).items():
+            if isinstance(raw, str):
+                out[str(k)] = raw.strip().casefold() in ("1", "true", "yes", "on")
+            else:
+                out[str(k)] = bool(raw)
+        self._set(K.CC_MOM_INCL_PERM, out)
+
+    def update_cc_mom_incl_perm(self, esc: int | str, include_perm: bool) -> None:
+        key = str(esc)
+        include_map = self.get_cc_mom_incl_perm()
+        include_map[key] = bool(include_perm)
+        self.set_cc_mom_incl_perm(include_map)
+
     def get_cc_perm_pct_custom(self, default: float = 40.0) -> float:
         try:
             return float(self._get(K.CC_PERM_PCT_CUSTOM, default))

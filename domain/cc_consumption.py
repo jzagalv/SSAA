@@ -23,7 +23,6 @@ import hashlib
 import json
 
 from .parse import to_float
-from core.keys import ProjectKeys as K
 
 # -------------------------
 # Cast / helpers
@@ -596,7 +595,7 @@ def compute_momentary_scenarios(
     Construye escenarios momentáneos:
       1) Base: consumos tipo "C.C. momentáneo" con cc_mom_incluir=True y cc_mom_escenario
       2) Potencia momentánea derivada de permanentes: p_eff * ((100 - pct)/100)
-         se suma al escenario objetivo (cc_mom_perm_target_scenario).
+         se suma al escenario 1 (legacy).
     Retorna:
       {esc: {"p_total": W, "i_total": A}}
     """
@@ -625,18 +624,11 @@ def compute_momentary_scenarios(
 
             sum_p[esc] = sum_p.get(esc, 0.0) + p_eff
 
-    # momentáneo derivado desde permanentes (mismo criterio en toda la app)
-    n_scenarios = get_num_escenarios(proyecto, default=1)
-    try:
-        target_esc = int((proyecto or {}).get(K.CC_MOM_PERM_TARGET_SCENARIO, 1) or 1)
-    except Exception:
-        target_esc = 1
-    if target_esc < 1 or target_esc > int(n_scenarios):
-        target_esc = 1
-
+    # momentáneo derivado desde permanentes (legacy): escenario 1.
+    # La UI actual de Momentáneos maneja inclusión por escenario con cc_mom_incl_perm.
     p_mom_perm_total = compute_momentary_from_permanents(proyecto, gabinetes)
     if p_mom_perm_total > 0:
-        sum_p[target_esc] = sum_p.get(target_esc, 0.0) + float(p_mom_perm_total)
+        sum_p[1] = sum_p.get(1, 0.0) + float(p_mom_perm_total)
 
     out: Dict[int, Dict[str, float]] = {}
     for esc, p in sum_p.items():

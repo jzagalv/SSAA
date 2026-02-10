@@ -12,12 +12,9 @@ from __future__ import annotations
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTableWidgetItem
 
-from domain.cc_consumption import compute_momentary_from_permanents
 
 CODE_L1 = "L1"
 CODE_LAL = "L(al)"
-CODE_LMOM_AUTO = "L2"
-DESC_LMOM_AUTO = "Carga Momentáneas Equipos C&P"
 
 
 class ProfileTablePresenter:
@@ -122,7 +119,6 @@ class ProfileTablePresenter:
             it = scr.tbl_cargas.item(r, 0)
             code = it.text().strip() if it else ""
             code_n = scr._norm_code(code)
-            desc = scr.tbl_cargas.item(r, 1).text().strip() if scr.tbl_cargas.item(r, 1) else ""
 
             for c in range(scr.tbl_cargas.columnCount()):
                 cell = scr.tbl_cargas.item(r, c)
@@ -132,9 +128,6 @@ class ProfileTablePresenter:
                 cell.setFlags(cell.flags() & ~Qt.ItemIsEditable)
 
             if code_n == scr._norm_code(CODE_LAL):
-                for c in (4, 5):
-                    scr.tbl_cargas.item(r, c).setFlags(scr.tbl_cargas.item(r, c).flags() | Qt.ItemIsEditable)
-            elif code_n == scr._norm_code(CODE_LMOM_AUTO) and desc == DESC_LMOM_AUTO:
                 for c in (4, 5):
                     scr.tbl_cargas.item(r, c).setFlags(scr.tbl_cargas.item(r, c).flags() | Qt.ItemIsEditable)
             elif code_n not in (scr._norm_code(CODE_L1), scr._norm_code(CODE_LAL)) and code:
@@ -149,7 +142,6 @@ class ProfileTablePresenter:
             if it and scr._norm_code(it.text()) == code_n:
                 return r
         return -1
-
     def refresh_autocalc(self) -> None:
         scr = self.screen
         if scr._updating:
@@ -162,41 +154,26 @@ class ProfileTablePresenter:
                 vmin = 1.0
 
             p_perm, p_ale = scr._compute_cc_profile_totals()
+            t_aut = float(scr._get_autonomia_min() or 0.0)
 
-            try:
-                proyecto = getattr(scr.data_model, "proyecto", {}) or {}
-                gabinetes = scr._get_model_gabinetes()
-                p_mom_auto = float(compute_momentary_from_permanents(proyecto=proyecto, gabinetes=gabinetes) or 0.0)
-            except Exception:
-                p_mom_auto = 0.0
-
-            # El controller decide crear/eliminar L2 automático; acá solo refrescamos valores.
-            scr._ensure_auto_momentary_load_in_profile(save_to_model=False)
+            def _ensure_cell(row: int, col: int):
+                it = scr.tbl_cargas.item(row, col)
+                if it is None:
+                    it = QTableWidgetItem("")
+                    scr.tbl_cargas.setItem(row, col, it)
+                return it
 
             r_l1 = self.row_index_of_code(CODE_L1)
             if r_l1 >= 0:
-                scr.tbl_cargas.item(r_l1, 2).setText(f"{p_perm:.2f}")
-                scr.tbl_cargas.item(r_l1, 3).setText(f"{(p_perm / vmin):.2f}")
+                _ensure_cell(r_l1, 2).setText(f"{p_perm:.2f}")
+                _ensure_cell(r_l1, 3).setText(f"{(p_perm / vmin):.2f}")
+                _ensure_cell(r_l1, 4).setText("0.0")
+                _ensure_cell(r_l1, 5).setText(f"{t_aut:.1f}" if t_aut > 0 else "—")
 
             r_lal = self.row_index_of_code(CODE_LAL)
             if r_lal >= 0:
-                scr.tbl_cargas.item(r_lal, 2).setText(f"{p_ale:.2f}")
-                scr.tbl_cargas.item(r_lal, 3).setText(f"{(p_ale / vmin):.2f}")
-
-            # Actualizar L2 automático si existe
-            r_l2a = -1
-            for r in range(scr.tbl_cargas.rowCount()):
-                code_it = scr.tbl_cargas.item(r, 0)
-                desc_it = scr.tbl_cargas.item(r, 1)
-                if not code_it or not desc_it:
-                    continue
-                if scr._norm_code(code_it.text()) == scr._norm_code(CODE_LMOM_AUTO) and desc_it.text().strip() == DESC_LMOM_AUTO:
-                    r_l2a = r
-                    break
-
-            if r_l2a >= 0:
-                scr.tbl_cargas.item(r_l2a, 2).setText(f"{p_mom_auto:.2f}")
-                scr.tbl_cargas.item(r_l2a, 3).setText(f"{(p_mom_auto / vmin):.2f}")
+                _ensure_cell(r_lal, 2).setText(f"{p_ale:.2f}")
+                _ensure_cell(r_lal, 3).setText(f"{(p_ale / vmin):.2f}")
 
             self.apply_editability()
         finally:

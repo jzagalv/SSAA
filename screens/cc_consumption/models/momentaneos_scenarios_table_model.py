@@ -24,7 +24,7 @@ from screens.cc_consumption.utils import should_persist_scenario_desc, fmt
 @dataclass
 class ScenarioRow:
     n: int
-    perm_target: bool
+    include_perm: bool
     desc: str
     p_total: float
     i_total: float
@@ -56,10 +56,10 @@ class MomentaneosScenariosTableLogic:
             return bool(setter(int(n), desc, notify=False))
         return False
 
-    def set_perm_target(self, n: int) -> bool:
-        setter = getattr(self._controller, "set_mom_perm_target_scenario", None)
+    def set_include_perm(self, n: int, value: bool) -> bool:
+        setter = getattr(self._controller, "set_mom_scenario_include_perm", None)
         if callable(setter):
-            return bool(setter(int(n), notify=True))
+            return bool(setter(int(n), bool(value), notify=True))
         return False
 
 
@@ -112,7 +112,12 @@ if QtCore is not None:
 
             col = index.column()
             if col == MOMR_COL_PERM and role == QtCore.Qt.CheckStateRole:
-                return QtCore.Qt.Checked if bool(row.perm_target) else QtCore.Qt.Unchecked
+                getter = getattr(self._logic._controller, "get_mom_scenario_include_perm", None)
+                if callable(getter):
+                    checked = bool(getter(row.n))
+                else:
+                    checked = bool(row.include_perm)
+                return QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked
             if role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
                 return None
 
@@ -137,18 +142,12 @@ if QtCore is not None:
 
             if index.column() == MOMR_COL_PERM and role == QtCore.Qt.CheckStateRole:
                 checked = value == QtCore.Qt.Checked
-                if not checked:
-                    # Exclusivo: siempre debe quedar un target activo.
+                if bool(row.include_perm) == bool(checked):
                     return False
-                if row.perm_target:
+                if not self._logic.set_include_perm(row.n, checked):
                     return False
-                if not self._logic.set_perm_target(row.n):
-                    return False
-                for rr in self._logic._rows:
-                    rr.perm_target = (int(rr.n) == int(row.n))
-                left = self.index(0, MOMR_COL_PERM)
-                right = self.index(self.rowCount() - 1, MOMR_COL_PERM)
-                self.dataChanged.emit(left, right, [QtCore.Qt.CheckStateRole, QtCore.Qt.DisplayRole])
+                row.include_perm = bool(checked)
+                self.dataChanged.emit(index, index, [QtCore.Qt.CheckStateRole, QtCore.Qt.DisplayRole])
                 return True
 
             if index.column() != MOMR_COL_DESC:
@@ -170,7 +169,7 @@ if QtCore is not None:
                 if column == MOMR_COL_ESC:
                     return int(r.n or 0)
                 if column == MOMR_COL_PERM:
-                    return 1 if bool(r.perm_target) else 0
+                    return 1 if bool(r.include_perm) else 0
                 if column == MOMR_COL_DESC:
                     return (r.desc or "").casefold()
                 if column == MOMR_COL_PT:
