@@ -782,13 +782,14 @@ class BankChargerSizingScreen(ScreenBase):
     def _get_saved_perfil_cargas(self) -> list:
         proyecto = getattr(self.data_model, "proyecto", {}) or {}
         cfg = proyecto.get("bank_charger", None)
+        bc_list = None
         if isinstance(cfg, dict):
-            perfil = cfg.get("perfil_cargas", None)
-            if isinstance(perfil, list) and perfil:
-                return perfil
-        perfil_legacy = proyecto.get("perfil_cargas", None)
-        if isinstance(perfil_legacy, list):
-            return perfil_legacy
+            bc_list = cfg.get("perfil_cargas", None)
+        legacy_list = proyecto.get("perfil_cargas", None)
+        if isinstance(bc_list, list) and bc_list:
+            return bc_list
+        if isinstance(legacy_list, list) and legacy_list:
+            return legacy_list
         return []
 
     def _get_saved_random_loads(self) -> dict:

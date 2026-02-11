@@ -126,22 +126,28 @@
       "S1_P1": 7.99,
       "S2_P1": 7.99,
       "S2_P2": 0.02,
-      "R": 0.02
+      "R": ""
     },
     "bateria_tension_nominal": 2.0,
     "calculated": {
       "bank_charger": {
-        "missing_kt_keys": [],
-        "warnings": [],
+        "missing_kt_keys": [
+          "S1_P1",
+          "S2_P1",
+          "S2_P2"
+        ],
+        "warnings": [
+          "Faltan Kt en IEEE 485; selección incompleta hasta completar: S1_P1, S2_P1, S2_P2"
+        ],
         "bank": {
-          "base_ah": 263.5403,
-          "critical_section": 2,
+          "base_ah": 0.0,
+          "critical_section": null,
           "k2": 1.0,
           "margen": 1.15,
           "enve": 1.25,
           "factor_total": 1.4375,
-          "ah_required": 378.83918125,
-          "ah_commercial": 380.0
+          "ah_required": 0.0,
+          "ah_commercial": null
         },
         "charger": {
           "i_perm": 32.85,
@@ -150,12 +156,12 @@
           "k_alt": 1.0,
           "k_temp": 1.0,
           "k_seg": 1.25,
-          "i_calc": 95.6875,
-          "i_commercial": 100.0,
+          "i_calc": 57.234375,
+          "i_commercial": 60.0,
           "v_nom": 125.0,
           "eff": 0.9,
-          "p_cc_w": 12500.0,
-          "p_ca_w": 13888.888888888889
+          "p_cc_w": 7500.0,
+          "p_ca_w": 8333.333333333334
         }
       },
       "cc": {
@@ -292,6 +298,84 @@
     "cc_mom_incl_perm": {
       "1": true,
       "2": false
+    },
+    "bb_margen_diseno": 1.15,
+    "bb_k2_temp": 1.0,
+    "bb_factor_envejec": 1.25,
+    "bank_charger": {
+      "perfil_cargas": [
+        {
+          "item": "L1",
+          "desc": "Cargas Permanentes",
+          "p": 3490.5,
+          "i": 32.85,
+          "t_inicio": 0.0,
+          "duracion": 480.0
+        },
+        {
+          "item": "L2",
+          "desc": "Escenario 1 – Operación por 87B en 110kV",
+          "p": 4939.5,
+          "i": 46.49,
+          "t_inicio": 479.0,
+          "duracion": 1.0,
+          "scenario_id": 1
+        },
+        {
+          "item": "L(al)",
+          "desc": "Cargas Aleatorias",
+          "p": 738.0,
+          "i": 6.95,
+          "t_inicio": 490.0,
+          "duracion": 1.0
+        }
+      ],
+      "perfil_cargas_idx": {
+        "L1": {
+          "item": "L1",
+          "desc": "Cargas Permanentes",
+          "p": 3490.5,
+          "i": 32.85,
+          "t_inicio": 0.0,
+          "duracion": 480.0
+        },
+        "L2": {
+          "item": "L2",
+          "desc": "Escenario 1 – Operación por 87B en 110kV",
+          "p": 4939.5,
+          "i": 46.49,
+          "t_inicio": 479.0,
+          "duracion": 1.0,
+          "scenario_id": 1
+        },
+        "L(AL)": {
+          "item": "L(al)",
+          "desc": "Cargas Aleatorias",
+          "p": 738.0,
+          "i": 6.95,
+          "t_inicio": 490.0,
+          "duracion": 1.0
+        }
+      },
+      "k1_margen": 1.15,
+      "k2_altitud": 1.0,
+      "k3_envejecimiento": 1.25,
+      "cargas_aleatorias": {
+        "item": "L(al)",
+        "desc": "Cargas Aleatorias",
+        "p": 738.0,
+        "i": 6.95,
+        "t_inicio": 490.0,
+        "duracion": 1.0
+      }
+    },
+    "cargas_aleatorias": {
+      "item": "L(al)",
+      "desc": "Cargas Aleatorias",
+      "p": 738.0,
+      "i": 6.95,
+      "t_inicio": 490.0,
+      "duracion": 1.0
     }
   },
   "instalaciones": {

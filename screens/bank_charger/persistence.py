@@ -41,12 +41,13 @@ class BankChargerPersistence:
         """Read profile preferring bank_charger.*, fallback to root legacy."""
         proyecto = self._proyecto()
         cfg = proyecto.get("bank_charger", None)
+        perfil_bc = None
         if isinstance(cfg, dict):
             perfil_bc = cfg.get("perfil_cargas", None)
-            if isinstance(perfil_bc, list) and perfil_bc:
-                return perfil_bc
         perfil_root = proyecto.get("perfil_cargas", None)
-        if isinstance(perfil_root, list):
+        if isinstance(perfil_bc, list) and perfil_bc:
+            return perfil_bc
+        if isinstance(perfil_root, list) and perfil_root:
             return perfil_root
         return []
 

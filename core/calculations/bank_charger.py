@@ -37,6 +37,8 @@ def compute_bank_charger(
     periods: List[Dict[str, Any]],
     rnd: Optional[Dict[str, Any]],
     i_perm: float,
+    available_battery_ah: Optional[List[float]] = None,
+    selected_battery_ah: Optional[float] = None,
 ) -> Tuple[Any, Dict[str, Any]]:
     """Compute bank+charger bundle + serializable summary."""
 
@@ -51,6 +53,8 @@ def compute_bank_charger(
         build_ieee485_fn=build_ieee485,
         compute_bank_selection_fn=compute_bank_selection,
         compute_charger_selection_fn=compute_charger_selection,
+        available_battery_ah=available_battery_ah,
+        selected_battery_ah=selected_battery_ah,
     )
 
     summary: Dict[str, Any] = {

@@ -114,6 +114,8 @@ class CalcService:
         periods: list,
         rnd: Dict[str, Any] | None,
         i_perm: float,
+        available_battery_ah: list[float] | None = None,
+        selected_battery_ah: float | None = None,
     ) -> Dict[str, Any]:
         """Recalculate Bank/Charger sizing.
 
@@ -127,6 +129,8 @@ class CalcService:
             periods=periods,
             rnd=rnd,
             i_perm=float(i_perm or 0.0),
+            available_battery_ah=available_battery_ah,
+            selected_battery_ah=selected_battery_ah,
         )
 
         self.runtime_cache["bank_charger_bundle"] = bundle
@@ -148,4 +152,3 @@ class CalcService:
             self.recalc_cc()
         except Exception:
             log.debug("Failed to recalc CC (best-effort).", exc_info=True)
-

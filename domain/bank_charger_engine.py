@@ -39,6 +39,43 @@ def _num_to_str_or_dash(x) -> str:
     return str(xf)
 
 
+def _pick_commercial_ah(
+    *,
+    required_ah: float,
+    available_ah: List[float],
+) -> tuple[Optional[float], Optional[str]]:
+    vals_set = set()
+    for v in (available_ah or []):
+        try:
+            vf = float(v)
+        except Exception:
+            continue
+        if vf > 0.0:
+            vals_set.add(vf)
+    vals = sorted(vals_set)
+    if not vals:
+        return None, None
+
+    req = float(required_ah or 0.0)
+    if req <= 0:
+        return vals[0], None
+
+    for cap in vals:
+        if cap >= req:
+            if abs(cap - req) <= 1e-9:
+                return cap, None
+            return cap, (
+                f"No existe capacidad exacta para {req:.2f} Ah en materiales; "
+                f"se seleccionó {cap:.2f} Ah."
+            )
+
+    max_cap = vals[-1]
+    return max_cap, (
+        f"Capacidad requerida ({req:.2f} Ah) supera máximo disponible "
+        f"en materiales ({max_cap:.2f} Ah)."
+    )
+
+
 def run_bank_charger_engine(
     *,
     proyecto: Dict[str, Any],
@@ -49,6 +86,8 @@ def run_bank_charger_engine(
     build_ieee485_fn,
     compute_bank_selection_fn,
     compute_charger_selection_fn,
+    available_battery_ah: Optional[List[float]] = None,
+    selected_battery_ah: Optional[float] = None,
 ) -> BankChargerBundle:
     warnings: List[str] = []
 
@@ -79,7 +118,28 @@ def run_bank_charger_engine(
         commercial_step_ah=to_float(proyecto.get("commercial_step_ah", 10.0), 10.0) or 10.0,
     )
 
-    ah_com_str = _num_to_str_or_dash(getattr(bank, "ah_commercial", None))
+    ah_required = to_float(getattr(bank, "ah_required", None), 0.0) or 0.0
+    ah_calc = to_float(getattr(bank, "ah_commercial", None), 0.0) or 0.0
+    ah_for_use = ah_calc if ah_calc > 0 else None
+
+    sel_ah = to_float(selected_battery_ah, 0.0) if selected_battery_ah is not None else None
+    if sel_ah is not None and sel_ah > 0:
+        ah_for_use = sel_ah
+        if ah_required > 0 and sel_ah < ah_required:
+            warnings.append(
+                f"Batería seleccionada ({sel_ah:.2f} Ah) menor a capacidad requerida ({ah_required:.2f} Ah)."
+            )
+    else:
+        picked_ah, pick_warn = _pick_commercial_ah(
+            required_ah=ah_required,
+            available_ah=list(available_battery_ah or []),
+        )
+        if picked_ah is not None:
+            ah_for_use = picked_ah
+        if pick_warn:
+            warnings.append(pick_warn)
+
+    ah_com_str = _num_to_str_or_dash(ah_for_use)
 
     # --- Cargador ---
     t_rec_h = to_float(proyecto.get("charger_t_rec_h", 10.0), 10.0) or 10.0
@@ -92,7 +152,7 @@ def run_bank_charger_engine(
     eff   = to_float(proyecto.get("charger_eff", 0.90), 0.90) or 0.90
 
     charger = compute_charger_selection_fn(
-        ah_bank_commercial=getattr(bank, "ah_commercial", None),
+        ah_bank_commercial=ah_for_use,
         i_perm=float(i_perm or 0.0),
         t_rec_h=t_rec_h,
         k_loss=k_loss,

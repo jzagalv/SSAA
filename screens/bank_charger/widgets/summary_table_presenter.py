@@ -24,12 +24,15 @@ class SummaryTablePresenter:
         proyecto = getattr(scr.data_model, "proyecto", {}) or {}
 
         ov = proyecto.get("bc_overrides", {}) if isinstance(proyecto.get("bc_overrides", {}), dict) else {}
+        bundle = scr._get_bc_bundle()
+        bank = getattr(bundle, "bank", None) if bundle is not None else None
+        charger = getattr(bundle, "charger", None) if bundle is not None else None
 
         # Valores calculados / comerciales (formateo 2 decimales cuando aplica)
-        bb_calc = proyecto.get("bb_ah_calculada", 0) or 0
-        ch_calc = proyecto.get("charger_a_calculada", 0) or 0
-        bb_com = ov.get("bank_commercial_ah", proyecto.get("bb_ah_comercial", "—"))
-        ch_com = ov.get("charger_commercial_a", proyecto.get("charger_a_comercial", "—"))
+        bb_calc = getattr(bank, "ah_required", proyecto.get("bb_ah_calculada", 0) or 0)
+        ch_calc = getattr(charger, "i_calc", proyecto.get("charger_a_calculada", 0) or 0)
+        bb_com = getattr(bundle, "ah_commercial_str", None) or ov.get("bank_commercial_ah", proyecto.get("bb_ah_comercial", "—"))
+        ch_com = getattr(bundle, "i_charger_commercial_str", None) or ov.get("charger_commercial_a", proyecto.get("charger_a_comercial", "—"))
 
         def _fmt2(v):
             try:

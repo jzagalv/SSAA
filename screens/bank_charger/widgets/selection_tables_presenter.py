@@ -1,38 +1,33 @@
 # -*- coding: utf-8 -*-
-"""Selection tables presenter for Bank/Charger screen.
-
-Low-risk refactor: keeps rendering/validation logic in one place, outside the main screen module.
-"""
+"""Selection tables presenter for Bank/Charger screen."""
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QDoubleSpinBox, QTableWidget, QTableWidgetItem
+
 from ui.theme import get_theme_token
 
 
 class SelectionTablesPresenter:
-    """Renders and validates bank/charger selection tables.
+    """Renders and validates bank/charger selection tables."""
 
-    It works over the existing QTableWidget instances owned by the screen:
-      - screen.tbl_sel_bank
-      - screen.tbl_sel_charger
-
-    The screen remains the source of truth for:
-      - screen._get_bc_bundle()
-      - screen._paint_cell(...)
-      - screen._cycle_sort_key(...) (elsewhere)
-    """
-
-    def __init__(self, screen):
+    def __init__(
+        self,
+        screen,
+        *,
+        on_k1_changed: Optional[Callable[[float], None]] = None,
+        on_k2_changed: Optional[Callable[[float], None]] = None,
+        on_k3_changed: Optional[Callable[[float], None]] = None,
+    ):
         self.screen = screen
+        self.on_k1_changed = on_k1_changed
+        self.on_k2_changed = on_k2_changed
+        self.on_k3_changed = on_k3_changed
 
-    # ----------------------------
-    # Table helpers (moved from screen)
-    # ----------------------------
     @staticmethod
     def clear_table(table: QTableWidget):
         table.setRowCount(0)
@@ -46,15 +41,11 @@ class SelectionTablesPresenter:
 
         it = QTableWidgetItem(title)
         it.setFlags(it.flags() & ~Qt.ItemIsEditable)
-
         font = it.font()
         font.setBold(True)
         it.setFont(font)
-
-        # Estilo tipo Excel (azul y texto blanco)
         it.setBackground(QColor(get_theme_token("BRAND", "#204058")))
         it.setForeground(QColor(get_theme_token("ON_DARK", "#FFFFFF")))
-
         table.setItem(r, 0, it)
         return r
 
@@ -62,30 +53,50 @@ class SelectionTablesPresenter:
     def add_row(table: QTableWidget, label: str, value: str):
         r = table.rowCount()
         table.insertRow(r)
-        itL = QTableWidgetItem(label)
-        itL.setFlags(itL.flags() & ~Qt.ItemIsEditable)
-        itV = QTableWidgetItem(value)
-        itV.setFlags(itV.flags() & ~Qt.ItemIsEditable)
-        table.setItem(r, 0, itL)
-        table.setItem(r, 1, itV)
+        it_l = QTableWidgetItem(label)
+        it_l.setFlags(it_l.flags() & ~Qt.ItemIsEditable)
+        it_v = QTableWidgetItem(value)
+        it_v.setFlags(it_v.flags() & ~Qt.ItemIsEditable)
+        table.setItem(r, 0, it_l)
+        table.setItem(r, 1, it_v)
 
-    # ----------------------------
-    # Public API used by controller
-    # ----------------------------
+    def _add_factor_spin(
+        self,
+        table: QTableWidget,
+        *,
+        label: str,
+        value: float,
+        callback: Optional[Callable[[float], None]],
+    ) -> None:
+        r = table.rowCount()
+        table.insertRow(r)
+
+        it_l = QTableWidgetItem(label)
+        it_l.setFlags(it_l.flags() & ~Qt.ItemIsEditable)
+        table.setItem(r, 0, it_l)
+
+        spin = QDoubleSpinBox(table)
+        spin.setDecimals(3)
+        spin.setSingleStep(0.01)
+        spin.setRange(0.5, 2.0)
+        spin.setKeyboardTracking(False)
+        spin.setValue(float(value or 0.0))
+        spin.setProperty("userField", True)
+        if callback is not None:
+            spin.valueChanged.connect(lambda v, cb=callback: cb(float(v)))
+        table.setCellWidget(r, 1, spin)
+
     def update(self):
         scr = self.screen
-
         bundle = scr._get_bc_bundle()
 
         bank = bundle.bank
         charger = bundle.charger
-        missing = bundle.missing_kt_keys
         ah_com = bundle.ah_commercial_str
         i_ch_com = bundle.i_charger_commercial_str
+        warnings = list(getattr(bundle, "warnings", []) or [])
 
-        # --- GUARD CLAUSE: si falta info crítica, no hay banco/cargador ---
         if bank is None or charger is None:
-            # Limpia tablas
             self.clear_table(scr.tbl_sel_bank)
             self.add_section(scr.tbl_sel_bank, "Selección Banco de Baterías")
             self.add_row(scr.tbl_sel_bank, "Estado", "Datos incompletos (no se puede calcular)")
@@ -97,44 +108,41 @@ class SelectionTablesPresenter:
             scr.tbl_sel_charger.resizeRowsToContents()
             return
 
-        # -----------------------
-        # Banco de baterías
-        # -----------------------
         self.clear_table(scr.tbl_sel_bank)
         self.add_section(scr.tbl_sel_bank, "Selección Banco de Baterías")
-
-        # Datos del banco (resultado de selección)
-        # Nota: bank es BankSelectionResult (domain/selection.py)
         self.add_row(scr.tbl_sel_bank, "Base Ah (máx sección + RND)", f"{getattr(bank, 'base_ah', 0.0):.2f}")
         self.add_row(scr.tbl_sel_bank, "Sección crítica", f"{getattr(bank, 'critical_section', '—')}")
-        self.add_row(scr.tbl_sel_bank, "K2", f"{getattr(bank, 'k2', 0.0):.3f}")
-        self.add_row(scr.tbl_sel_bank, "Margen", f"{getattr(bank, 'margen', 0.0):.3f}")
-        self.add_row(scr.tbl_sel_bank, "Envejecimiento", f"{getattr(bank, 'enve', 0.0):.3f}")
+        self._add_factor_spin(
+            scr.tbl_sel_bank,
+            label="Margen de diseño (K1)",
+            value=getattr(bank, "margen", 0.0),
+            callback=self.on_k1_changed,
+        )
+        self._add_factor_spin(
+            scr.tbl_sel_bank,
+            label="Factor Altitud (K2)",
+            value=getattr(bank, "k2", 0.0),
+            callback=self.on_k2_changed,
+        )
+        self._add_factor_spin(
+            scr.tbl_sel_bank,
+            label="Envejecimiento (K3)",
+            value=getattr(bank, "enve", 0.0),
+            callback=self.on_k3_changed,
+        )
         self.add_row(scr.tbl_sel_bank, "Factor total", f"{getattr(bank, 'factor_total', 0.0):.3f}")
         self.add_row(scr.tbl_sel_bank, "Ah requerido", f"{getattr(bank, 'ah_required', 0.0):.2f}")
-
-        # Missing Kt keys
-        if missing:
-            self.add_row(scr.tbl_sel_bank, "Advertencia", "Faltan Kt para: " + ", ".join(missing))
-
-        # Capacidad comercial editable
-        r = scr.tbl_sel_bank.rowCount()
         self.add_row(scr.tbl_sel_bank, "Capacidad Comercial [Ah]", ah_com)
-        it = scr.tbl_sel_bank.item(r, 1)
-        if it:
-            it.setFlags(it.flags() | Qt.ItemIsEditable)
-            scr._paint_cell(it, "editable")
+
+        for w in warnings:
+            text = str(w or "").strip()
+            if text:
+                self.add_row(scr.tbl_sel_bank, "Advertencia", text)
 
         scr.tbl_sel_bank.resizeRowsToContents()
 
-        # -----------------------
-        # Cargador
-        # -----------------------
         self.clear_table(scr.tbl_sel_charger)
         self.add_section(scr.tbl_sel_charger, "Selección Cargador")
-
-        # Datos del cargador (resultado de selección)
-        # Nota: charger es ChargerSelectionResult (domain/selection.py)
         self.add_row(scr.tbl_sel_charger, "I permanente (L1) [A]", f"{getattr(charger, 'i_perm', 0.0):.2f}")
         self.add_row(scr.tbl_sel_charger, "Tiempo recarga [h]", f"{getattr(charger, 't_rec_h', 0.0):.2f}")
         self.add_row(scr.tbl_sel_charger, "K pérdidas", f"{getattr(charger, 'k_loss', 0.0):.3f}")
@@ -146,10 +154,9 @@ class SelectionTablesPresenter:
         self.add_row(scr.tbl_sel_charger, "Eficiencia", f"{getattr(charger, 'eff', 0.0):.3f}")
         self.add_row(scr.tbl_sel_charger, "P CC [W]", f"{getattr(charger, 'p_cc_w', 0.0):.1f}")
         self.add_row(scr.tbl_sel_charger, "P CA [W]", f"{getattr(charger, 'p_ca_w', 0.0):.1f}")
-
-        # Capacidad comercial editable
-        r2 = scr.tbl_sel_charger.rowCount()
         self.add_row(scr.tbl_sel_charger, "Capacidad Comercial [A]", i_ch_com)
+
+        r2 = scr.tbl_sel_charger.rowCount() - 1
         it2 = scr.tbl_sel_charger.item(r2, 1)
         if it2:
             it2.setFlags(it2.flags() | Qt.ItemIsEditable)
@@ -160,7 +167,6 @@ class SelectionTablesPresenter:
     def validate(self):
         scr = self.screen
 
-        # Banco: comercial >= Ah requerido
         req: Optional[float] = None
         com: Optional[float] = None
         for r in range(scr.tbl_sel_bank.rowCount()):
@@ -187,7 +193,6 @@ class SelectionTablesPresenter:
                 if l and v and l.text().strip() in ("Capacidad Comercial", "Capacidad Comercial [Ah]"):
                     scr._paint_cell(v, "invalid")
 
-        # Cargador: comercial >= I calculada
         req = None
         com = None
         for r in range(scr.tbl_sel_charger.rowCount()):

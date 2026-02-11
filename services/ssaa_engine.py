@@ -238,6 +238,8 @@ class SSAAEngine:
         periods: List[Dict[str, Any]],
         rnd: Optional[Dict[str, Any]],
         i_perm: float,
+        available_battery_ah: Optional[List[float]] = None,
+        selected_battery_ah: Optional[float] = None,
     ) -> EngineResult:
         issues: List[Issue] = []
 
@@ -259,6 +261,8 @@ class SSAAEngine:
             build_ieee485_fn=build_ieee485,
             compute_bank_selection_fn=compute_bank_selection,
             compute_charger_selection_fn=compute_charger_selection,
+            available_battery_ah=available_battery_ah,
+            selected_battery_ah=selected_battery_ah,
         )
 
         # warnings internos del bundle -> issues WARNING

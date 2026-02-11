@@ -40,26 +40,36 @@ def _ensure_bank_charger_compat(proj: dict) -> dict:
     bc = proj.get("bank_charger", None)
     if not isinstance(bc, dict):
         bc = {}
+    proj["bank_charger"] = bc
 
-    legacy_perfil = proj.get("perfil_cargas", None)
-    legacy_random = proj.get("cargas_aleatorias", None)
-    bc_perfil = bc.get("perfil_cargas", None)
-    bc_random = bc.get("cargas_aleatorias", None)
+    def _is_nonempty_list(value) -> bool:
+        return isinstance(value, list) and len(value) > 0
 
-    if isinstance(legacy_perfil, list) and legacy_perfil and not isinstance(bc_perfil, list):
-        bc["perfil_cargas"] = legacy_perfil
-        bc_perfil = legacy_perfil
-    if isinstance(legacy_random, dict) and legacy_random and not isinstance(bc_random, dict):
-        bc["cargas_aleatorias"] = legacy_random
-        bc_random = legacy_random
+    def _is_nonempty_dict(value) -> bool:
+        return isinstance(value, dict) and len(value) > 0
 
-    if isinstance(bc_perfil, list):
-        proj["perfil_cargas"] = bc_perfil
-    if isinstance(bc_random, dict):
-        proj["cargas_aleatorias"] = bc_random
+    def _sync_nonempty(key: str, is_nonempty) -> None:
+        legacy_value = proj.get(key, None)
+        bc_value = bc.get(key, None)
+        has_legacy = is_nonempty(legacy_value)
+        has_bc = is_nonempty(bc_value)
 
-    if bc:
-        proj["bank_charger"] = bc
+        if has_legacy and not has_bc:
+            bc[key] = legacy_value
+            proj[key] = legacy_value
+            return
+        if has_bc and not has_legacy:
+            proj[key] = bc_value
+            bc[key] = bc_value
+            return
+        if has_bc and has_legacy:
+            proj[key] = bc_value
+            bc[key] = bc_value
+
+    _sync_nonempty("perfil_cargas", _is_nonempty_list)
+    _sync_nonempty("perfil_cargas_idx", _is_nonempty_dict)
+    _sync_nonempty("cargas_aleatorias", _is_nonempty_dict)
+
     return proj
 
 
