@@ -92,7 +92,7 @@ class BankChargerSizingScreen(ScreenBase):
         self._fill_datos_sistema()
         self._fill_comprobacion()
         # 1) Si existe perfil en proyecto, lo cargamos. Si no, creamos defaults.
-        if self._get_saved_perfil_cargas():
+        if self._get_saved_perfil_cargas() or self._get_saved_random_loads():
             self._load_perfil_cargas_from_model()
         else:
             self._fill_perfil_cargas(save_to_model=True)
@@ -790,6 +790,63 @@ class BankChargerSizingScreen(ScreenBase):
         if isinstance(perfil_legacy, list):
             return perfil_legacy
         return []
+
+    def _get_saved_random_loads(self) -> dict:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = proyecto.get("bank_charger", None)
+        if isinstance(cfg, dict):
+            rnd = cfg.get("cargas_aleatorias", None)
+            if isinstance(rnd, dict) and rnd:
+                return rnd
+        rnd_legacy = proyecto.get("cargas_aleatorias", None)
+        if isinstance(rnd_legacy, dict) and rnd_legacy:
+            return rnd_legacy
+        perfil = self._get_saved_perfil_cargas()
+        for row in perfil:
+            if not isinstance(row, dict):
+                continue
+            if self._norm_code(row.get("item", "")) == self._norm_code(CODE_LAL):
+                return {
+                    "item": row.get("item", "L(al)"),
+                    "desc": row.get("desc", "Cargas Aleatorias"),
+                    "p": row.get("p", ""),
+                    "i": row.get("i", ""),
+                    "t_inicio": row.get("t_inicio", ""),
+                    "duracion": row.get("duracion", ""),
+                }
+        return {}
+
+    @staticmethod
+    def _count_saved_items(value) -> int:
+        if isinstance(value, list):
+            return len(value)
+        if isinstance(value, dict):
+            return len(value)
+        return 0
+
+    def _log_perfil_snapshot(self, reason: str) -> None:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = proyecto.get("bank_charger", None)
+        cfg_dict = cfg if isinstance(cfg, dict) else {}
+        sig = (
+            isinstance(cfg, dict),
+            self._count_saved_items(proyecto.get("perfil_cargas")),
+            self._count_saved_items(cfg_dict.get("perfil_cargas")),
+            self._count_saved_items(proyecto.get("cargas_aleatorias")),
+            self._count_saved_items(cfg_dict.get("cargas_aleatorias")),
+        )
+        if getattr(self, "_last_perfil_snapshot_sig", None) == sig:
+            return
+        self._last_perfil_snapshot_sig = sig
+        logging.getLogger(__name__).info(
+            "BankCharger %s snapshot has_bank_charger=%s perfil_root=%d perfil_bank=%d ale_root=%d ale_bank=%d",
+            reason,
+            sig[0],
+            sig[1],
+            sig[2],
+            sig[3],
+            sig[4],
+        )
 
     def _norm_code(self, code: str) -> str:
         return (code or "").strip().upper()
@@ -2135,6 +2192,7 @@ class BankChargerSizingScreen(ScreenBase):
     def load_from_model(self):
         """Load data from DataModel into this screen."""
         try:
+            self._log_perfil_snapshot("load")
             self.reload_from_project()
         except Exception:
             # Avoid crashing during startup; errors will surface via existing UI pathways.

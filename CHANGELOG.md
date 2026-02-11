@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.166] - 2026-02-11
+- Fix: Perfil de cargas (bank_charger) now persists scenarios/random loads across sessions; improve load precedence and compatibility.
+
 ## [1.4.0-alpha.165] - 2026-02-11
 - Fixed: Perfil de cargas (Banco y cargador) ahora persiste escenarios y cambios de cargas aleatorias correctamente; se marca dirty solo cuando hay cambios reales.
 

@@ -12,6 +12,7 @@ importar el modelo y generar acoplamientos/ciclos.
 from __future__ import annotations
 
 import os
+from copy import deepcopy
 
 from storage.schema import PROJECT_VERSION
 from storage.migrations import upgrade_project_dict
@@ -28,6 +29,53 @@ from storage.serializers.project_json import from_dict as project_from_dict
 from storage.serializers.project_json import to_dict as project_to_dict
 
 
+_BASE_KEYS = {"_meta", "proyecto", "instalaciones", "componentes"}
+
+
+def _ensure_bank_charger_compat(proj: dict) -> dict:
+    """Keep canonical/legacy bank_charger keys mutually compatible."""
+    if not isinstance(proj, dict):
+        return {}
+
+    bc = proj.get("bank_charger", None)
+    if not isinstance(bc, dict):
+        bc = {}
+
+    legacy_perfil = proj.get("perfil_cargas", None)
+    legacy_random = proj.get("cargas_aleatorias", None)
+    bc_perfil = bc.get("perfil_cargas", None)
+    bc_random = bc.get("cargas_aleatorias", None)
+
+    if isinstance(legacy_perfil, list) and legacy_perfil and not isinstance(bc_perfil, list):
+        bc["perfil_cargas"] = legacy_perfil
+        bc_perfil = legacy_perfil
+    if isinstance(legacy_random, dict) and legacy_random and not isinstance(bc_random, dict):
+        bc["cargas_aleatorias"] = legacy_random
+        bc_random = legacy_random
+
+    if isinstance(bc_perfil, list):
+        proj["perfil_cargas"] = bc_perfil
+    if isinstance(bc_random, dict):
+        proj["cargas_aleatorias"] = bc_random
+
+    if bc:
+        proj["bank_charger"] = bc
+    return proj
+
+
+def _merge_passthrough_sections(model, payload: dict) -> dict:
+    """Preserve unknown top-level sections loaded from project files."""
+    if not isinstance(payload, dict):
+        return payload
+    extra = getattr(model, "_extra_project_sections", None)
+    if not isinstance(extra, dict):
+        return payload
+    for key, value in extra.items():
+        if key not in payload:
+            payload[key] = deepcopy(value)
+    return payload
+
+
 def to_project_dict(model) -> dict:
     """Convierte el estado del modelo a dict serializable."""
     if getattr(model, "project_model", None) is not None:
@@ -36,6 +84,7 @@ def to_project_dict(model) -> dict:
         if isinstance(proj, dict):
             proj = dict(proj)
             proj.pop("cc_results", None)
+            proj = _ensure_bank_charger_compat(proj)
             data["proyecto"] = proj
         meta = data.get("_meta", {}) if isinstance(data.get("_meta", {}), dict) else {}
         if not meta.get("project_folder") and getattr(model, "project_folder", ""):
@@ -43,7 +92,7 @@ def to_project_dict(model) -> dict:
         if not meta.get("project_filename") and getattr(model, "project_filename", ""):
             meta["project_filename"] = getattr(model, "project_filename", "") or ""
         data["_meta"] = meta
-        return data
+        return _merge_passthrough_sections(model, data)
     # Mantener compatibilidad: el modelo usa aliases legacy (salas/gabinetes)
     if hasattr(model, "_sync_aliases_in"):
         model._sync_aliases_in()
@@ -56,7 +105,8 @@ def to_project_dict(model) -> dict:
 
     proj_dict = dict(getattr(model, "proyecto", {}) or {})
     proj_dict.pop("cc_results", None)
-    return {
+    proj_dict = _ensure_bank_charger_compat(proj_dict)
+    data = {
         "_meta": {
             "project_folder": getattr(model, "project_folder", "") or "",
             "project_filename": getattr(model, "project_filename", "") or "",
@@ -74,10 +124,21 @@ def to_project_dict(model) -> dict:
         },
         "componentes": {},
     }
+    return _merge_passthrough_sections(model, data)
 
 
 def apply_project_dict(model, data: dict, file_path: str = "") -> None:
     """Carga un dict (posiblemente legacy) dentro del modelo."""
+    try:
+        extras = {
+            k: deepcopy(v)
+            for k, v in (data.items() if isinstance(data, dict) else [])
+            if k not in _BASE_KEYS
+        }
+        setattr(model, "_extra_project_sections", extras)
+    except Exception:
+        setattr(model, "_extra_project_sections", {})
+
     if isinstance(data.get("_derived", None), dict):
         data["_derived"].pop("cc_results", None)
     data = upgrade_project_dict(data, to_version=PROJECT_VERSION)
@@ -88,7 +149,9 @@ def apply_project_dict(model, data: dict, file_path: str = "") -> None:
         setattr(model, "project_model", proj_model)
     proj = data.get("proyecto", {})
     if isinstance(proj, dict):
+        _ensure_bank_charger_compat(proj)
         normalize_project(proj)
+        _ensure_bank_charger_compat(proj)
         try:
             n_esc = int(proj.get("cc_num_escenarios", 1) or 1)
         except Exception:

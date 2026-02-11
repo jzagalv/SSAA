@@ -122,14 +122,17 @@ class BankChargerController(BaseController):
         return json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
 
     def save_perfil_cargas_to_model(self):
-        cfg = self.persistence.get_proyecto_data()
-        prev_perfil = cfg.get("perfil_cargas", [])
+        prev_perfil = self.persistence.get_saved_perfil_cargas()
         next_perfil = self.persistence.collect_perfil_cargas()
-        if self._stable_dump(prev_perfil) == self._stable_dump(next_perfil):
+        next_random = self.persistence.collect_random_loads(next_perfil)
+        changed = self._stable_dump(prev_perfil) != self._stable_dump(next_perfil)
+        synced = self.persistence.is_perfil_storage_synced(next_perfil, next_random)
+        if not changed and synced:
             return False
-        self.persistence.save_perfil_cargas(next_perfil)
-        self.mark_dirty()
-        return True
+        self.persistence.save_perfil_cargas(next_perfil, next_random)
+        if changed:
+            self.mark_dirty()
+        return changed
 
 
     

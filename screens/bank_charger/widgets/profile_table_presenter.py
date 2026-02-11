@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Perfil de cargas (tbl_cargas) presenter.
-
-Aísla la manipulación de la tabla de perfil de cargas (render, RO/editable y autocalculados)
-para reducir el tamaño de bank_charger_screen.py.
-
-El cálculo sigue viviendo en domain/* y se invoca vía métodos helper del screen.
-"""
+"""Perfil de cargas (tbl_cargas) presenter."""
 
 from __future__ import annotations
 
@@ -23,20 +17,21 @@ class ProfileTablePresenter:
 
     def load_from_model(self) -> None:
         scr = self.screen
+
         perfil = []
+        random_loads = {}
         if hasattr(scr, "_get_saved_perfil_cargas"):
             try:
                 perfil = scr._get_saved_perfil_cargas() or []
             except Exception:
                 perfil = []
-        if not perfil:
-            proyecto = getattr(scr.data_model, "proyecto", {}) or {}
-            cfg = proyecto.get("bank_charger", None)
-            if isinstance(cfg, dict):
-                perfil = cfg.get("perfil_cargas", []) or []
-            if not perfil:
-                perfil = proyecto.get("perfil_cargas", []) or []
-        if not perfil:
+        if hasattr(scr, "_get_saved_random_loads"):
+            try:
+                random_loads = scr._get_saved_random_loads() or {}
+            except Exception:
+                random_loads = {}
+
+        if not perfil and not random_loads:
             return
 
         scr._updating = True
@@ -92,6 +87,19 @@ class ProfileTablePresenter:
                 scr.tbl_cargas.setItem(r, 1, QTableWidgetItem("Cargas Aleatorias"))
                 for c in range(2, 6):
                     scr.tbl_cargas.setItem(r, c, QTableWidgetItem("—"))
+
+            if random_loads:
+                r_lal = self.row_index_of_code(CODE_LAL)
+                if r_lal >= 0:
+                    vals = [
+                        random_loads.get("p", ""),
+                        random_loads.get("i", ""),
+                        random_loads.get("t_inicio", ""),
+                        random_loads.get("duracion", ""),
+                    ]
+                    for col, raw in zip((2, 3, 4, 5), vals):
+                        txt = "—" if raw in (None, "") else str(raw)
+                        scr.tbl_cargas.setItem(r_lal, col, QTableWidgetItem(txt))
 
             self.apply_editability()
         finally:
@@ -153,6 +161,7 @@ class ProfileTablePresenter:
             if it and scr._norm_code(it.text()) == code_n:
                 return r
         return -1
+
     def refresh_autocalc(self) -> None:
         scr = self.screen
         if scr._updating:

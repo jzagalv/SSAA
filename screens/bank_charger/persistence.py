@@ -3,9 +3,13 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
 
 from PyQt5.QtCore import Qt
+
+
+CODE_LAL = "L(AL)"
 
 
 class BankChargerPersistence:
@@ -33,16 +37,71 @@ class BankChargerPersistence:
             proyecto["bank_charger"] = cfg
         return cfg
 
+    def get_saved_perfil_cargas(self) -> List[Dict[str, Any]]:
+        """Read profile preferring bank_charger.*, fallback to root legacy."""
+        proyecto = self._proyecto()
+        cfg = proyecto.get("bank_charger", None)
+        if isinstance(cfg, dict):
+            perfil_bc = cfg.get("perfil_cargas", None)
+            if isinstance(perfil_bc, list) and perfil_bc:
+                return perfil_bc
+        perfil_root = proyecto.get("perfil_cargas", None)
+        if isinstance(perfil_root, list):
+            return perfil_root
+        return []
+
+    def get_saved_random_loads(self) -> Dict[str, Any]:
+        """Read random-load data preferring bank_charger.*, fallback to root/profile."""
+        proyecto = self._proyecto()
+        cfg = proyecto.get("bank_charger", None)
+        if isinstance(cfg, dict):
+            rnd_bc = cfg.get("cargas_aleatorias", None)
+            if isinstance(rnd_bc, dict) and rnd_bc:
+                return rnd_bc
+        rnd_root = proyecto.get("cargas_aleatorias", None)
+        if isinstance(rnd_root, dict) and rnd_root:
+            return rnd_root
+        perfil = self.get_saved_perfil_cargas()
+        rnd = self.extract_random_loads_from_perfil(perfil)
+        return rnd if isinstance(rnd, dict) else {}
+
+    @staticmethod
+    def _stable_dump(value: Any) -> str:
+        return json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+
     @staticmethod
     def _to_number_or_str(text: str) -> Any:
         txt = (text or "").strip()
-        if not txt or txt in ("—", "â€”"):
+        if not txt or txt in ("-", "—", "â€”"):
             return ""
         txt2 = txt.replace(",", ".")
         try:
             return float(txt2)
         except ValueError:
             return txt
+
+    @staticmethod
+    def _is_lal_code(code: Any) -> bool:
+        return str(code or "").strip().upper() == CODE_LAL
+
+    @staticmethod
+    def extract_random_loads_from_perfil(perfil_rows: Any) -> Dict[str, Any]:
+        """Derive random-load row from profile list (L(al))."""
+        if not isinstance(perfil_rows, list):
+            return {}
+        for row in perfil_rows:
+            if not isinstance(row, dict):
+                continue
+            if BankChargerPersistence._is_lal_code(row.get("item", "")):
+                return {
+                    "item": row.get("item", "L(al)"),
+                    "desc": row.get("desc", "Cargas Aleatorias"),
+                    "p": row.get("p", ""),
+                    "i": row.get("i", ""),
+                    "t_inicio": row.get("t_inicio", ""),
+                    "duracion": row.get("duracion", ""),
+                }
+        return {}
 
     def collect_perfil_cargas(self) -> List[Dict[str, Any]]:
         """Read tbl_cargas and return serialized profile rows."""
@@ -58,7 +117,7 @@ class BankChargerPersistence:
             if not item and not desc:
                 continue
 
-            fila: Dict[str, Any] = {
+            row: Dict[str, Any] = {
                 "item": item,
                 "desc": desc,
                 "p": self._to_number_or_str(cell_text(2)),
@@ -81,26 +140,65 @@ class BankChargerPersistence:
                 except Exception:
                     scenario_id = None
             if scenario_id is not None:
-                fila["scenario_id"] = scenario_id
-            perfil.append(fila)
+                row["scenario_id"] = scenario_id
+            perfil.append(row)
         return perfil
 
-    def save_perfil_cargas(self, perfil: List[Dict[str, Any]] | None = None) -> None:
-        """Persist profile rows in proyecto['bank_charger']['perfil_cargas']."""
+    def collect_random_loads(self, perfil_rows: Any = None) -> Dict[str, Any]:
+        """Read random-load row from profile rows."""
+        perfil = perfil_rows if isinstance(perfil_rows, list) else self.collect_perfil_cargas()
+        return self.extract_random_loads_from_perfil(perfil)
+
+    def is_perfil_storage_synced(
+        self,
+        perfil_rows: List[Dict[str, Any]],
+        random_loads: Dict[str, Any] | None = None,
+    ) -> bool:
+        """Check if canonical+legacy mirrors already match the provided values."""
+        proyecto = self._proyecto()
+        cfg = proyecto.get("bank_charger", {})
+        if not isinstance(cfg, dict):
+            return False
+
+        rnd = random_loads if isinstance(random_loads, dict) else self.collect_random_loads(perfil_rows)
+        checks = [
+            self._stable_dump(cfg.get("perfil_cargas", [])) == self._stable_dump(perfil_rows),
+            self._stable_dump(proyecto.get("perfil_cargas", [])) == self._stable_dump(perfil_rows),
+            self._stable_dump(cfg.get("cargas_aleatorias", {})) == self._stable_dump(rnd),
+            self._stable_dump(proyecto.get("cargas_aleatorias", {})) == self._stable_dump(rnd),
+        ]
+        return all(checks)
+
+    def save_perfil_cargas(
+        self,
+        perfil_rows: List[Dict[str, Any]] | None = None,
+        random_loads: Dict[str, Any] | None = None,
+    ) -> None:
+        """Persist profile rows and random-loads in canonical + legacy mirrors."""
         scr = self.screen
+        proyecto = self._proyecto()
         cfg = self.get_proyecto_data()
-        perfil_to_save = perfil if isinstance(perfil, list) else self.collect_perfil_cargas()
-        cfg["perfil_cargas"] = perfil_to_save
+
+        perfil = perfil_rows if isinstance(perfil_rows, list) else self.collect_perfil_cargas()
+        rnd = random_loads if isinstance(random_loads, dict) else self.collect_random_loads(perfil)
 
         idx: Dict[str, Any] = {}
-        for row in perfil_to_save:
+        for row in perfil:
             if not isinstance(row, dict):
                 continue
-            k = scr._norm_code(row.get("item", ""))
-            if not k:
-                continue
-            idx[k] = row
+            key = scr._norm_code(row.get("item", ""))
+            if key:
+                idx[key] = row
+
+        # Canonical location
+        cfg["perfil_cargas"] = perfil
         cfg["perfil_cargas_idx"] = idx
+        cfg["cargas_aleatorias"] = dict(rnd)
+
+        # Legacy mirror (compatibility)
+        proyecto["perfil_cargas"] = perfil
+        proyecto["perfil_cargas_idx"] = idx
+        proyecto["cargas_aleatorias"] = dict(rnd)
 
     def get_ieee485_kt_data(self) -> Dict[str, Any]:
         """Return persisted IEEE485 Kt mapping from root project dict."""

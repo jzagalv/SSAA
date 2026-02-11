@@ -17,6 +17,30 @@ from storage.project_paths import PROJECT_EXT
 from infra.text_encoding import fix_mojibake_deep
 
 
+def _count_items(value) -> int:
+    if isinstance(value, list):
+        return len(value)
+    if isinstance(value, dict):
+        return len(value)
+    return 0
+
+
+def _log_bank_charger_snapshot(data: dict, *, stage: str, file_path: str) -> None:
+    proy = data.get("proyecto", {}) if isinstance(data.get("proyecto", {}), dict) else {}
+    bc = proy.get("bank_charger", None)
+    bc_dict = bc if isinstance(bc, dict) else {}
+    logging.getLogger(__name__).info(
+        "BankCharger %s snapshot file=%s has_bank_charger=%s perfil_root=%d perfil_bank=%d ale_root=%d ale_bank=%d",
+        stage,
+        file_path or "",
+        isinstance(bc, dict),
+        _count_items(proy.get("perfil_cargas")),
+        _count_items(bc_dict.get("perfil_cargas")),
+        _count_items(proy.get("cargas_aleatorias")),
+        _count_items(bc_dict.get("cargas_aleatorias")),
+    )
+
+
 def _norm_project_path(folder: str, filename: str, ext: str = PROJECT_EXT) -> str:
     if not folder or not filename:
         return ""
@@ -46,6 +70,7 @@ def save_project(dm, file_path: str = "") -> bool:
         dm.project_filename = os.path.splitext(os.path.basename(file_path))[0]
         t0 = time.perf_counter()
         data = dm.to_dict()
+        _log_bank_charger_snapshot(data, stage="save", file_path=file_path)
         payload = json.dumps(data, indent=2, ensure_ascii=False)
         size_bytes = len(payload.encode("utf-8"))
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
