@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.168] - 2026-02-11
+- Fix: Perfil de cargas now loads legacy `perfil_cargas_idx` projects (Don Melchor) without losing scenarios.
+- Improved: automatic migration to canonical `perfil_cargas` list (and random-load extraction from `L(AL)` when needed) during project load.
+
 ## [1.4.0-alpha.167] - 2026-02-11
 - Fix: la UI de "Perfil de cargas" ya no queda en blanco por priorizar estructuras vacias de `bank_charger` sobre datos guardados.
 - Improved: migracion/compat robusta entre legacy y `bank_charger` para `perfil_cargas`, `perfil_cargas_idx` y `cargas_aleatorias`, con seleccion de fuente por contenido no vacio.

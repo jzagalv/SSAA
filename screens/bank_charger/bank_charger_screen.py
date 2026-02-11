@@ -83,6 +83,7 @@ class BankChargerSizingScreen(ScreenBase):
 
         self._build_ui()
         self._controller = BankChargerController(self)
+        self.persistence = self._controller.persistence
         self._perfil_loaded = False
         self._ieee_loaded = False
         self._seleccion_loaded = False
@@ -779,17 +780,125 @@ class BankChargerSizingScreen(ScreenBase):
                 return p.get(k, "")
         return ""
 
+    def _canonical_load_item(self, raw_item) -> str:
+        txt = str(raw_item or "").strip()
+        norm = self._norm_code(txt)
+        if norm == self._norm_code(CODE_L1):
+            return CODE_L1
+        if norm in (self._norm_code(CODE_LAL), "AL"):
+            return CODE_LAL
+        m = re.fullmatch(r"L(\d+)", norm)
+        if m:
+            return f"L{int(m.group(1))}"
+        return txt
+
+    def _perfil_rows_from_idx(self, idx_map: dict) -> list:
+        if not isinstance(idx_map, dict):
+            return []
+        rows = []
+        for key, value in idx_map.items():
+            if not isinstance(value, dict):
+                continue
+            row = dict(value)
+            item_source = row.get("item", None)
+            if item_source in (None, ""):
+                item_source = key
+            row["item"] = self._canonical_load_item(item_source)
+            rows.append(row)
+
+        norm_l1 = self._norm_code(CODE_L1)
+        norm_lal = self._norm_code(CODE_LAL)
+
+        def _sort_key(row: dict):
+            code = self._norm_code(row.get("item", ""))
+            if code == norm_l1:
+                return (0, 0, "")
+            m = re.fullmatch(r"L(\d+)", code)
+            if m:
+                return (1, int(m.group(1)), "")
+            if code == norm_lal:
+                return (2, 0, "")
+            return (1, 10**9, code)
+
+        rows.sort(key=_sort_key)
+        return rows
+
+    def _extract_random_loads_from_perfil_rows(self, perfil_rows: list) -> dict:
+        for row in perfil_rows or []:
+            if not isinstance(row, dict):
+                continue
+            if self._norm_code(row.get("item", "")) == self._norm_code(CODE_LAL):
+                return {
+                    "item": row.get("item", "L(al)"),
+                    "desc": row.get("desc", "Cargas Aleatorias"),
+                    "p": row.get("p", ""),
+                    "i": row.get("i", ""),
+                    "t_inicio": row.get("t_inicio", ""),
+                    "duracion": row.get("duracion", ""),
+                }
+        return {}
+
+    def _migrate_legacy_idx_perfil(self, perfil_rows: list) -> None:
+        if not isinstance(perfil_rows, list) or not perfil_rows:
+            return
+        if getattr(self, "_perfil_idx_migrated", False):
+            return
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = proyecto.get("bank_charger", None)
+        cfg_dict = cfg if isinstance(cfg, dict) else {}
+        bc_list = cfg_dict.get("perfil_cargas", None)
+        legacy_list = proyecto.get("perfil_cargas", None)
+        has_nonempty_list = (
+            isinstance(bc_list, list) and bool(bc_list)
+        ) or (
+            isinstance(legacy_list, list) and bool(legacy_list)
+        )
+        if has_nonempty_list:
+            return
+
+        random_loads = {}
+        bc_random = cfg_dict.get("cargas_aleatorias", None)
+        legacy_random = proyecto.get("cargas_aleatorias", None)
+        if isinstance(bc_random, dict) and bc_random:
+            random_loads = dict(bc_random)
+        elif isinstance(legacy_random, dict) and legacy_random:
+            random_loads = dict(legacy_random)
+        else:
+            random_loads = self._extract_random_loads_from_perfil_rows(perfil_rows)
+
+        try:
+            self.persistence.save_perfil_cargas(perfil_rows=perfil_rows, random_loads=random_loads)
+            self._perfil_idx_migrated = True
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Legacy perfil_cargas_idx migration failed", exc_info=True
+            )
+
     def _get_saved_perfil_cargas(self) -> list:
         proyecto = getattr(self.data_model, "proyecto", {}) or {}
         cfg = proyecto.get("bank_charger", None)
         bc_list = None
+        bc_idx = None
         if isinstance(cfg, dict):
             bc_list = cfg.get("perfil_cargas", None)
+            bc_idx = cfg.get("perfil_cargas_idx", None)
         legacy_list = proyecto.get("perfil_cargas", None)
+        legacy_idx = proyecto.get("perfil_cargas_idx", None)
         if isinstance(bc_list, list) and bc_list:
             return bc_list
         if isinstance(legacy_list, list) and legacy_list:
             return legacy_list
+
+        idx_source = None
+        if isinstance(bc_idx, dict) and bc_idx:
+            idx_source = bc_idx
+        elif isinstance(legacy_idx, dict) and legacy_idx:
+            idx_source = legacy_idx
+
+        perfil_from_idx = self._perfil_rows_from_idx(idx_source)
+        if perfil_from_idx:
+            self._migrate_legacy_idx_perfil(perfil_from_idx)
+            return perfil_from_idx
         return []
 
     def _get_saved_random_loads(self) -> dict:
@@ -803,19 +912,7 @@ class BankChargerSizingScreen(ScreenBase):
         if isinstance(rnd_legacy, dict) and rnd_legacy:
             return rnd_legacy
         perfil = self._get_saved_perfil_cargas()
-        for row in perfil:
-            if not isinstance(row, dict):
-                continue
-            if self._norm_code(row.get("item", "")) == self._norm_code(CODE_LAL):
-                return {
-                    "item": row.get("item", "L(al)"),
-                    "desc": row.get("desc", "Cargas Aleatorias"),
-                    "p": row.get("p", ""),
-                    "i": row.get("i", ""),
-                    "t_inicio": row.get("t_inicio", ""),
-                    "duracion": row.get("duracion", ""),
-                }
-        return {}
+        return self._extract_random_loads_from_perfil_rows(perfil)
 
     @staticmethod
     def _count_saved_items(value) -> int:
