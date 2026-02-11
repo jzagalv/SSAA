@@ -7,9 +7,11 @@ Low-risk approach: controller holds a reference to the screen and operates on it
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
+from typing import Any
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
@@ -47,7 +49,12 @@ class BankChargerController(BaseController):
     def __init__(self, screen):
         super().__init__(screen=screen, section=Section.BANK_CHARGER)
         self.screen = screen
-        self.selection_presenter = SelectionTablesPresenter(screen)
+        self.selection_presenter = SelectionTablesPresenter(
+            screen,
+            on_k1_changed=screen._on_bank_k1_changed,
+            on_k2_changed=screen._on_bank_k2_changed,
+            on_k3_changed=screen._on_bank_k3_changed,
+        )
         self.ieee_presenter = IEEE485TablePresenter(screen)
         self.summary_presenter = SummaryTablePresenter(screen)
         self.duty_cycle_presenter = DutyCycleTablePresenter(screen)
@@ -110,9 +117,19 @@ class BankChargerController(BaseController):
         s = self.screen
         s._chart_timer.start(80)
 
+    @staticmethod
+    def _stable_dump(value: Any) -> str:
+        return json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
 
     def save_perfil_cargas_to_model(self):
-        return self.persistence.save_perfil_cargas()
+        cfg = self.persistence.get_proyecto_data()
+        prev_perfil = cfg.get("perfil_cargas", [])
+        next_perfil = self.persistence.collect_perfil_cargas()
+        if self._stable_dump(prev_perfil) == self._stable_dump(next_perfil):
+            return False
+        self.persistence.save_perfil_cargas(next_perfil)
+        self.mark_dirty()
+        return True
 
 
     
@@ -160,7 +177,16 @@ class BankChargerController(BaseController):
 
 
     def persist_ieee_kt_to_model(self):
-        return self.persistence.save_ieee485_kt()
+        prev_store = self.persistence.get_ieee485_kt_data()
+        next_store = self.persistence.collect_ieee485_kt()
+        if self._stable_dump(prev_store) == self._stable_dump(next_store):
+            return False
+        self.persistence.save_ieee485_kt(next_store)
+        self.mark_dirty()
+        return True
+
+    def save_ieee_kt_to_model(self):
+        return self.persist_ieee_kt_to_model()
 
     def update_ieee485_table(self):
         """Renderiza la tabla IEEE 485 (UI) desde el duty cycle cache."""

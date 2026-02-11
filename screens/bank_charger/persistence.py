@@ -1,24 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Persistencia específica de la pantalla Bank/Charger.
-
-Este módulo concentra toda la lectura/escritura del "proyecto" (data_model.proyecto)
-relacionada con:
-
-- Perfil de cargas (tbl_cargas)
-- Kt IEEE 485 (tbl_ieee)
-
-Así se evita mezclar I/O con lógica de UI/orquestación.
-"""
+"""Persistence helpers for Bank/Charger screen."""
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from PyQt5.QtCore import Qt
 
 
 class BankChargerPersistence:
-    """Encapsula operaciones de persistencia del proyecto para Bank/Charger."""
+    """Encapsulate project read/write operations for Bank/Charger."""
 
     def __init__(self, screen: Any):
         self.screen = screen
@@ -33,10 +24,19 @@ class BankChargerPersistence:
                 dm.proyecto = proyecto
         return proyecto
 
+    def get_proyecto_data(self) -> Dict[str, Any]:
+        """Return canonical bank_charger storage dict inside project."""
+        proyecto = self._proyecto()
+        cfg = proyecto.get("bank_charger", None)
+        if not isinstance(cfg, dict):
+            cfg = {}
+            proyecto["bank_charger"] = cfg
+        return cfg
+
     @staticmethod
     def _to_number_or_str(text: str) -> Any:
         txt = (text or "").strip()
-        if not txt or txt == "—":
+        if not txt or txt in ("—", "â€”"):
             return ""
         txt2 = txt.replace(",", ".")
         try:
@@ -44,12 +44,10 @@ class BankChargerPersistence:
         except ValueError:
             return txt
 
-    def save_perfil_cargas(self) -> None:
-        """Lee tbl_cargas y guarda en proyecto['perfil_cargas'] + índice normalizado."""
+    def collect_perfil_cargas(self) -> List[Dict[str, Any]]:
+        """Read tbl_cargas and return serialized profile rows."""
         scr = self.screen
-        proyecto = self._proyecto()
-
-        perfil = []
+        perfil: List[Dict[str, Any]] = []
         for r in range(scr.tbl_cargas.rowCount()):
             def cell_text(c: int) -> str:
                 it = scr.tbl_cargas.item(r, c)
@@ -60,7 +58,7 @@ class BankChargerPersistence:
             if not item and not desc:
                 continue
 
-            fila = {
+            fila: Dict[str, Any] = {
                 "item": item,
                 "desc": desc,
                 "p": self._to_number_or_str(cell_text(2)),
@@ -85,26 +83,35 @@ class BankChargerPersistence:
             if scenario_id is not None:
                 fila["scenario_id"] = scenario_id
             perfil.append(fila)
+        return perfil
 
-        proyecto["perfil_cargas"] = perfil
+    def save_perfil_cargas(self, perfil: List[Dict[str, Any]] | None = None) -> None:
+        """Persist profile rows in proyecto['bank_charger']['perfil_cargas']."""
+        scr = self.screen
+        cfg = self.get_proyecto_data()
+        perfil_to_save = perfil if isinstance(perfil, list) else self.collect_perfil_cargas()
+        cfg["perfil_cargas"] = perfil_to_save
 
-        # Índice por código normalizado (para búsquedas rápidas / consistencia)
         idx: Dict[str, Any] = {}
-        for row in perfil:
+        for row in perfil_to_save:
+            if not isinstance(row, dict):
+                continue
             k = scr._norm_code(row.get("item", ""))
             if not k:
                 continue
             idx[k] = row
-        proyecto["perfil_cargas_idx"] = idx
+        cfg["perfil_cargas_idx"] = idx
 
-        if hasattr(scr.data_model, "mark_dirty"):
-            scr.data_model.mark_dirty(True)
+    def get_ieee485_kt_data(self) -> Dict[str, Any]:
+        """Return persisted IEEE485 Kt mapping from root project dict."""
+        proyecto = self._proyecto()
+        store = proyecto.get("ieee485_kt", None)
+        return store if isinstance(store, dict) else {}
 
-    def save_ieee485_kt(self) -> None:
-        """Lee columna Kt en tbl_ieee y guarda en proyecto['ieee485_kt']."""
+    def collect_ieee485_kt(self) -> Dict[str, Any]:
+        """Read Kt column from tbl_ieee and return serialized mapping."""
         scr = self.screen
-        store = scr._get_ieee_kt_store()
-
+        data: Dict[str, Any] = {}
         for r in range(scr.tbl_ieee.rowCount()):
             key_item = scr.tbl_ieee.item(r, 0)
             if key_item is None:
@@ -122,7 +129,11 @@ class BankChargerPersistence:
                 kt = float(txt) if txt else ""
             except Exception:
                 kt = ""
-            store[str(key)] = kt
+            data[str(key)] = kt
+        return data
 
-        if hasattr(scr.data_model, "mark_dirty"):
-            scr.data_model.mark_dirty(True)
+    def save_ieee485_kt(self, data: Dict[str, Any] | None = None) -> None:
+        """Persist IEEE485 Kt mapping in proyecto['ieee485_kt']."""
+        proyecto = self._proyecto()
+        data_to_save = data if isinstance(data, dict) else self.collect_ieee485_kt()
+        proyecto["ieee485_kt"] = dict(data_to_save)

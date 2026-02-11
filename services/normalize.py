@@ -148,9 +148,10 @@ def normalize_proyecto(proy: Dict[str, Any]) -> Dict[str, Any]:
 
     # perfil de cargas: normalizamos números cuando es posible.
     # Si no es numérico (por compatibilidad), se conserva el valor original.
-    perfil = proy.get("perfil_cargas", None)
-    if isinstance(perfil, list):
-        for row in perfil:
+    def _normalize_perfil_rows(perfil_rows: Any) -> None:
+        if not isinstance(perfil_rows, list):
+            return
+        for row in perfil_rows:
             if not isinstance(row, dict):
                 continue
             for kk in ("p", "i", "t_inicio", "duracion"):
@@ -158,6 +159,11 @@ def normalize_proyecto(proy: Dict[str, Any]) -> Dict[str, Any]:
                     val = row.get(kk)
                     f = to_float(val)
                     row[kk] = f if f is not None else val
+
+    _normalize_perfil_rows(proy.get("perfil_cargas", None))
+    bc = proy.get("bank_charger", None)
+    if isinstance(bc, dict):
+        _normalize_perfil_rows(bc.get("perfil_cargas", None))
 
     # Defaults de políticas comerciales
     proy.setdefault("commercial_step_ah", 10.0)

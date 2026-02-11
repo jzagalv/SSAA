@@ -92,8 +92,7 @@ class BankChargerSizingScreen(ScreenBase):
         self._fill_datos_sistema()
         self._fill_comprobacion()
         # 1) Si existe perfil en proyecto, lo cargamos. Si no, creamos defaults.
-        proyecto = getattr(self.data_model, "proyecto", {}) or {}
-        if proyecto.get("perfil_cargas"):
+        if self._get_saved_perfil_cargas():
             self._load_perfil_cargas_from_model()
         else:
             self._fill_perfil_cargas(save_to_model=True)
@@ -780,6 +779,18 @@ class BankChargerSizingScreen(ScreenBase):
                 return p.get(k, "")
         return ""
 
+    def _get_saved_perfil_cargas(self) -> list:
+        proyecto = getattr(self.data_model, "proyecto", {}) or {}
+        cfg = proyecto.get("bank_charger", None)
+        if isinstance(cfg, dict):
+            perfil = cfg.get("perfil_cargas", None)
+            if isinstance(perfil, list) and perfil:
+                return perfil
+        perfil_legacy = proyecto.get("perfil_cargas", None)
+        if isinstance(perfil_legacy, list):
+            return perfil_legacy
+        return []
+
     def _norm_code(self, code: str) -> str:
         return (code or "").strip().upper()
 
@@ -942,19 +953,6 @@ class BankChargerSizingScreen(ScreenBase):
                 self,
                 "Error en IEEE 485",
                 f"Ocurrió un error al actualizar la tabla IEEE 485 / selección / resumen.\n\n{e}",
-            )
-
-    def _persist_perfil_cargas(self):
-        # Kept for backward compatibility (other modules call this).
-        try:
-            self._controller.pipeline.on_profile_changed()
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            QMessageBox.critical(
-                self,
-                "Error al persistir Perfil de cargas",
-                f"Ocurrió un error al persistir/actualizar el Perfil de cargas.\n\n{e}",
             )
 
     # =================== cálculo principal ===============

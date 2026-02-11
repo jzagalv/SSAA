@@ -23,8 +23,19 @@ class ProfileTablePresenter:
 
     def load_from_model(self) -> None:
         scr = self.screen
-        proyecto = getattr(scr.data_model, "proyecto", {}) or {}
-        perfil = proyecto.get("perfil_cargas", []) or []
+        perfil = []
+        if hasattr(scr, "_get_saved_perfil_cargas"):
+            try:
+                perfil = scr._get_saved_perfil_cargas() or []
+            except Exception:
+                perfil = []
+        if not perfil:
+            proyecto = getattr(scr.data_model, "proyecto", {}) or {}
+            cfg = proyecto.get("bank_charger", None)
+            if isinstance(cfg, dict):
+                perfil = cfg.get("perfil_cargas", []) or []
+            if not perfil:
+                perfil = proyecto.get("perfil_cargas", []) or []
         if not perfil:
             return
 
