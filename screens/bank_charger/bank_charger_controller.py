@@ -207,13 +207,17 @@ class BankChargerController(BaseController):
         return self.summary_presenter.update()
 
 
-    def reload_from_project(self):
+    def reset_loaded_flags(self) -> None:
         s = self.screen
-        """Recarga datos desde data_model.proyecto (incluye Perfil de cargas guardado)."""
         s._perfil_loaded = False
         s._ieee_loaded = False
         s._seleccion_loaded = False
         s._resumen_loaded = False
+
+    def reload_from_project(self):
+        s = self.screen
+        """Recarga datos desde data_model.proyecto (incluye Perfil de cargas guardado)."""
+        self.reset_loaded_flags()
 
         idx = 0
         if getattr(s, "inner_tabs", None) is not None:

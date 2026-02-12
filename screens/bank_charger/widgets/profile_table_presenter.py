@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTableWidgetItem
 
@@ -30,6 +32,23 @@ class ProfileTablePresenter:
                 random_loads = scr._get_saved_random_loads() or {}
             except Exception:
                 random_loads = {}
+
+        codes = []
+        norm_code = getattr(scr, "_norm_code", None)
+        for fila in (perfil if isinstance(perfil, list) else []):
+            if not isinstance(fila, dict):
+                continue
+            raw = fila.get("item", "")
+            try:
+                code = str(norm_code(raw)) if callable(norm_code) else str(raw or "").strip().upper()
+            except Exception:
+                code = str(raw or "").strip().upper()
+            codes.append(code)
+        logging.getLogger(__name__).info(
+            "BankCharger perfil load rows=%d keys=%s",
+            len(perfil) if isinstance(perfil, list) else 0,
+            codes,
+        )
 
         if not perfil and not random_loads:
             return

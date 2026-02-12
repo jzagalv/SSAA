@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.171] - 2026-02-12
+- Fix: Perfil de cargas ahora carga el tab activo al iniciar y al abrir proyecto; ya no se pierde visualizacion de escenarios guardados (L2/L3).
+- Improved: refresh diferido del tab interno activo en Banco y cargador y trazas de carga de perfil (`rows` + `keys`) para verificar hidratacion.
+
 ## [1.4.0-alpha.170] - 2026-02-12
 - Fix: Perfil de cargas no cargaba escenarios persistidos (L2/L3) tras `project_loaded`; se corrigio la hidratacion post-load y se evito reconstruccion errónea a defaults.
 - Improved: persistencia unificada para `perfil_cargas` desde `list/idx` (preferencia por `*_idx`) y refresh de `BANK_CHARGER` incluido en `PROJECT_LOADED`.

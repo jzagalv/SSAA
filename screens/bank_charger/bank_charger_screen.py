@@ -88,15 +88,12 @@ class BankChargerSizingScreen(ScreenBase):
         self._ieee_loaded = False
         self._seleccion_loaded = False
         self._resumen_loaded = False
+        self._pending_inner_tab_refresh = False
         if getattr(self, "inner_tabs", None) is not None:
             self.inner_tabs.currentChanged.connect(self._on_inner_tab_changed)
+            self._schedule_active_inner_tab_refresh()
         self._fill_datos_sistema()
         self._fill_comprobacion()
-        # 1) Si existe perfil en proyecto, lo cargamos. Si no, creamos defaults.
-        if self._get_saved_perfil_cargas() or self._get_saved_random_loads():
-            self._load_perfil_cargas_from_model()
-        else:
-            self._fill_perfil_cargas(save_to_model=True)
 
         # IEEE 485: estructura + carga Kt guardados
         self._build_ieee485_table_structure()
@@ -1579,6 +1576,23 @@ class BankChargerSizingScreen(ScreenBase):
             return None
         return self._controller.update_profile_chart()
 
+    def _schedule_active_inner_tab_refresh(self) -> None:
+        tabs = getattr(self, "inner_tabs", None)
+        if tabs is None:
+            return
+        if getattr(self, "_pending_inner_tab_refresh", False):
+            return
+        self._pending_inner_tab_refresh = True
+
+        def _run_refresh():
+            self._pending_inner_tab_refresh = False
+            tabs_now = getattr(self, "inner_tabs", None)
+            if tabs_now is None:
+                return
+            self._on_inner_tab_changed(tabs_now.currentIndex())
+
+        QTimer.singleShot(0, _run_refresh)
+
     def _on_inner_tab_changed(self, idx: int):
         if getattr(self, "_updating", False):
             return
@@ -2164,7 +2178,8 @@ class BankChargerSizingScreen(ScreenBase):
 
     # ========================= API =========================
     def reload_from_project(self):
-        return self._controller.reload_from_project()
+        self._controller.reset_loaded_flags()
+        self._schedule_active_inner_tab_refresh()
 
 
 
