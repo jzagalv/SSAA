@@ -53,6 +53,7 @@ from domain.cc_consumption import (
     get_model_gabinetes as cc_get_model_gabinetes,
     compute_cc_profile_totals,
     compute_momentary_scenarios,
+    compute_momentary_from_permanents,
 )
 
 import logging
@@ -1322,7 +1323,43 @@ class BankChargerSizingScreen(ScreenBase):
         if vmin <= 0:
             vmin = 1.0
 
-        return compute_momentary_scenarios(proyecto=proyecto, gabinetes=gabinetes, vmin=vmin)
+        escenarios = compute_momentary_scenarios(proyecto=proyecto, gabinetes=gabinetes, vmin=vmin)
+        if not isinstance(escenarios, dict):
+            return {}
+
+        # Prefer computed tail-from-permanents cache when available.
+        cached_tail = None
+        calc = proyecto.get("calculated", None)
+        if isinstance(calc, dict):
+            cc_calc = calc.get("cc", None)
+            if isinstance(cc_calc, dict):
+                summary = cc_calc.get("summary", None)
+                if isinstance(summary, dict):
+                    raw_tail = summary.get("p_mom_perm", None)
+                    try:
+                        cached_tail = float(raw_tail)
+                    except Exception:
+                        cached_tail = None
+
+        if cached_tail is None:
+            return escenarios
+
+        try:
+            computed_tail = float(compute_momentary_from_permanents(proyecto, gabinetes) or 0.0)
+        except Exception:
+            computed_tail = 0.0
+        delta_tail = float(cached_tail - computed_tail)
+        if abs(delta_tail) < 1e-9:
+            return escenarios
+
+        scn1 = escenarios.get(1, escenarios.get("1", None))
+        if not isinstance(scn1, dict):
+            scn1 = {"p_total": 0.0, "i_total": 0.0}
+        p_total = max(0.0, float(scn1.get("p_total", 0.0) or 0.0) + delta_tail)
+        scn1["p_total"] = float(p_total)
+        scn1["i_total"] = float(p_total / float(vmin))
+        escenarios[1] = scn1
+        return escenarios
 
     def _extract_scenario_id(self, desc: str) -> int | None:
         text = (desc or "").strip()

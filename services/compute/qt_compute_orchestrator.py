@@ -43,6 +43,73 @@ if QObject is not None:
                 except Exception:
                     log.debug("Failed to subscribe compute orchestrator (best-effort).", exc_info=True)
 
+        @staticmethod
+        def _as_float(value: Any, default: float = 0.0) -> float:
+            try:
+                return float(value)
+            except Exception:
+                return float(default)
+
+        def _sync_calculated_cc_cache(self, results: dict) -> None:
+            """Mirror computed CC results into proyecto['calculated']['cc'].
+
+            Important:
+            - This method must never mark the DataModel dirty.
+            - cc_results remains non-persistent, calculated.cc remains persistent.
+            """
+            if not isinstance(results, dict):
+                return
+            proj = getattr(self._dm, "proyecto", None)
+            if not isinstance(proj, dict):
+                return
+
+            totals = results.get("totals", None)
+            if not isinstance(totals, dict):
+                totals = {}
+            by_scenario = results.get("by_scenario", None)
+            if not isinstance(by_scenario, dict):
+                by_scenario = {}
+
+            calc = proj.get("calculated", None)
+            if not isinstance(calc, dict):
+                calc = {}
+                proj["calculated"] = calc
+            cc_calc = calc.get("cc", None)
+            if not isinstance(cc_calc, dict):
+                cc_calc = {}
+                calc["cc"] = cc_calc
+
+            summary = cc_calc.get("summary", None)
+            if not isinstance(summary, dict):
+                summary = {}
+            summary.update(
+                {
+                    "p_total": self._as_float(totals.get("p_total", 0.0)),
+                    "i_total": self._as_float(totals.get("i_total", 0.0)),
+                    "p_perm": self._as_float(totals.get("p_perm", 0.0)),
+                    "i_perm": self._as_float(totals.get("i_perm", 0.0)),
+                    "p_mom": self._as_float(totals.get("p_mom", 0.0)),
+                    "i_mom": self._as_float(totals.get("i_mom", 0.0)),
+                    "p_sel": self._as_float(totals.get("p_sel", 0.0)),
+                    "i_sel": self._as_float(totals.get("i_sel", 0.0)),
+                }
+            )
+            if "p_mom_perm" in totals:
+                summary["p_mom_perm"] = self._as_float(totals.get("p_mom_perm", 0.0))
+            if "i_mom_perm" in totals:
+                summary["i_mom_perm"] = self._as_float(totals.get("i_mom_perm", 0.0))
+            cc_calc["summary"] = summary
+
+            scenarios_totals = {}
+            for key, raw in by_scenario.items():
+                if not isinstance(raw, dict):
+                    continue
+                scenarios_totals[str(key)] = {
+                    "p_total": self._as_float(raw.get("p_total", 0.0)),
+                    "i_total": self._as_float(raw.get("i_total", 0.0)),
+                }
+            cc_calc["scenarios_totals"] = scenarios_totals
+
         def _on_dirty_event(self, event) -> None:
             from app.sections import Section
             if getattr(event, "section", None) != Section.CC:
@@ -109,6 +176,7 @@ if QObject is not None:
                     return
                 if hasattr(self._dm, "set_cc_results"):
                     self._dm.set_cc_results(results, notify=False)
+                self._sync_calculated_cc_cache(results)
                 bus = self._bus
                 if bus is not None:
                     from app.events import Computed

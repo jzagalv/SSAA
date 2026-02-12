@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.173] - 2026-02-12
+- Fixed: Totales de C.C. ahora priorizan `cc_results` y mantienen sincronizado `calculated.cc` (`summary` y `scenarios_totals`) para evitar desalineaciones.
+- Fixed: pestaña Momentáneos deja de escribir cache calculado desde UI; renderiza desde `cc_results.by_scenario` y usa recálculo rápido sólo como fallback.
+- Fixed: al desactivar "Usar % global" se persiste el % efectivo visible en `cc_perm_pct_custom` antes del cambio de modo, evitando reversiones.
+- Changed: `reload_data()` de C.C. ya no emite `InputChanged("reload")`, reduciendo recálculos y parpadeo por refresh.
+- Changed: Perfil de cargas (Banco y cargador) ajusta L2 con `calculated.cc.summary.p_mom_perm` cuando está disponible (fallback a cálculo actual).
+
 ## [1.4.0-alpha.172] - 2026-02-12
 - Fix crítico: Perfil de cargas no mostraba escenarios guardados (L2..Ln) al recargar proyecto en ciertos flujos.
 - Refactor: el `ProfileTablePresenter` ahora hidrata filas reales sin sesgo a fijos, mantiene orden estable (`L1`, `L2..Ln`, `L(al)`) y elimina comportamiento legacy de reconstrucción implícita.

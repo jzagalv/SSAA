@@ -124,19 +124,25 @@ class PermanentesTabMixin:
             self.invalidate_calculated_cc()
 
         if model is not None:
-            model.apply_global_pct(float(pct_global), float(vmin))
+            if use_global:
+                model.apply_global_pct(float(pct_global), float(vmin))
+            else:
+                model.recalc_all(float(vmin))
 
-        changed = self._persist_global_pct_as_custom(float(pct_global))
+        changed = False
+        if use_global:
+            changed = self._persist_global_pct_as_custom(float(pct_global))
 
         self._refresh_pct_editability()
 
         if changed and hasattr(self.data_model, "mark_dirty"):
             self.data_model.mark_dirty(True)
 
-        try:
-            self._controller._emit_input_changed({"perm_pct": True})
-        except Exception:
-            pass
+        if use_global:
+            try:
+                self._controller._emit_input_changed({"perm_pct": True})
+            except Exception:
+                pass
         self._update_permanent_totals()
         request_autofit(self.tbl_perm)
 
@@ -154,6 +160,27 @@ class PermanentesTabMixin:
             comp = self._find_comp_by_id(rr.comp_id)
             if not isinstance(comp, dict):
                 continue
+            data = comp.setdefault("data", {})
+            if data.get(ProjectKeys.CC_PERM_PCT_CUSTOM) != new_val:
+                data[ProjectKeys.CC_PERM_PCT_CUSTOM] = new_val
+                changed = True
+        return changed
+
+    def _persist_visible_perm_pct_as_custom(self) -> bool:
+        """Persist current per-row percentages as custom values."""
+        model = getattr(self, "_perm_model", None)
+        if model is None:
+            return False
+        changed = False
+        for row in range(model.rowCount()):
+            rr = model.get_row(row)
+            if rr is None or not rr.comp_id:
+                continue
+            comp = self._find_comp_by_id(rr.comp_id)
+            if not isinstance(comp, dict):
+                continue
+            pct = max(0.0, min(100.0, float(rr.pct)))
+            new_val = f"{pct:.2f}"
             data = comp.setdefault("data", {})
             if data.get(ProjectKeys.CC_PERM_PCT_CUSTOM) != new_val:
                 data[ProjectKeys.CC_PERM_PCT_CUSTOM] = new_val

@@ -11,8 +11,6 @@ from PyQt5.QtWidgets import QHeaderView, QAbstractItemView
 
 from domain.cc_consumption import (
     get_vcc_for_currents,
-    get_model_gabinetes,
-    compute_momentary_from_permanents,
 )
 
 from screens.cc_consumption.models.momentaneos_loads_table_model import (
@@ -157,43 +155,6 @@ class MomentaneosTabMixin:
 
         return include_map
 
-    def _compute_scenario_totals(self, scenario_idx: int, include_perm: bool) -> dict:
-        proj = getattr(self.data_model, "proyecto", {}) or {}
-        vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
-        try:
-            vmin = float(vmin or 0.0)
-        except Exception:
-            vmin = 1.0
-        if vmin <= 0:
-            vmin = 1.0
-
-        scenario = int(scenario_idx or 1)
-        if scenario < 1:
-            scenario = 1
-
-        p_explicit = 0.0
-        model = getattr(self, "_mom_model", None)
-        if model is not None:
-            for r in range(model.rowCount()):
-                row = model.get_row(r)
-                if row is None:
-                    continue
-                if not bool(row.incluir):
-                    continue
-                esc = int(row.escenario or 1)
-                if esc != scenario:
-                    continue
-                p_explicit += float(row.p_eff or 0.0)
-
-        p_perm_tail = 0.0
-        if include_perm:
-            gabinetes = get_model_gabinetes(self.data_model)
-            p_perm_tail = float(compute_momentary_from_permanents(proj, gabinetes) or 0.0)
-
-        p_total = float(p_explicit + p_perm_tail)
-        i_total = float(p_total / vmin)
-        return {"p_total": p_total, "i_total": i_total}
-
     def _on_mom_loads_changed(self, *args):
         if self._building or getattr(self, "_loading", False):
             return
@@ -247,9 +208,37 @@ class MomentaneosTabMixin:
         include_map = self._ensure_cc_mom_incl_perm(n_esc)
 
         by_scenario = {}
-        for n in range(1, n_esc + 1):
-            include_perm = bool(include_map.get(str(n), False))
-            by_scenario[str(n)] = self._compute_scenario_totals(n, include_perm=include_perm)
+        cc_results = proj.get("cc_results", None)
+        if isinstance(cc_results, dict):
+            raw_by_scenario = cc_results.get("by_scenario", None)
+            if isinstance(raw_by_scenario, dict) and raw_by_scenario:
+                by_scenario = raw_by_scenario
+        if not by_scenario:
+            vmin = getattr(self, "_vcc_for_currents", None) or get_vcc_for_currents(proj) or 1.0
+            try:
+                vmin = float(vmin or 0.0)
+            except Exception:
+                vmin = 1.0
+            if vmin <= 0.0:
+                vmin = 1.0
+            try:
+                by_scenario = self._controller.compute_momentary(vmin=float(vmin)) or {}
+            except Exception:
+                by_scenario = {}
+
+        def _scenario_totals(idx: int) -> tuple[float, float]:
+            raw = by_scenario.get(str(idx), by_scenario.get(idx, {}))
+            if not isinstance(raw, dict):
+                return 0.0, 0.0
+            try:
+                p_total = float(raw.get("p_total", 0.0) or 0.0)
+            except Exception:
+                p_total = 0.0
+            try:
+                i_total = float(raw.get("i_total", 0.0) or 0.0)
+            except Exception:
+                i_total = 0.0
+            return p_total, i_total
 
         # actualizar tabla resumen
         self._ensure_mom_scenarios_model()
@@ -261,40 +250,18 @@ class MomentaneosTabMixin:
             except Exception:
                 desc_db = ""
             desc = resolve_scenario_desc(n, "", desc_db)
-            d = by_scenario.get(str(n), by_scenario.get(n, {})) or {}
+            p_total, i_total = _scenario_totals(n)
             rows.append(
                 ScenarioRow(
                     n=int(n),
                     include_perm=bool(include_map.get(str(n), False)),
                     desc=desc,
-                    p_total=float(d.get("p_total", 0.0) or 0.0),
-                    i_total=float(d.get("i_total", 0.0) or 0.0),
+                    p_total=p_total,
+                    i_total=i_total,
                 )
             )
         if getattr(self, "_mom_scenarios_model", None) is not None:
             self._mom_scenarios_model.set_rows(rows)
-
-        # guardar resumen de totales en calculated.cc.scenarios_totals (no cc_scenarios_summary)
-        calc = proj.get("calculated")
-        if not isinstance(calc, dict):
-            calc = {}
-            proj["calculated"] = calc
-        cc_calc = calc.get("cc")
-        if not isinstance(cc_calc, dict):
-            cc_calc = {}
-            calc["cc"] = cc_calc
-        scenarios_totals = {}
-        for k in range(1, n_esc + 1):
-            d = by_scenario.get(str(k), by_scenario.get(k, {})) or {}
-            scenarios_totals[str(k)] = {
-                "p_total": float(d.get("p_total", 0.0) or 0.0),
-                "i_total": float(d.get("i_total", 0.0) or 0.0),
-            }
-
-        if cc_calc.get("scenarios_totals") != scenarios_totals:
-            cc_calc["scenarios_totals"] = scenarios_totals
-            if hasattr(self.data_model, "mark_dirty"):
-                self.data_model.mark_dirty(True)
 
     def _persist_mom_flags(self, comp_id: str, incluir: bool, escenario: int):
         """Persistir flags de momentáneos asociados al componente (en su bloque data)."""

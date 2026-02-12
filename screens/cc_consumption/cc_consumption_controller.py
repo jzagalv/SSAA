@@ -369,15 +369,54 @@ class CCConsumptionController(BaseController):
         self._emit_input_changed({"momentaneo_flags": True})
         return True
 
-    def compute_totals(self, *, vmin: float) -> Dict[str, Any]:
-        """Recalcula SIEMPRE totales C.C. desde el modelo actual.
+    @staticmethod
+    def _coerce_totals(raw: Any) -> Dict[str, float]:
+        if not isinstance(raw, dict):
+            return {}
 
-        Importante:
-        - NO usa project['calculated']['cc'] como fuente de verdad.
-        - Mantiene salida legacy plana para la UI actual.
-        - También devuelve secciones anidadas (permanentes/momentaneos/aleatorios).
-        - Actualiza el cache calculated.cc luego del recálculo.
-        """
+        def _f(key: str, default: float = 0.0) -> float:
+            try:
+                return float(raw.get(key, default) or default)
+            except Exception:
+                return float(default)
+
+        out: Dict[str, float] = {
+            "p_total": _f("p_total"),
+            "i_total": _f("i_total"),
+            "p_perm": _f("p_perm"),
+            "i_perm": _f("i_perm"),
+            "p_mom": _f("p_mom"),
+            "i_mom": _f("i_mom"),
+            "p_sel": _f("p_sel"),
+            "i_sel": _f("i_sel"),
+        }
+        if "p_mom_perm" in raw:
+            out["p_mom_perm"] = _f("p_mom_perm")
+        if "i_mom_perm" in raw:
+            out["i_mom_perm"] = _f("i_mom_perm")
+        return out
+
+    def compute_totals(self, *, vmin: float) -> Dict[str, Any]:
+        """Return CC totals prioritizing computed caches, fallback to fast compute."""
+        proj = self.project()
+
+        # 1) Preferred source: latest computed results cache (non-persistent).
+        cc_results = proj.get("cc_results", None)
+        if isinstance(cc_results, dict):
+            totals = self._coerce_totals(cc_results.get("totals", None))
+            if totals:
+                return totals
+
+        # 2) Persistent mirror cache.
+        calc = proj.get("calculated", None)
+        if isinstance(calc, dict):
+            cc_calc = calc.get("cc", None)
+            if isinstance(cc_calc, dict):
+                totals = self._coerce_totals(cc_calc.get("summary", None))
+                if totals:
+                    return totals
+
+        # 3) Fallback fast compute from current model snapshot.
         perm_raw = self.compute_permanentes(vmin=vmin)
         mom_raw = self.compute_momentaneos(vmin=vmin)
         rnd_raw = self.compute_aleatorios(vmin=vmin)
@@ -386,69 +425,38 @@ class CCConsumptionController(BaseController):
         mom_raw = mom_raw if isinstance(mom_raw, dict) else {}
         rnd_raw = rnd_raw if isinstance(rnd_raw, dict) else {}
 
-        permanentes = {
-            "p_total": float(perm_raw.get("p_total", 0.0) or 0.0),
+        p_mom_total = 0.0
+        i_mom_total = 0.0
+        scenarios: Dict[str, Dict[str, float]] = {}
+        for key, raw in mom_raw.items():
+            if not isinstance(raw, dict):
+                continue
+            p_val = float(raw.get("p_total", 0.0) or 0.0)
+            i_val = float(raw.get("i_total", 0.0) or 0.0)
+            p_mom_total += p_val
+            i_mom_total += i_val
+            scenarios[str(key)] = {"p_total": p_val, "i_total": i_val}
+
+        flat = {
+            "p_total": float(perm_raw.get("p_total", 0.0) or 0.0) + float(p_mom_total),
+            "i_total": float(perm_raw.get("i_perm", 0.0) or 0.0) + float(i_mom_total),
             "p_perm": float(perm_raw.get("p_perm", 0.0) or 0.0),
-            "p_mom": float(perm_raw.get("p_mom", 0.0) or 0.0),
             "i_perm": float(perm_raw.get("i_perm", 0.0) or 0.0),
-            "i_mom": float(perm_raw.get("i_mom", 0.0) or 0.0),
-        }
-
-        # Momentáneos: fuente principal por escenarios; totales rápidos del escenario 1.
-        mom_scn1 = None
-        if isinstance(mom_raw.get(1), dict):
-            mom_scn1 = mom_raw.get(1)
-        elif isinstance(mom_raw.get("1"), dict):
-            mom_scn1 = mom_raw.get("1")
-        else:
-            mom_scn1 = {}
-
-        momentaneos = {
-            "scenarios": mom_raw,
-            "p_total": float(mom_scn1.get("p_total", 0.0) or 0.0),
-            "i_total": float(mom_scn1.get("i_total", 0.0) or 0.0),
-        }
-
-        aleatorios = {
+            "p_mom": float(p_mom_total),
+            "i_mom": float(i_mom_total),
+            "p_mom_perm": float(perm_raw.get("p_mom", 0.0) or 0.0),
+            "i_mom_perm": float(perm_raw.get("i_mom", 0.0) or 0.0),
             "p_sel": float(rnd_raw.get("p_sel", 0.0) or 0.0),
             "i_sel": float(rnd_raw.get("i_sel", 0.0) or 0.0),
         }
 
-        # Salida plana legacy (la usa la pestaña Permanentes para labels inferiores).
-        flat = {
-            "p_total": float(permanentes["p_total"]),
-            "i_total": float(permanentes["i_perm"] + permanentes["i_mom"]),
-            "p_perm": float(permanentes["p_perm"]),
-            "i_perm": float(permanentes["i_perm"]),
-            "p_mom": float(permanentes["p_mom"]),
-            "i_mom": float(permanentes["i_mom"]),
-            "p_sel": float(aleatorios["p_sel"]),
-            "i_sel": float(aleatorios["i_sel"]),
-        }
-
-        # Mantener cache sincronizado (nunca como source-of-truth).
-        proj = self.project()
+        # Keep persistent mirror synchronized (still not source-of-truth).
         if isinstance(proj, dict):
             calc = proj.setdefault("calculated", {})
             if isinstance(calc, dict):
                 cc = calc.setdefault("cc", {})
                 if isinstance(cc, dict):
-                    cc["permanentes"] = dict(permanentes)
-                    cc["momentaneos"] = dict(momentaneos)
-                    cc["aleatorios"] = dict(aleatorios)
-                    cc["summary"] = {
-                        "p_total": flat["p_total"],
-                        "i_total": flat["i_total"],
-                        "p_perm": flat["p_perm"],
-                        "i_perm": flat["i_perm"],
-                        "p_mom": flat["p_mom"],
-                        "i_mom": flat["i_mom"],
-                        "p_sel": flat["p_sel"],
-                        "i_sel": flat["i_sel"],
-                    }
+                    cc["summary"] = dict(flat)
+                    cc["scenarios_totals"] = dict(scenarios)
 
-        out: Dict[str, Any] = dict(flat)
-        out["permanentes"] = permanentes
-        out["momentaneos"] = momentaneos
-        out["aleatorios"] = aleatorios
-        return out
+        return flat

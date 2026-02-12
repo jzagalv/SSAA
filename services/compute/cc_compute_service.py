@@ -48,6 +48,9 @@ class CCComputeService:
             "i_perm": float(perm.get("i_perm", 0.0) or 0.0),
             "p_mom": float(p_mom),
             "i_mom": float(i_mom),
+            # Tail derived from permanentes only (used by Bank/Charger L2 profile logic).
+            "p_mom_perm": float(perm.get("p_mom", 0.0) or 0.0),
+            "i_mom_perm": float(perm.get("i_mom", 0.0) or 0.0),
             "p_sel": float(rnd.get("p_sel", 0.0) or 0.0),
             "i_sel": float(rnd.get("i_sel", 0.0) or 0.0),
         }

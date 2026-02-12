@@ -181,11 +181,6 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
-    def showEvent(self, event):
-        """Al mostrar la pantalla, refrescar automÃ¡ticamente."""
-        super().showEvent(event)
-        self._emit_cc_input_changed(reason="show")
-
     def _find_comp_by_id(self, comp_id: str):
         if not comp_id:
             return None
@@ -501,16 +496,6 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         except Exception:
             log.debug("Computed event handling failed (best-effort).", exc_info=True)
 
-    def _emit_cc_input_changed(self, reason: str):
-        bus = getattr(self.data_model, "event_bus", None)
-        if bus is None:
-            return
-        try:
-            from app.events import InputChanged
-            bus.emit(InputChanged(section=Section.CC, fields={"reason": reason}))
-        except Exception:
-            log.debug("Failed to emit InputChanged (best-effort).", exc_info=True)
-
     def _on_cc_compute_started(self, event):
         try:
             from app.sections import Section
@@ -730,9 +715,6 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self.refresh_display_only()
         self._apply_debug_tooltips()
 
-        # Trigger compute via EventBus (debounced orchestrator).
-        self._emit_cc_input_changed(reason="reload")
-
     # =========================================================
     # Permanentes
     # =========================================================
@@ -740,13 +722,27 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         if self._building:
             return
 
-        # Guardar en el modelo
-        proj = getattr(self.data_model, "proyecto", {})
-        self._controller.set_use_pct_global(bool(checked))
-        self.invalidate_calculated_cc()
-        if hasattr(self.data_model, "mark_dirty"):
-            self.data_model.mark_dirty(True)
+        custom_changed = False
+        if not bool(checked):
+            # Preserve the currently visible effective percentages before
+            # switching to per-row custom mode.
+            persist_fn = getattr(self, "_persist_visible_perm_pct_as_custom", None)
+            if callable(persist_fn):
+                try:
+                    custom_changed = bool(persist_fn())
+                except Exception:
+                    custom_changed = False
 
+        mode_changed = bool(self._controller.set_use_pct_global(bool(checked)))
+        if mode_changed or custom_changed:
+            self.invalidate_calculated_cc()
+        if custom_changed and not mode_changed and hasattr(self.data_model, "mark_dirty"):
+            self.data_model.mark_dirty(True)
+        if custom_changed and not mode_changed:
+            try:
+                self._controller._emit_input_changed({"perm_pct": True, "use_pct_global": bool(checked)})
+            except Exception:
+                pass
         self._apply_global_pct_mode()
         self._autosave_project_best_effort()
 
