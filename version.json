@@ -5,11 +5,11 @@
   "description": "Modern UI glass A completo: estilo A para formularios/paneles y estilo tecnico B para tablas, solo en modo moderno.",
   "breaking_changes": false,
   "frozen": false,
-  "semver": "1.4.0-alpha.168",
-  "version": "1.4.0-alpha.168.0",
-  "build": 139,
-  "notes": "Fix: Perfil de cargas now loads legacy perfil_cargas_idx projects (Don Melchor) without losing scenarios; automatic migration to perfil_cargas list.",
+  "semver": "1.4.0-alpha.169",
+  "version": "1.4.0-alpha.169.0",
+  "build": 140,
+  "notes": "Fix: Perfil de cargas no rehidrataba L2/L3 desde .ssaa; unificacion de persistencia (list/idx) y refresh.",
   "name": "SSAA_stage1_step_4A7",
-  "date": "2026-02-11",
+  "date": "2026-02-12",
   "channel": "alpha"
 }

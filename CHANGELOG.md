@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.169] - 2026-02-12
+- Fix: Perfil de cargas no rehidrataba L2/L3 desde `.ssaa`; unificacion de persistencia (list/idx) y refresh.
+- Improved: carga legacy de `perfil_cargas_idx` (root y `bank_charger`) con orden estable y fuente unica en `BankChargerPersistence`.
+
 ## [1.4.0-alpha.168] - 2026-02-11
 - Fix: Perfil de cargas now loads legacy `perfil_cargas_idx` projects (Don Melchor) without losing scenarios.
 - Improved: automatic migration to canonical `perfil_cargas` list (and random-load extraction from `L(AL)` when needed) during project load.

@@ -252,7 +252,25 @@ class BankChargerController(BaseController):
 
     def _refresh_perfil(self):
         s = self.screen
-        s._fill_perfil_cargas(save_to_model=False)
+        perfil_guardado = self.persistence.get_saved_perfil_cargas()
+        norm_l1 = s._norm_code(CODE_L1)
+        norm_lal = s._norm_code(CODE_LAL)
+
+        def _has_non_default_rows(rows: Any) -> bool:
+            if not isinstance(rows, list):
+                return False
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                code = s._norm_code(row.get("item", ""))
+                if code not in (norm_l1, norm_lal):
+                    return True
+                if row.get("scenario_id", None) not in (None, ""):
+                    return True
+            return False
+
+        if not _has_non_default_rows(perfil_guardado):
+            s._fill_perfil_cargas(save_to_model=False)
         s._load_perfil_cargas_from_model()
         s._refresh_perfil_autocalc()
         s._update_cycle_table()
