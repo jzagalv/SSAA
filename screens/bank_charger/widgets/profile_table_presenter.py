@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTableWidgetItem
@@ -53,10 +54,39 @@ class ProfileTablePresenter:
         if not perfil and not random_loads:
             return
 
+        norm_l1 = scr._norm_code(CODE_L1)
+        norm_lal = scr._norm_code(CODE_LAL)
+
+        normalized_rows = []
+        for pos, fila in enumerate(perfil if isinstance(perfil, list) else []):
+            if not isinstance(fila, dict):
+                continue
+            row = dict(fila)
+            code = scr._norm_code(row.get("item", ""))
+            if code == "AL":
+                row["item"] = CODE_LAL
+                code = norm_lal
+            elif code == "A1":
+                row["item"] = CODE_L1
+                code = norm_l1
+
+            if code == norm_l1:
+                sort_key = (0, 0, "", pos)
+            else:
+                m = re.fullmatch(r"L(\d+)", code)
+                if m:
+                    sort_key = (1, int(m.group(1)), "", pos)
+                elif code == norm_lal:
+                    sort_key = (3, 0, "", pos)
+                else:
+                    sort_key = (2, 0, code, pos)
+            normalized_rows.append((sort_key, row))
+        normalized_rows.sort(key=lambda x: x[0])
+
         scr._updating = True
         try:
             scr.tbl_cargas.setRowCount(0)
-            for fila in perfil:
+            for _, fila in normalized_rows:
                 item = str(fila.get("item", "") or "").strip()
                 desc = str(fila.get("desc", "") or "").strip()
                 if item == "A1":
@@ -153,6 +183,8 @@ class ProfileTablePresenter:
 
     def apply_editability(self) -> None:
         scr = self.screen
+        norm_l1 = scr._norm_code(CODE_L1)
+        norm_lal = scr._norm_code(CODE_LAL)
         for r in range(scr.tbl_cargas.rowCount()):
             it = scr.tbl_cargas.item(r, 0)
             code = it.text().strip() if it else ""
@@ -165,11 +197,13 @@ class ProfileTablePresenter:
                     scr.tbl_cargas.setItem(r, c, cell)
                 cell.setFlags(cell.flags() & ~Qt.ItemIsEditable)
 
-            if code_n == scr._norm_code(CODE_LAL):
+            if code_n == norm_l1:
+                scr.tbl_cargas.item(r, 5).setFlags(scr.tbl_cargas.item(r, 5).flags() | Qt.ItemIsEditable)
+            elif code_n == norm_lal:
                 for c in (4, 5):
                     scr.tbl_cargas.item(r, c).setFlags(scr.tbl_cargas.item(r, c).flags() | Qt.ItemIsEditable)
-            elif code_n not in (scr._norm_code(CODE_L1), scr._norm_code(CODE_LAL)) and code:
-                for c in (1, 4, 5):
+            elif code_n not in (norm_l1, norm_lal) and code:
+                for c in (4, 5):
                     scr.tbl_cargas.item(r, c).setFlags(scr.tbl_cargas.item(r, c).flags() | Qt.ItemIsEditable)
 
     def row_index_of_code(self, code: str) -> int:

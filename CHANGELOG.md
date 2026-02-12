@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.172] - 2026-02-12
+- Fix crítico: Perfil de cargas no mostraba escenarios guardados (L2..Ln) al recargar proyecto en ciertos flujos.
+- Refactor: el `ProfileTablePresenter` ahora hidrata filas reales sin sesgo a fijos, mantiene orden estable (`L1`, `L2..Ln`, `L(al)`) y elimina comportamiento legacy de reconstrucción implícita.
+
 ## [1.4.0-alpha.171] - 2026-02-12
 - Fix: Perfil de cargas ahora carga el tab activo al iniciar y al abrir proyecto; ya no se pierde visualizacion de escenarios guardados (L2/L3).
 - Improved: refresh diferido del tab interno activo en Banco y cargador y trazas de carga de perfil (`rows` + `keys`) para verificar hidratacion.
