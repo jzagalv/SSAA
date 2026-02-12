@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.174] - 2026-02-12
+### Added
+- `docs/UX_MANUAL_CHECKLIST.md` con guía de QA manual para apertura, navegación, refresco y validación de Instalaciones.
+### Changed
+- Refresco de estilos robusto: repolish de árbol completo al cambiar modo clásico/moderno y al cambiar tema claro/oscuro.
+- Auto-tag de campos editables (`userField=true`) en modo moderno para distinguir visualmente entradas de usuario.
+### Fixed
+- Instalaciones: al seleccionar gabinete, el combo de Ubicación ahora sincroniza correctamente con `findData` del tag de sala.
+
 ## [1.4.0-alpha.173] - 2026-02-12
 - Fixed: Totales de C.C. ahora priorizan `cc_results` y mantienen sincronizado `calculated.cc` (`summary` y `scenarios_totals`) para evitar desalineaciones.
 - Fixed: pestaña Momentáneos deja de escribir cache calculado desde UI; renderiza desde `cc_results.by_scenario` y usa recálculo rápido sólo como fallback.

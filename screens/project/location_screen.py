@@ -321,10 +321,12 @@ class LocationScreen(ScreenBase):
             return
         self.input_tag_gabinete.setText(g.get("tag", ""))
         self.input_nombre_gabinete.setText(g.get("nombre", ""))
-        sala_label = g.get("sala", "")
-        idx = self.combo_salas.findText(sala_label, Qt.MatchExactly)
+        sala_tag = (g.get("sala", "") or "").strip()
+        idx = self.combo_salas.findData(sala_tag)
         if idx >= 0:
             self.combo_salas.setCurrentIndex(idx)
+        else:
+            self.combo_salas.setCurrentIndex(-1)
 
     # ------------------------------
     # Salas y gabinetes (CRUD)

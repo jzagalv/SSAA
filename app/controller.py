@@ -48,8 +48,9 @@ from ui.common.state import (
     get_nav_mode as get_saved_nav_mode,
     set_nav_mode as save_nav_mode,
 )
-from ui.common.ui_roles import set_role_form, auto_tag_tables
+from ui.common.ui_roles import set_role_form, auto_tag_tables, auto_tag_user_fields
 from ui.theme import apply_named_theme
+from ui.utils.style_utils import repolish_tree
 from ui.widgets.sidebar import Sidebar
 
 # Guardrails / ownership catalog (kept in app layer to avoid UI cross-coupling)
@@ -365,7 +366,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self._central)
         set_role_form(self.app_widget)
         auto_tag_tables(self.app_widget)
+        auto_tag_user_fields(self.app_widget)
         self.app_widget.currentChanged.connect(self._on_tab_changed_for_sidebar)
+        self.app_widget.refresh_finished.connect(self._after_refresh_ui)
 
         # Fin del armado inicial
         self.data_model.set_ui_refreshing(False)
@@ -388,12 +391,18 @@ class MainWindow(QMainWindow):
                 if hasattr(self.sidebar, "set_active"):
                     self.sidebar.set_active(idx)
 
-            for w in (self, getattr(self, "sidebar", None), getattr(self, "app_widget", None)):
-                if w is None:
-                    continue
-                w.style().unpolish(w)
-                w.style().polish(w)
-                w.update()
+            repolish_tree(getattr(self, "_central", None))
+        except Exception:
+            pass
+
+    def _after_refresh_ui(self) -> None:
+        try:
+            if getattr(self, "_nav_mode", "classic") == "modern":
+                self.sidebar.set_active(self.app_widget.currentIndex())
+        except Exception:
+            pass
+        try:
+            repolish_tree(getattr(self, "_central", None))
         except Exception:
             pass
 
@@ -428,18 +437,18 @@ class MainWindow(QMainWindow):
 
     def _apply_ui_mode_properties(self, mode: str) -> None:
         is_modern = mode == "modern"
-        self.setProperty("glass", is_modern)
-        self.setProperty("ui_mode", mode)
-        self.app_widget.setProperty("glass", is_modern)
-        self.app_widget.setProperty("ui_mode", mode)
+        for widget in (self, getattr(self, "_central", None), self.app_widget, self.sidebar):
+            if widget is None:
+                continue
+            widget.setProperty("glass", is_modern)
+            widget.setProperty("ui_mode", mode)
         auto_tag_tables(self.app_widget)
+        auto_tag_user_fields(self.app_widget)
         for t in self.app_widget.findChildren(QTabWidget):
             t.setProperty("glass", is_modern)
         for table in self.app_widget.findChildren(QTableWidget):
             table.setProperty("glass", is_modern)
-        self.style().unpolish(self)
-        self.style().polish(self)
-        self.update()
+        repolish_tree(getattr(self, "_central", None))
 
     # ---------------------------------------------------------
     # Menús / acciones
@@ -545,6 +554,7 @@ class MainWindow(QMainWindow):
         try:
             set_ui_theme(theme_name)
             apply_named_theme(QApplication.instance(), theme_name)
+            repolish_tree(getattr(self, "_central", None))
         except Exception:
             log.debug("Failed to apply UI theme '%s'", theme_name, exc_info=True)
 

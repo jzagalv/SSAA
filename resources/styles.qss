@@ -676,7 +676,7 @@ QWidget[glass="true"] QHeaderView::section {
 }
 
 /* =========================================================
-   Modern override: desactivar INPUT_EDIT_BG (amarillo) SOLO en moderno
+   Modern override: baseline neutro + userField amarillo suave
    ========================================================= */
 QWidget[glass="true"] QLineEdit:!read-only,
 QWidget[glass="true"] QAbstractSpinBox:!read-only,
@@ -687,6 +687,16 @@ QWidget[glass="true"] QComboBox:enabled {
 QWidget[glass="true"] QLineEdit[userField="true"],
 QWidget[glass="true"] QComboBox[userField="true"],
 QWidget[glass="true"] QDoubleSpinBox[userField="true"],
-QWidget[glass="true"] QSpinBox[userField="true"] {
-    background: rgba(255, 255, 255, 210);
+QWidget[glass="true"] QSpinBox[userField="true"],
+QWidget[glass="true"] QTextEdit[userField="true"] {
+    background: rgba(255, 247, 199, 230);
+    border: 1px solid rgba(181, 156, 52, 120);
+}
+
+QWidget[glass="true"] QLineEdit[userField="true"]:focus,
+QWidget[glass="true"] QComboBox[userField="true"]:focus,
+QWidget[glass="true"] QDoubleSpinBox[userField="true"]:focus,
+QWidget[glass="true"] QSpinBox[userField="true"]:focus,
+QWidget[glass="true"] QTextEdit[userField="true"]:focus {
+    border: 1px solid rgba(0, 160, 90, 200);
 }

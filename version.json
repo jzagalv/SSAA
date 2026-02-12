@@ -1,15 +1,15 @@
 {
   "project": "SSAA",
   "stage": "Stage1",
-  "step": "4A.7",
-  "description": "Modern UI glass A completo: estilo A para formularios/paneles y estilo tecnico B para tablas, solo en modo moderno.",
+  "step": "4A.8",
+  "description": "Refresco QSS de arbol completo en cambios de modo/tema, userField amarillo en moderno y sincronizacion correcta de ubicacion en Instalaciones.",
   "breaking_changes": false,
   "frozen": false,
-  "semver": "1.4.0-alpha.173",
-  "version": "1.4.0-alpha.173.0",
-  "build": 144,
-  "notes": "Fix CC/Banco cargador: cache unificado cc_results->calculated.cc, reload sin compute por refresh, % custom persistido al desactivar global y L2 usa cola momentanea cacheada.",
-  "name": "SSAA_stage1_step_4A7",
+  "semver": "1.4.0-alpha.174",
+  "version": "1.4.0-alpha.174.0",
+  "build": 145,
+  "notes": "UX: repolish_tree al cambiar modo/tema y post-refresh, auto-tag userField editable con resaltado amarillo suave y fix de combo Ubicacion por findData.",
+  "name": "SSAA_stage1_step_4A8",
   "date": "2026-02-12",
   "channel": "alpha"
 }
