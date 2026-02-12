@@ -64,6 +64,6 @@ SECTION_GRAPH: Dict[Section, SectionSpec] = {
     Section.PROJECT_LOADED: SectionSpec(
         recalc=[Section.CC, Section.BANK_CHARGER],
         validate=[Section.PROJECT, Section.INSTALACIONES, Section.CABINET, Section.CC, Section.BANK_CHARGER],
-        refresh=[Refresh.MAIN, Refresh.INSTALACIONES, Refresh.CABINET, Refresh.BOARD_FEED, Refresh.CC, Refresh.DESIGNER, Refresh.LOAD_TABLES],
+        refresh=[Refresh.MAIN, Refresh.INSTALACIONES, Refresh.CABINET, Refresh.BOARD_FEED, Refresh.CC, Refresh.BANK_CHARGER, Refresh.DESIGNER, Refresh.LOAD_TABLES],
     ),
 }

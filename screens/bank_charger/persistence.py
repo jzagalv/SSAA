@@ -52,15 +52,16 @@ class BankChargerPersistence:
         perfil_root = proyecto.get("perfil_cargas", None)
         perfil_root_idx = proyecto.get("perfil_cargas_idx", None)
 
-        if isinstance(perfil_bc, list) and perfil_bc:
-            return self._normalize_perfil_rows_from_list(perfil_bc)
-        if isinstance(perfil_root, list) and perfil_root:
-            return self._normalize_perfil_rows_from_list(perfil_root)
-
+        # Prefer idx when both representations exist.
         if isinstance(perfil_bc_idx, dict) and perfil_bc_idx:
             return self._normalize_perfil_rows_from_idx(perfil_bc_idx)
         if isinstance(perfil_root_idx, dict) and perfil_root_idx:
             return self._normalize_perfil_rows_from_idx(perfil_root_idx)
+
+        if isinstance(perfil_bc, list) and perfil_bc:
+            return self._normalize_perfil_rows_from_list(perfil_bc)
+        if isinstance(perfil_root, list) and perfil_root:
+            return self._normalize_perfil_rows_from_list(perfil_root)
         return []
 
     def _norm_code(self, code: Any) -> str:

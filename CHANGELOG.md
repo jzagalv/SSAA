@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.170] - 2026-02-12
+- Fix: Perfil de cargas no cargaba escenarios persistidos (L2/L3) tras `project_loaded`; se corrigio la hidratacion post-load y se evito reconstruccion errónea a defaults.
+- Improved: persistencia unificada para `perfil_cargas` desde `list/idx` (preferencia por `*_idx`) y refresh de `BANK_CHARGER` incluido en `PROJECT_LOADED`.
+
 ## [1.4.0-alpha.169] - 2026-02-12
 - Fix: Perfil de cargas no rehidrataba L2/L3 desde `.ssaa`; unificacion de persistencia (list/idx) y refresh.
 - Improved: carga legacy de `perfil_cargas_idx` (root y `bank_charger`) con orden estable y fuente unica en `BankChargerPersistence`.
