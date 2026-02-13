@@ -10,6 +10,7 @@ Versión: ____________________
 1. Arranque limpio (sin proyecto)
 - Estado: OK / FAIL
 - Notas:
+- Verificación adicional: Arranque en modo moderno con sidebar + estilos correctos sin navegar. OK / FAIL
 
 2. Cambiar a modo moderno
 - Estado: OK / FAIL
@@ -26,6 +27,7 @@ Versión: ____________________
 5. Abrir proyecto y confirmar refresco de pantallas + sidebar
 - Estado: OK / FAIL
 - Notas:
+- Verificación adicional: Tras abrir proyecto, estilos correctos en todas las pantallas sin navegación adicional. OK / FAIL
 
 ## B. Instalaciones
 
@@ -34,6 +36,10 @@ Versión: ____________________
 - Notas:
 
 2. CRUD de ubicaciones/gabinetes no rompe layout
+- Estado: OK / FAIL
+- Notas:
+
+3. Con proyecto grande (muchos gabinetes), la sección Ubicaciones sigue accesible (scroll de pantalla y/o tabla)
 - Estado: OK / FAIL
 - Notas:
 

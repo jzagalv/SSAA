@@ -364,11 +364,9 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.sidebar)
         lay.addWidget(self.app_widget, 1)
         self.setCentralWidget(self._central)
-        set_role_form(self.app_widget)
-        auto_tag_tables(self.app_widget)
-        auto_tag_user_fields(self.app_widget)
+        self._apply_ui_tags_and_repolish(self._central)
         self.app_widget.currentChanged.connect(self._on_tab_changed_for_sidebar)
-        self.app_widget.refresh_finished.connect(self._after_refresh_ui)
+        self.app_widget.refresh_finished.connect(self._on_refresh_finished_apply_ui)
 
         # Fin del armado inicial
         self.data_model.set_ui_refreshing(False)
@@ -383,6 +381,17 @@ class MainWindow(QMainWindow):
         self._db_consumos = None
         self._db_materiales = None
 
+    def _apply_ui_tags_and_repolish(self, root: QWidget) -> None:
+        try:
+            if root is None:
+                return
+            set_role_form(root)
+            auto_tag_tables(root)
+            auto_tag_user_fields(root)
+            repolish_tree(root)
+        except Exception:
+            log.debug("Failed to apply UI tags/repolish (best-effort).", exc_info=True)
+
     def _sync_sidebar_initial_state(self) -> None:
         """Asegura estilo/seleccion correctos de sidebar al arranque."""
         try:
@@ -391,20 +400,16 @@ class MainWindow(QMainWindow):
                 if hasattr(self.sidebar, "set_active"):
                     self.sidebar.set_active(idx)
 
-            repolish_tree(getattr(self, "_central", None))
+            self._apply_ui_tags_and_repolish(self._central)
         except Exception:
             pass
 
-    def _after_refresh_ui(self) -> None:
+    def _on_refresh_finished_apply_ui(self) -> None:
         try:
-            if getattr(self, "_nav_mode", "classic") == "modern":
-                self.sidebar.set_active(self.app_widget.currentIndex())
+            self.sidebar.set_active(self.app_widget.currentIndex())
         except Exception:
             pass
-        try:
-            repolish_tree(getattr(self, "_central", None))
-        except Exception:
-            pass
+        self._apply_ui_tags_and_repolish(self._central)
 
     def _on_sidebar_navigate(self, tab_index: int) -> None:
         try:
@@ -417,6 +422,13 @@ class MainWindow(QMainWindow):
             self.sidebar.set_active(int(index))
         except Exception:
             pass
+        try:
+            current = self.app_widget.currentWidget()
+            if current is not None:
+                self._apply_ui_tags_and_repolish(current)
+            repolish_tree(self.sidebar)
+        except Exception:
+            log.debug("Failed to refresh UI style on tab change (best-effort).", exc_info=True)
 
     def set_nav_mode(self, mode: str) -> None:
         mode = (mode or "classic").strip().lower()
@@ -442,13 +454,11 @@ class MainWindow(QMainWindow):
                 continue
             widget.setProperty("glass", is_modern)
             widget.setProperty("ui_mode", mode)
-        auto_tag_tables(self.app_widget)
-        auto_tag_user_fields(self.app_widget)
         for t in self.app_widget.findChildren(QTabWidget):
             t.setProperty("glass", is_modern)
         for table in self.app_widget.findChildren(QTableWidget):
             table.setProperty("glass", is_modern)
-        repolish_tree(getattr(self, "_central", None))
+        self._apply_ui_tags_and_repolish(self._central)
 
     # ---------------------------------------------------------
     # Menús / acciones
@@ -554,7 +564,7 @@ class MainWindow(QMainWindow):
         try:
             set_ui_theme(theme_name)
             apply_named_theme(QApplication.instance(), theme_name)
-            repolish_tree(getattr(self, "_central", None))
+            self._apply_ui_tags_and_repolish(self._central)
         except Exception:
             log.debug("Failed to apply UI theme '%s'", theme_name, exc_info=True)
 

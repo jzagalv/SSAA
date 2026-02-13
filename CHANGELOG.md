@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.176] - 2026-02-12
+### Changed
+- UI: refresco determinista del estilo (repolish del árbol) en arranque, cambio de modo/tema y post-carga de proyecto.
+- UI: auto-tag de campos editables (`userField`) y tablas (`ui_role`) aplicado también a widgets recreados tras refresh.
+### Fixed
+- Sidebar/estilos: evita estado “se arregla recién al navegar”.
+
+## [1.4.0-alpha.175] - 2026-02-12
+### Fixed
+- Instalaciones: Ubicaciones queda accesible incluso con muchos gabinetes (pantalla con scroll + altura acotada de tabla).
+
 ## [1.4.0-alpha.174] - 2026-02-12
 ### Added
 - `docs/UX_MANUAL_CHECKLIST.md` con guía de QA manual para apertura, navegación, refresco y validación de Instalaciones.
