@@ -59,12 +59,34 @@ def build_refresh_actions(*, app) -> Dict[Refresh, Callable[[], None]]:
         scr = getattr(app, "location_screen", None)
         if scr is None:
             return
-        if hasattr(scr, "actualizar_combobox_salas"):
-            scr.actualizar_combobox_salas()
-        if hasattr(scr, "actualizar_tablas"):
-            scr.actualizar_tablas()
-        elif hasattr(scr, "load_data"):
-            scr.load_data()
+        reload_fn = getattr(scr, "reload_from_project", None)
+        if callable(reload_fn):
+            try:
+                reload_fn()
+                return
+            except Exception:
+                log.debug("refresh_instalaciones.reload_from_project failed (best-effort).", exc_info=True)
+
+        refresh_fn = getattr(scr, "refresh_from_model", None)
+        if callable(refresh_fn):
+            try:
+                try:
+                    refresh_fn(reason="orchestrator", force=True)
+                except TypeError:
+                    refresh_fn()
+                return
+            except Exception:
+                log.debug("refresh_instalaciones.refresh_from_model failed (best-effort).", exc_info=True)
+
+        try:
+            if hasattr(scr, "actualizar_combobox_salas"):
+                scr.actualizar_combobox_salas()
+            if hasattr(scr, "actualizar_tablas"):
+                scr.actualizar_tablas()
+            elif hasattr(scr, "load_data"):
+                scr.load_data()
+        except Exception:
+            log.debug("refresh_instalaciones legacy fallback failed (best-effort).", exc_info=True)
 
     def refresh_cabinet():
         scr = getattr(app, "cabinet_screen", None)
@@ -92,10 +114,32 @@ def build_refresh_actions(*, app) -> Dict[Refresh, Callable[[], None]]:
         scr = getattr(app, "bank_screen", None)
         if scr is None:
             return
-        if hasattr(scr, "reload_from_project"):
-            scr.reload_from_project()
-        elif hasattr(scr, "reload_data"):
-            scr.reload_data()
+        refresh_fn = getattr(scr, "refresh_from_model", None)
+        if callable(refresh_fn):
+            try:
+                try:
+                    refresh_fn(reason="orchestrator", force=True)
+                except TypeError:
+                    refresh_fn()
+                return
+            except Exception:
+                log.debug("refresh_bank_charger.refresh_from_model failed (best-effort).", exc_info=True)
+
+        reload_fn = getattr(scr, "reload_from_project", None)
+        if callable(reload_fn):
+            try:
+                reload_fn()
+                return
+            except Exception:
+                log.debug("refresh_bank_charger.reload_from_project failed (best-effort).", exc_info=True)
+
+        try:
+            if hasattr(scr, "reload_data"):
+                scr.reload_data()
+            elif hasattr(scr, "load_data"):
+                scr.load_data()
+        except Exception:
+            log.debug("refresh_bank_charger legacy fallback failed (best-effort).", exc_info=True)
 
     def refresh_designer():
         scr = getattr(app, "ssaa_designer_screen", None)

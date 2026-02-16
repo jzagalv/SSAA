@@ -49,8 +49,10 @@ class DataModel:
     """
     def __init__(self):
         # Event bus (NO PyQt dependency). UI/controller can subscribe.
-        # Events: 'section_changed', 'project_loaded', 'project_saved'.
+        # Events: 'section_changed', 'project_loaded', 'project_saved', 'dirty_changed'.
         self._listeners = {}
+        self._dirty = False
+        self.revision = 0
         self._ui_refreshing = False  # evita marcar dirty durante refrescos UI
         self._is_loading = False     # evita side-effects durante load
         self.clear()
@@ -63,6 +65,7 @@ class DataModel:
           - section_changed(section: str)
           - project_loaded(file_path: str)
           - project_saved(file_path: str)
+          - dirty_changed(is_dirty: bool)
         """
         if not event or not callable(callback):
             return
@@ -130,6 +133,9 @@ class DataModel:
     def notify_project_saved(self, file_path: str):
         self._emit('project_saved', file_path or '')
 
+    def notify_dirty_changed(self, is_dirty: bool):
+        self._emit('dirty_changed', bool(is_dirty))
+
     def invalidate_feeding_validation(self):
         """Notify subscribers that feeding validations should be recomputed."""
         self._emit('feeding_validation_invalidated')
@@ -160,7 +166,7 @@ class DataModel:
         }
 
         # cambios pendientes
-        self.dirty = False
+        self._dirty = False
 
         # secciones
         self.proyecto = {
@@ -224,12 +230,38 @@ class DataModel:
             filename = base
         return bool(folder.strip() and filename.strip())
 
+    @property
+    def dirty(self) -> bool:
+        return bool(getattr(self, "_dirty", False))
+
+    @dirty.setter
+    def dirty(self, v: bool):
+        self._dirty = bool(v)
+
     def mark_dirty(self, v: bool = True):
         # Durante refrescos automáticos de UI (reload/recalc),
         # evitamos marcar el proyecto como modificado si el usuario no tocó nada.
         if v and getattr(self, '_ui_refreshing', False):
             return
-        self.dirty = bool(v)
+        prev = bool(getattr(self, "dirty", False))
+        new = bool(v)
+        self.dirty = new
+        if prev != new:
+            if new:
+                self.bump_revision()
+            try:
+                self._emit("dirty_changed", new)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
+
+    def bump_revision(self) -> None:
+        if bool(getattr(self, "_ui_refreshing", False)):
+            return
+        try:
+            self.revision = int(getattr(self, "revision", 0)) + 1
+        except Exception:
+            self.revision = 1
 
     def set_cc_results(self, results: dict, *, notify: bool = False) -> None:
         """Set derived CC results without emitting InputChanged."""
@@ -943,6 +975,14 @@ class DataModel:
     def from_dict(self, data: dict, file_path: str = ""):
         # Wrapper: deserialización real vive en storage.project_serialization
         _apply_project_dict(self, data, file_path=file_path)
+        try:
+            prev = bool(getattr(self, "_ui_refreshing", False))
+            self._ui_refreshing = False
+            self.bump_revision()
+            self._ui_refreshing = prev
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
     # ----------------- I/O -----------------
     # ----------------- I/O -----------------
@@ -962,4 +1002,5 @@ class DataModel:
         from infra.perf import span as perf_span
         from storage.project_io import load_project
         with perf_span(f"load_project {file_path}", threshold_ms=50.0):
-            return load_project(self, file_path=file_path)
+            ok = load_project(self, file_path=file_path)
+        return ok

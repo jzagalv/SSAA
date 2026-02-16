@@ -216,6 +216,7 @@ QComboBox:enabled {
 /* Overrides explícitos desde código */
 QLineEdit[userField="true"],
 QComboBox[userField="true"],
+QAbstractSpinBox[userField="true"],
 QDoubleSpinBox[userField="true"],
 QSpinBox[userField="true"] {
     background: {{INPUT_EDIT_BG}}; /* amarillo muy tenue */
@@ -686,6 +687,7 @@ QWidget[glass="true"] QComboBox:enabled {
 
 QWidget[glass="true"] QLineEdit[userField="true"],
 QWidget[glass="true"] QComboBox[userField="true"],
+QWidget[glass="true"] QAbstractSpinBox[userField="true"],
 QWidget[glass="true"] QDoubleSpinBox[userField="true"],
 QWidget[glass="true"] QSpinBox[userField="true"],
 QWidget[glass="true"] QTextEdit[userField="true"] {
@@ -695,8 +697,22 @@ QWidget[glass="true"] QTextEdit[userField="true"] {
 
 QWidget[glass="true"] QLineEdit[userField="true"]:focus,
 QWidget[glass="true"] QComboBox[userField="true"]:focus,
+QWidget[glass="true"] QAbstractSpinBox[userField="true"]:focus,
 QWidget[glass="true"] QDoubleSpinBox[userField="true"]:focus,
 QWidget[glass="true"] QSpinBox[userField="true"]:focus,
 QWidget[glass="true"] QTextEdit[userField="true"]:focus {
     border: 1px solid rgba(0, 160, 90, 200);
+}
+
+/* Validación visual: no cambia el fondo editable, solo borde/tooltip */
+QLineEdit[invalid="true"],
+QComboBox[invalid="true"],
+QAbstractSpinBox[invalid="true"] {
+    border: 1px solid {{DANGER_BG}};
+}
+
+QLineEdit[invalid="true"]:focus,
+QComboBox[invalid="true"]:focus,
+QAbstractSpinBox[invalid="true"]:focus {
+    border: 1px solid {{DANGER_BG_HOVER}};
 }

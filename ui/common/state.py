@@ -98,3 +98,56 @@ def set_nav_mode(mode: str) -> None:
         _settings().setValue("ui/nav_mode", m if m in ("classic", "modern") else "classic")
     except Exception:
         log.debug("set_nav_mode failed", exc_info=True)
+
+
+def get_int(key: str, default: int = 0) -> int:
+    try:
+        val = _settings().value(key, default)
+        return int(val)
+    except Exception:
+        log.debug("get_int failed (%s)", key, exc_info=True)
+        return int(default)
+
+
+def set_int(key: str, value: int) -> None:
+    try:
+        _settings().setValue(key, int(value))
+    except Exception:
+        log.debug("set_int failed (%s)", key, exc_info=True)
+
+
+def get_str(key: str, default: str = "") -> str:
+    try:
+        val = _settings().value(key, default)
+        return str(val or default)
+    except Exception:
+        log.debug("get_str failed (%s)", key, exc_info=True)
+        return str(default)
+
+
+def set_str(key: str, value: str) -> None:
+    try:
+        _settings().setValue(key, str(value or ""))
+    except Exception:
+        log.debug("set_str failed (%s)", key, exc_info=True)
+
+
+def get_str_list(key: str) -> list[str]:
+    try:
+        val = _settings().value(key)
+        if val is None:
+            return []
+        if isinstance(val, (list, tuple)):
+            return [str(v) for v in val if str(v).strip()]
+        s = str(val).strip()
+        return [s] if s else []
+    except Exception:
+        log.debug("get_str_list failed (%s)", key, exc_info=True)
+        return []
+
+
+def set_str_list(key: str, values: list[str]) -> None:
+    try:
+        _settings().setValue(key, [str(v) for v in (values or [])])
+    except Exception:
+        log.debug("set_str_list failed (%s)", key, exc_info=True)

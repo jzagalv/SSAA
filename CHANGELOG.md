@@ -3,6 +3,198 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.202] - 2026-02-16
+### Added
+- Tests de contrato de refresh/recalc: cobertura de camino canónico para Instalaciones y Banco y Cargador, más propagación desde cambios de Proyecto.
+- `DirtyTracker` centralizado para estado de cambios pendientes con soporte de suspensión durante carga/refresh.
+### Fixed
+- Advertencia de cambios sin guardar unificada al abrir otro proyecto o cerrar la app (Guardar / No guardar / Cancelar) sin duplicar lógica.
+- Reducción de falsos positivos de dirty durante carga y refresco inicial mediante suspensión temporal del tracker.
+
+## [1.4.0-alpha.201] - 2026-02-15
+### Fixed
+- Banco y cargador (Datos y comprobación): ahora refresca y recalcula automáticamente al abrir proyecto, sin intervención manual.
+- Banco y cargador: al cambiar parámetros base del Proyecto (ej. tensión nominal del sistema), el recálculo se propaga automáticamente vía orquestador.
+- Orquestación de refresh: `Refresh.BANK_CHARGER` prioriza el camino canónico `refresh_from_model(..., force=True)` y mantiene fallbacks legacy best-effort.
+
+## [1.4.0-alpha.200] - 2026-02-14
+### Fixed
+- Instalaciones: el refresh de sección (orquestador) usa el camino canónico (`reload_from_project` / `refresh_from_model`) y vuelve a mostrar ubicaciones/gabinetes guardados al abrir proyectos (ej. `El Guindal.ssaa`).
+
+## [1.4.0-alpha.199] - 2026-02-14
+### Fixed
+- Instalaciones: la pantalla vuelve a repintar correctamente al abrir un proyecto (`reload_from_project` robusto con actualización de tablas/combos).
+- Consumos C.C. (Permanentes): los totales inferiores se recalculan desde el modelo actual (sin depender de cachés stale en `cc_results`).
+- Consumos C.C. (Momentáneos): el resumen por escenario recalcula P/I desde el modelo y aplica correctamente inclusión de permanentes por escenario/target.
+
+## [1.4.0-alpha.198] - 2026-02-13
+### Fixed
+- Apertura de proyecto: la UI ya no queda congelada por snapshot incorrecto del UI freeze al deshabilitar padre+hijos (tabs quedaban deshabilitados).
+
+## [1.4.0-alpha.197] - 2026-02-13
+### Fixed
+- Al abrir un proyecto (`.ssaa`) ya no queda la UI congelada por no ejecutarse el finalize del `UI freeze` (firma distinta en `refresh_finished`).
+- Se fuerza `update/repaint` del `QTabWidget`/`tabBar` al finalizar la carga para asegurar redibujado completo.
+
+## [1.4.0-alpha.196] - 2026-02-13
+### Fixed
+- Al abrir un proyecto (`.ssaa`) ya no se pierde el contenido de las pantallas (tabs en blanco) por `UI freeze`/refresh.
+- Finalización de apertura robusta (enganchada a `RefreshCoordinator` + fallback) y forzado de `update/repaint` del `QTabWidget`.
+
+## [1.4.0-alpha.195] - 2026-02-13
+### Added
+- `RefreshCoordinator`: batching/coalesce de refresh global y refresh liviano por pantalla activa.
+- `DataModel.revision`: token de cambio del proyecto para evitar refresh pesado cuando no hubo cambios.
+### Changed
+- Tab-change: ahora usa refresh `active-only` y solo refresca pesado cuando cambia `revision`.
+- `ScreenBase`: API estándar `refresh_from_model(reason, force)` y `on_view_activated(reason)` para pantallas.
+### Fixed
+- Flujo de refresh/recalc unificado: menos parpadeo y menos side-effects al navegar pestañas.
+- Carga de proyecto: se evita doble incremento de `revision` durante `load_from_file`.
+
+## [1.4.0-alpha.194] - 2026-02-13
+### Added
+- Estilos `invalid`/`userField` extendidos a `QAbstractSpinBox` para validación y señal visual editable consistente.
+### Changed
+- `edit_bindings`: consolidación de `bind_spinbox` y `bind_checkbox` (user-only + undo por commit, sin side-effects por seteo programático).
+- Bank/Charger: verificación y normalización de controles editables en `bank_charger_screen` para mantener patrón unificado sin conexiones peligrosas de spin/checkbox.
+### Fixed
+- Eliminación de eventos/dirty falsos en controles numéricos al refrescar (guardas `ignore_if`/`hasFocus()` en pantallas aplicables).
+
+## [1.4.0-alpha.193] - 2026-02-13
+### Added
+- Estilos `invalid`/`userField` extendidos explícitamente a `QAbstractSpinBox`.
+- `edit_bindings`: helper `set_invalid_spin` para validación visual consistente en spinboxes.
+### Changed
+- Load Tables: checkboxes globales de balance migrados a bindings unificados (`bind_checkbox`) con undo/redo.
+- FileScreen: campos carpeta/nombre usan señal user-only para evitar side-effects por `setText` programático.
+- Cabinet: checkbox por fila (`usar_va`) migrado a señal user-only (`clicked`).
+### Fixed
+- Eliminación de refrescos/dirty falsos en spinboxes por seteo programático (guardia `hasFocus()` en celdas de Load Tables).
+
+## [1.4.0-alpha.192] - 2026-02-13
+### Fixed
+- Consumos C.C.: `invalidate_calculated_cc` ahora invalida también `proyecto["cc_results"]` para evitar totales pegados en 0 por caché stale.
+### Added
+- `edit_bindings`: `bind_checkbox` + `bind_spinbox` (live apply + undo en `editingFinished`).
+### Changed
+- Consumos C.C.: controles globales (`% global`, `usar % global`, `escenarios`) migrados a bindings unificados con undo/redo.
+
+## [1.4.0-alpha.191] - 2026-02-13
+### Added
+- Helper único `edit_bindings` para `QLineEdit`/`QComboBox` (commit usuario, undo opcional, validación touched y `userField`).
+### Changed
+- Proyecto: inputs migrados al helper común (misma UX, menos duplicación).
+- Bank/Charger: modos Vpc/celdas usan binding user-only y soportan undo/redo.
+- Load Tables/Cabinet: combos en tablas usan señal user-only para evitar refresh/dirty falsos por seteo programático.
+- DB dialogs (Componentes/Materiales): campos de nombre usan `textEdited` para evitar dirty falso al cargar selección.
+
+## [1.4.0-alpha.190] - 2026-02-13
+### Added
+- Helper único de bindings editables (`QLineEdit`/`QComboBox`): commit usuario, undo/redo, validación visual y `userField`.
+### Changed
+- Proyecto: inputs migrados al helper común (menos duplicación, misma UX).
+- Bank/Charger: modos Vpc/celdas usan binding solo-usuario y soportan undo/redo.
+- Load Tables: combos de selección usan señal de usuario (evita refrescos por seteo programático).
+
+## [1.4.0-alpha.189] - 2026-02-13
+### Added
+- Store único de proyectos recientes (menú Archivo + FileScreen) y última carpeta abrir/guardar.
+- Guardia estándar al navegar/cerrar para pantallas con cambios internos (ej. librería de consumos).
+- Binder de estado UI para persistir/restaurar headers/splitters/tabs sin depender de closeEvent.
+### Fixed
+- Persistencia UI en tabs (gabinetes/load tables): ya no depende de `closeEvent` (se guarda/restaura vía binder).
+- `commit_pending_edits` ahora detecta pantallas dinámicamente (sin hardcode).
+### Changed
+- FileScreen usa el mismo backend de “Recientes” que el menú principal.
+- Load Tables: ahora también persiste headers por workspace cuando existen.
+
+## [1.4.0-alpha.188] - 2026-02-13
+### Added
+- Undo/Redo por pantalla con `QUndoStack` + `QUndoGroup` y límite configurable (`ui/undo_limit` en QSettings).
+- Validación visual por campo inválido (`invalid=true`) con tooltip explicativo en campos críticos.
+### Fixed
+- Gabinetes: `sync_from_table` ya no llama métodos inexistentes al cambiar marca/modelo (evita crash).
+### Changed
+- Proyecto: los `QLineEdit` aplican cambios por commit de usuario (editingFinished) con comandos undo/redo.
+- Consumos (gabinetes): Marca/Modelo en origen "Según Fabricante" aplican undo/redo de forma segura.
+
+## [1.4.0-alpha.187] - 2026-02-13
+### Fixed
+- Dirty: `ScreenBase` ahora marca cambios usando `DataModel.mark_dirty` (compatibilidad real).
+### Changed
+- Proyecto: `QLineEdit` ahora marca dirty con señales de usuario (evita falsos cambios al cargar).
+- Consumos (gabinetes): combos de Origen/Marca/Modelo marcan dirty solo por acciones del usuario (`activated`), no por seteo programático.
+
+## [1.4.0-alpha.186] - 2026-02-13
+### Added
+- DataModel: evento `dirty_changed` al cambiar el estado `dirty`.
+- Persistencia de última pestaña principal (QSettings) con restauración al iniciar.
+### Fixed
+- Carga/guardado: uso de `mark_dirty(False)` para mantener consistente el estado de cambios y evitar falsos `*`.
+### Changed
+- Título de ventana: muestra archivo actual y sufijo `*` cuando hay cambios sin guardar.
+
+## [1.4.0-alpha.185] - 2026-02-13
+### Added
+- Orquestación global post-refresh: restauración de estado UI por pantalla (splitters/subtabs/headers) best-effort.
+- Persistencia global al cerrar: guarda estado UI de todas las pantallas.
+### Changed
+- Navegación principal: persistencia suave del estado de la pestaña saliente al cambiar de pantalla (best-effort).
+
+## [1.4.0-alpha.184] - 2026-02-13
+### Added
+- Menú Archivo: “Abrir reciente” (lista dinámica + limpiar).
+- Archivo: recuerda última carpeta de Abrir/Guardar como (QSettings).
+### Changed
+- Guardar/Guardar como: feedback inmediato con progress corto y actualización de recientes.
+
+## [1.4.0-alpha.183] - 2026-02-13
+### Changed
+- Abrir proyecto: carga y refresh con congelamiento de UI (menos flicker) y cierre seguro del progress.
+- Abrir proyecto: mantiene pestaña actual y sidebar sincronizada al finalizar.
+### Added
+- Archivo: recuerda última carpeta usada al abrir proyecto (QSettings).
+
+## [1.4.0-alpha.182] - 2026-02-12
+### Added
+- Archivos del Proyecto: lista de recientes y acciones rápidas (copiar ruta/abrir carpeta).
+- Persistencia (QSettings) de carpeta y nombre de proyecto.
+### Fixed
+- File dialogs: filtros ahora usan PROJECT_EXT correctamente (f-string).
+
+## [1.4.0-alpha.181] - 2026-02-12
+### Changed
+- Proyecto: se muestra “% Utilización” en Sistema CC.
+- Proyecto: validadores numéricos usan locale del sistema (acepta coma decimal).
+- Proyecto: campos editables marcados como userField (resaltado en modo moderno).
+
+## [1.4.0-alpha.180] - 2026-02-12
+- Added: utilidades genéricas de captura (QTableWidget/QTableView) para exportar tablas completas.
+- Fixed: capturas ya no dejan la tabla “deformada” (restaura headers/scroll tras capturar).
+- Changed: capturas/export aplican repolish previo (best-effort) para respetar tema claro/oscuro y modo moderno.
+
+## [1.4.0-alpha.179] - 2026-02-12
+### Added
+- Banco y Cargador: persistencia de pestaña activa, splitters y headers (QSettings).
+### Changed
+- Banco y Cargador: autofit de tablas al entrar/cambiar de pestaña (mejor comportamiento en tabs ocultas).
+
+## [1.4.0-alpha.178] - 2026-02-12
+### Added
+- Consumos (gabinetes): splitter horizontal persistente (QSettings).
+- Consumos (gabinetes): persistencia de último gabinete seleccionado.
+### Changed
+- Consumos (gabinetes): autofit de columnas al seleccionar gabinete.
+- Consumos (gabinetes): combos en tabla marcados como `userField` para resaltar editables en modo moderno.
+
+## [1.4.0-alpha.177] - 2026-02-12
+### Changed
+- Consumos C.C.: las tablas QTableView ahora reciben `ui_role="table"` (estilo moderno consistente).
+- Consumos C.C.: autofit de columnas al cambiar pestaña interna (Permanentes/Momentáneos/Aleatorios).
+### Added
+- Consumos C.C.: persistencia de última sub-pestaña activa (QSettings).
+
 ## [1.4.0-alpha.176] - 2026-02-12
 ### Changed
 - UI: refresco determinista del estilo (repolish del árbol) en arranque, cambio de modo/tema y post-carga de proyecto.

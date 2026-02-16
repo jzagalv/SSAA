@@ -31,6 +31,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor
 from ui.theme import get_theme_token
 from ui.utils.table_utils import configure_table_autoresize, request_autofit
+from ui.utils.user_signals import connect_lineedit_user_live
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -163,7 +164,7 @@ class ComponentDatabaseScreen(QDialog):
 
         top.addWidget(QLabel("Nombre:"))
         self.txt_name = QLineEdit()
-        self.txt_name.textChanged.connect(self._on_name_changed)
+        connect_lineedit_user_live(self.txt_name, lambda _t: self._on_name_changed())
         top.addWidget(self.txt_name)
 
         # filtros
@@ -236,7 +237,7 @@ class ComponentDatabaseScreen(QDialog):
         self.btn_del.clicked.connect(self._delete_selected)
         self.btn_save.clicked.connect(self._save_to_current)
         self.btn_save_as.clicked.connect(self._save_as)
-        self.btn_close.clicked.connect(self.close)
+        self.btn_close.clicked.connect(self.reject)
 
         btns.addWidget(self.btn_add)
         btns.addWidget(self.btn_del)
@@ -251,10 +252,10 @@ class ComponentDatabaseScreen(QDialog):
         self.txt_name.setText(str(self.data.get("name", "Consumos")))
         self.txt_name.blockSignals(False)
 
-    def _on_name_changed(self, text: str):
+    def _on_name_changed(self, _text: str = ""):
         if self._loading:
             return
-        self.data["name"] = text
+        self.data["name"] = self.txt_name.text()
         self._dirty = True
 
     def _on_item_changed(self, _item: QTableWidgetItem):
@@ -264,26 +265,36 @@ class ComponentDatabaseScreen(QDialog):
         self._refresh_filter_options()
         self._apply_filters()
 
-    def closeEvent(self, event):
+    def can_deactivate(self, parent=None) -> bool:
         if not self._dirty:
-            event.accept()
-            return
-
+            return True
         resp = QMessageBox.question(
             self,
             "Cambios sin guardar",
             "Tienes cambios sin guardar en la librería de consumos.\n\n"
-            "¿Deseas guardar antes de cerrar?",
+            "¿Deseas guardar antes de continuar?",
             QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.Save,
         )
         if resp == QMessageBox.Save:
-            ok = self._save_to_current(show_message=False)
-            if ok:
-                event.accept()
-            else:
-                event.ignore()
-        elif resp == QMessageBox.Discard:
+            return bool(self._save_to_current(show_message=False))
+        if resp == QMessageBox.Discard:
+            lib_path = str(self.lib_path or "").strip()
+            if lib_path and os.path.exists(lib_path):
+                return bool(self._load_lib_path(lib_path))
+            self._dirty = False
+            return True
+        return False
+
+    def can_close(self, parent=None) -> bool:
+        return self.can_deactivate(parent)
+
+    def reject(self):
+        if self.can_close(self):
+            super().reject()
+
+    def closeEvent(self, event):
+        if self.can_close(self):
             event.accept()
         else:
             event.ignore()
@@ -298,11 +309,17 @@ class ComponentDatabaseScreen(QDialog):
         )
         if not path:
             return
+        self._load_lib_path(path)
+
+    def _load_lib_path(self, path: str) -> bool:
+        path = str(path or "").strip()
+        if not path:
+            return False
         try:
             data = self.data_model.load_library("consumos", path)
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
-            return
+            return False
 
         self.lib_path = path
         self.data = dict(data)
@@ -313,6 +330,7 @@ class ComponentDatabaseScreen(QDialog):
         self._populate_table()
         self._apply_all_rules()
         self._loading = False
+        return True
 
     def _save_as(self) -> bool:
         path, _ = QFileDialog.getSaveFileName(

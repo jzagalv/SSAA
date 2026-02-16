@@ -175,12 +175,7 @@ class CabinetController:
             if not id_item or id_item.data(Qt.UserRole) != comp_id:
                 continue
 
-            if key == "marca":
-                # si cambió marca, refrescar modelos
-                s.on_brand_changed(row)
-            elif key == "modelo":
-                s.on_model_changed(row)
-            elif key == "potencia_w":
+            if key == "potencia_w":
                 # recalcular modo potencia
                 chk = s._get_checkbox_at(row, COL_USAR_VA)
                 usar_va = bool(chk.isChecked()) if chk is not None else False

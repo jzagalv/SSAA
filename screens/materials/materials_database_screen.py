@@ -57,6 +57,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
 )
 from ui.utils.table_utils import configure_table_autoresize
+from ui.utils.user_signals import connect_lineedit_user_live
 
 from app.sections import Section
 
@@ -475,7 +476,7 @@ class MaterialsDatabaseScreen(QDialog):
         top.addWidget(self.lbl_path, 1)
         top.addWidget(QLabel("Nombre:"))
         self.ed_name = QLineEdit()
-        self.ed_name.textChanged.connect(self._on_name)
+        connect_lineedit_user_live(self.ed_name, lambda _t: self._on_name())
         top.addWidget(self.ed_name)
 
         self.tabs = QTabWidget()

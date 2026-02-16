@@ -27,6 +27,8 @@ from app.sections import Section
 from core.keys import ProjectKeys as K
 from ui.common.state import save_header_state, restore_header_state
 from ui.utils.table_utils import configure_table_autoresize
+from ui.utils.user_signals import connect_combobox_user_changed
+from ui.utils.edit_bindings import bind_checkbox
 
 
 from services.load_tables_engine import (
@@ -89,6 +91,12 @@ class LoadTablesScreen(ScreenBase):
 
         self._build_tab_ca()
         self._build_tab_cc()
+        st = self.init_ui_state()
+        if st is not None:
+            st.bind_tab_index(self.tabs, "load_tables/ui.last_tab")
+            st.bind_header(self.tbl_cc_b1.horizontalHeader(), "load_tables.tbl_cc_b1.header")
+            st.bind_header(self.tbl_cc_b2.horizontalHeader(), "load_tables.tbl_cc_b2.header")
+        self._restore_ui_state()
 
         # Startup-safe: never compute/refresh tables during __init__.
         # The SectionOrchestrator will call load_from_model() / reload_from_project()
@@ -131,6 +139,7 @@ class LoadTablesScreen(ScreenBase):
         # refresca combos + tablas
         self._refresh_ca()
         self._refresh_cc()
+        self._restore_ui_state()
 
     # ------------------------- user fields store -------------------------
 
@@ -199,7 +208,13 @@ class LoadTablesScreen(ScreenBase):
         sel = QHBoxLayout()
         self.chk_balance_ca_es = QCheckBox("Balance automatico por fases (usa VA)")
         self.chk_balance_ca_es.setChecked(True)
-        self.chk_balance_ca_es.toggled.connect(lambda v: self._on_balance_toggle("CA_ES", v))
+        bind_checkbox(
+            self.chk_balance_ca_es,
+            apply_fn=lambda v: self._on_balance_toggle("CA_ES", bool(v)),
+            undo_stack=self.undo_stack,
+            title="Load Tables: balance CA_ES",
+            ignore_if=lambda: bool(getattr(self.data_model, "_ui_refreshing", False)),
+        )
         sel.addWidget(self.chk_balance_ca_es)
         sel.addStretch()
         gl.addLayout(sel)
@@ -219,7 +234,13 @@ class LoadTablesScreen(ScreenBase):
         sel2 = QHBoxLayout()
         self.chk_balance_ca_no = QCheckBox("Balance automatico por fases (usa VA)")
         self.chk_balance_ca_no.setChecked(True)
-        self.chk_balance_ca_no.toggled.connect(lambda v: self._on_balance_toggle("CA_NOES", v))
+        bind_checkbox(
+            self.chk_balance_ca_no,
+            apply_fn=lambda v: self._on_balance_toggle("CA_NOES", bool(v)),
+            undo_stack=self.undo_stack,
+            title="Load Tables: balance CA_NOES",
+            ignore_if=lambda: bool(getattr(self.data_model, "_ui_refreshing", False)),
+        )
         sel2.addWidget(self.chk_balance_ca_no)
         sel2.addStretch()
         gl2.addLayout(sel2)
@@ -249,6 +270,7 @@ class LoadTablesScreen(ScreenBase):
         n_es = self._refresh_ca_workspace("CA_ES", self.ca_es_layout, self.grp_ca_es, self.chk_balance_ca_es)
         n_no = self._refresh_ca_workspace("CA_NOES", self.ca_no_layout, self.grp_ca_no, self.chk_balance_ca_no)
         self.lbl_ca_empty.setVisible((n_es + n_no) == 0)
+        self._restore_ui_state()
 
     def _refresh_ca_workspace(self, workspace: str, layout: QVBoxLayout, group: QGroupBox, chk_balance: QCheckBox) -> int:
         if hasattr(chk_balance, "blockSignals"):
@@ -267,7 +289,9 @@ class LoadTablesScreen(ScreenBase):
             gl = QVBoxLayout(grp)
             table = QTableWidget()
             _set_header_style(table)
-            restore_header_state(table.horizontalHeader(), f"load_tables.tbl_{workspace.lower()}.header")
+            st = self.init_ui_state()
+            if st is not None:
+                st.bind_header(table.horizontalHeader(), f"load_tables.tbl_{workspace.lower()}.header")
             self._render_ac_table(table, rows, workspace)
             gl.addWidget(table, 1)
             layout.addWidget(grp)
@@ -381,13 +405,12 @@ class LoadTablesScreen(ScreenBase):
         sel1 = QHBoxLayout()
         sel1.addWidget(QLabel("Tablero:"))
         self.cmb_cc_b1 = QComboBox()
-        self.cmb_cc_b1.currentIndexChanged.connect(self._refresh_cc_b1_table)
+        connect_combobox_user_changed(self.cmb_cc_b1, lambda _t: self._refresh_cc_b1_table())
         sel1.addWidget(self.cmb_cc_b1, 1)
         gl1.addLayout(sel1)
 
         self.tbl_cc_b1 = QTableWidget()
         _set_header_style(self.tbl_cc_b1)
-        restore_header_state(self.tbl_cc_b1.horizontalHeader(), "load_tables.tbl_cc_b1.header")
         gl1.addWidget(self.tbl_cc_b1, 1)
 
         # Barra 2
@@ -396,13 +419,12 @@ class LoadTablesScreen(ScreenBase):
         sel2 = QHBoxLayout()
         sel2.addWidget(QLabel("Tablero:"))
         self.cmb_cc_b2 = QComboBox()
-        self.cmb_cc_b2.currentIndexChanged.connect(self._refresh_cc_b2_table)
+        connect_combobox_user_changed(self.cmb_cc_b2, lambda _t: self._refresh_cc_b2_table())
         sel2.addWidget(self.cmb_cc_b2, 1)
         gl2.addLayout(sel2)
 
         self.tbl_cc_b2 = QTableWidget()
         _set_header_style(self.tbl_cc_b2)
-        restore_header_state(self.tbl_cc_b2.horizontalHeader(), "load_tables.tbl_cc_b2.header")
         gl2.addWidget(self.tbl_cc_b2, 1)
 
         lay.addWidget(self.grp_cc_b1, 1)
@@ -416,6 +438,7 @@ class LoadTablesScreen(ScreenBase):
 
         self._refresh_cc_b1_table()
         self._refresh_cc_b2_table()
+        self._restore_ui_state()
 
     def _refresh_cc_b1_table(self):
         node_id = self._combo_node_id(self.cmb_cc_b1)
@@ -524,7 +547,10 @@ class LoadTablesScreen(ScreenBase):
             )
         else:
             cb.setStyleSheet("QComboBox { background: #FFF9C4; }")
-        cb.currentTextChanged.connect(lambda _t: self._on_combo_changed(table, row, workspace, node_id, key, cb))
+        connect_combobox_user_changed(
+            cb,
+            lambda _t, cb=cb: self._on_combo_changed(table, row, workspace, node_id, key, cb),
+        )
         table.setCellWidget(row, col, cb)
 
     def _set_mcb_no_widget(self, table: QTableWidget, row: int, col: int, workspace: str, node_id: str, value: str):
@@ -545,7 +571,9 @@ class LoadTablesScreen(ScreenBase):
             sp.setValue(float(value))
         except Exception:
             sp.setValue(float(default))
-        sp.valueChanged.connect(lambda v: self._on_spin_changed(workspace, node_id, key, float(v)))
+        sp.valueChanged.connect(
+            lambda v, sp=sp: self._on_spin_changed(workspace, node_id, key, float(v)) if sp.hasFocus() else None
+        )
         table.setCellWidget(row, col, sp)
 
     def _set_int_widget(self, table: QTableWidget, row: int, col: int, workspace: str, node_id: str,
@@ -557,7 +585,9 @@ class LoadTablesScreen(ScreenBase):
             sp.setValue(int(value))
         except Exception:
             sp.setValue(int(default))
-        sp.valueChanged.connect(lambda v: self._on_spin_changed(workspace, node_id, key, float(v)))
+        sp.valueChanged.connect(
+            lambda v, sp=sp: self._on_spin_changed(workspace, node_id, key, float(v)) if sp.hasFocus() else None
+        )
         table.setCellWidget(row, col, sp)
 
     def _on_combo_changed(self, _table: QTableWidget, _row: int, workspace: str, node_id: str, key: str, cb: QComboBox):
@@ -625,17 +655,24 @@ class LoadTablesScreen(ScreenBase):
 
 
 
-    def closeEvent(self, event):
-        """Persist header state (best-effort)."""
+    def _restore_ui_state(self):
+        super()._restore_ui_state()
         try:
-            if hasattr(self, "tbl_cc_b1") and self.tbl_cc_b1 is not None:
-                save_header_state(self.tbl_cc_b1.horizontalHeader(), "load_tables.tbl_cc_b1.header")
-            if hasattr(self, "tbl_cc_b2") and self.tbl_cc_b2 is not None:
-                save_header_state(self.tbl_cc_b2.horizontalHeader(), "load_tables.tbl_cc_b2.header")
+            for table in self.findChildren(QTableWidget):
+                workspace = str(table.property("_lt_workspace") or "").strip().lower()
+                if not workspace:
+                    continue
+                restore_header_state(table.horizontalHeader(), f"load_tables.tbl_{workspace}.header")
         except Exception:
-            import logging
-            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+            pass
+
+    def _persist_ui_state(self):
+        super()._persist_ui_state()
         try:
-            super().closeEvent(event)
+            for table in self.findChildren(QTableWidget):
+                workspace = str(table.property("_lt_workspace") or "").strip().lower()
+                if not workspace:
+                    continue
+                save_header_state(table.horizontalHeader(), f"load_tables.tbl_{workspace}.header")
         except Exception:
-            event.accept()
+            pass

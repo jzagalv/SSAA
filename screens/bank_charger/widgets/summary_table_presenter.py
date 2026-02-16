@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QComboBox, QTableWidgetItem
+from ui.utils.user_signals import connect_combobox_user_changed
 
 
 class SummaryTablePresenter:
@@ -108,7 +109,10 @@ class SummaryTablePresenter:
                 if selected and selected in tags:
                     cb.setCurrentText(selected)
 
-                cb.currentTextChanged.connect(lambda val, k=key: scr._on_summary_tag_changed(k, val))
+                connect_combobox_user_changed(
+                    cb,
+                    lambda val, k=key: scr._on_summary_tag_changed(k, val),
+                )
                 scr.tbl_summary.setCellWidget(r, 1, cb)
 
                 # Col 2-3: valores

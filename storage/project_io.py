@@ -79,7 +79,10 @@ def save_project(dm, file_path: str = "") -> bool:
         )
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(payload)
-        dm.dirty = False
+        if hasattr(dm, "mark_dirty"):
+            dm.mark_dirty(False)
+        else:
+            dm.dirty = False
         if hasattr(dm, "notify_project_saved"):
             dm.notify_project_saved(file_path)
         return True

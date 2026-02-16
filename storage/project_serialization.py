@@ -222,4 +222,7 @@ def apply_project_dict(model, data: dict, file_path: str = "") -> None:
     if hasattr(model, "_sync_aliases_out"):
         model._sync_aliases_out()
 
-    model.dirty = False
+    if hasattr(model, "mark_dirty"):
+        model.mark_dirty(False)
+    else:
+        model.dirty = False

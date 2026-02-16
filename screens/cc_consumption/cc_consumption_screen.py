@@ -38,10 +38,11 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QGuiApplication
 from ui.utils.table_utils import configure_table_autoresize, request_autofit
+from ui.utils.edit_bindings import bind_checkbox, bind_spinbox
 from datetime import datetime
 
 
-from ui.common.state import save_header_state, restore_header_state
+from ui.common.state import save_header_state, restore_header_state, get_int, set_int
 from screens.base import ScreenBase
 from app.sections import Section
 
@@ -56,6 +57,8 @@ from domain.cc_consumption import (
     get_num_escenarios,
     iter_cc_items,
     split_by_tipo,
+    compute_cc_permanentes_totals,
+    compute_cc_aleatorios_totals,
 )
 
 import logging
@@ -70,6 +73,8 @@ from screens.cc_consumption.widgets import (
     MOMR_COL_ESC, MOMR_COL_DESC, MOMR_COL_PT, MOMR_COL_IT,
     ALE_COL_SEL, ALE_COL_GAB, ALE_COL_TAG, ALE_COL_DESC, ALE_COL_PEFF, ALE_COL_I,
 )
+from screens.cc_consumption.models.momentaneos_scenarios_table_model import ScenarioRow
+from screens.cc_consumption.utils import fmt, resolve_scenario_desc
 
 from .tabs.permanentes_tab import PermanentesTabMixin
 from .tabs.momentaneos_tab import MomentaneosTabMixin
@@ -160,6 +165,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
                     continue
                 restore_header_state(table.horizontalHeader(), key)
                 restored = True
+            idx = get_int("cc/ui.active_tab", 0)
+            if hasattr(self, "tabs") and 0 <= idx < self.tabs.count():
+                self.tabs.setCurrentIndex(idx)
         except Exception:
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
@@ -177,6 +185,8 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             for table, key in mapping:
                 if table is not None:
                     save_header_state(table.horizontalHeader(), key)
+            if hasattr(self, "tabs"):
+                set_int("cc/ui.active_tab", self.tabs.currentIndex())
         except Exception:
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
@@ -247,6 +257,18 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         ):
             if table is not None:
                 request_autofit(table)
+
+    def _on_inner_tab_changed(self, index: int) -> None:
+        try:
+            if index == 0:
+                request_autofit(self.tbl_perm)
+            elif index == 1:
+                request_autofit(self.tbl_mom)
+                request_autofit(self.tbl_mom_resumen)
+            elif index == 2:
+                request_autofit(self.tbl_ale)
+        except Exception:
+            log.debug("CC inner tab autofit failed (best-effort).", exc_info=True)
 
     # =========================================================
     # UI
@@ -323,6 +345,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_perm.addLayout(top_perm)
         # Tabla de permanentes
         self.tbl_perm = QTableView(self)
+        self.tbl_perm.setProperty("ui_role", "table")
         self.tbl_perm._autofit_extra_px = 20
         self.tbl_perm._autofit_max_px = 360
         self.tbl_perm._autofit_column_caps = {0: 360, 1: 240, 2: 560}
@@ -378,6 +401,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         v_mom.addLayout(top_mom)
         # Tabla de cargas momentÃ¡neas
         self.tbl_mom = QTableView(self)
+        self.tbl_mom.setProperty("ui_role", "table")
         self.tbl_mom._autofit_extra_px = 20
         self.tbl_mom._autofit_max_px = 360
         self.tbl_mom._autofit_column_caps = {0: 360, 1: 240, 2: 560, 6: 140}
@@ -390,6 +414,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # Tabla de resumen por escenario (con descripcion)
         self.tbl_mom_resumen = QTableView(self)
+        self.tbl_mom_resumen.setProperty("ui_role", "table")
         self.tbl_mom_resumen._autofit_extra_px = 20
         self.tbl_mom_resumen._autofit_max_px = 320
         self.tbl_mom_resumen._autofit_column_caps = {0: 110, 1: 90, 2: 520, 3: 180, 4: 180}
@@ -419,6 +444,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         g_ale = self.grp_ale
         v_ale = QVBoxLayout(g_ale)
         self.tbl_ale = QTableView(self)
+        self.tbl_ale.setProperty("ui_role", "table")
         self.tbl_ale._autofit_extra_px = 20
         self.tbl_ale._autofit_max_px = 360
         self.tbl_ale._autofit_column_caps = {1: 360, 2: 240, 3: 560}
@@ -447,10 +473,69 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
 
         # ================== Conexiones ==================
         # (auto-refresh) ya no hay botÃ³n manual.
-        self.spin_pct_global.valueChanged.connect(self._on_global_pct_changed)
-        self.chk_usar_global.toggled.connect(self._on_chk_usar_global_toggled)
+        def _ignore_global_inputs() -> bool:
+            return bool(
+                getattr(self, "_building", False)
+                or getattr(self, "_loading", False)
+                or getattr(self.data_model, "_ui_refreshing", False)
+            )
 
-        self.spin_escenarios.valueChanged.connect(self._rebuild_momentary_scenarios)
+        def _set_spin_pct(value) -> None:
+            blocked = self.spin_pct_global.blockSignals(True)
+            try:
+                self.spin_pct_global.setValue(float(value))
+            finally:
+                self.spin_pct_global.blockSignals(blocked)
+
+        bind_spinbox(
+            self.spin_pct_global,
+            get_value=lambda: float(self.spin_pct_global.value()),
+            set_value=_set_spin_pct,
+            apply_fn=lambda value: self._on_global_pct_changed(float(value)),
+            undo_stack=self.undo_stack,
+            title="C.C.: % global",
+            ignore_if=_ignore_global_inputs,
+            live_apply=True,
+            epsilon=1e-9,
+        )
+
+        bind_checkbox(
+            self.chk_usar_global,
+            apply_fn=lambda value: self._on_chk_usar_global_toggled(bool(value)),
+            undo_stack=self.undo_stack,
+            title="C.C.: usar % global",
+            ignore_if=_ignore_global_inputs,
+        )
+
+        self.tabs.currentChanged.connect(self._on_inner_tab_changed)
+        def _set_spin_escenarios(value) -> None:
+            blocked = self.spin_escenarios.blockSignals(True)
+            try:
+                self.spin_escenarios.setValue(int(value))
+            finally:
+                self.spin_escenarios.blockSignals(blocked)
+
+        def _apply_num_escenarios(value) -> None:
+            target = int(value)
+            if int(self.spin_escenarios.value()) != target:
+                _set_spin_escenarios(target)
+            self._rebuild_momentary_scenarios()
+            try:
+                self._controller._emit_input_changed({"escenarios": target})
+            except Exception:
+                pass
+
+        bind_spinbox(
+            self.spin_escenarios,
+            get_value=lambda: int(self.spin_escenarios.value()),
+            set_value=_set_spin_escenarios,
+            apply_fn=_apply_num_escenarios,
+            undo_stack=self.undo_stack,
+            title="C.C.: número escenarios",
+            ignore_if=_ignore_global_inputs,
+            live_apply=True,
+            epsilon=0.0,
+        )
 
         self.btn_img_perm.clicked.connect(
             lambda: self._save_section_as_image(self.grp_perm, self.tbl_perm, "consumos_permanentes.png")
@@ -484,6 +569,184 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self._update_permanent_totals()
         self._update_momentary_summary_display()
         self._update_aleatory_totals()
+
+    def _effective_vmin_for_currents(self, proj: dict | None = None) -> float:
+        if not isinstance(proj, dict):
+            proj = getattr(self.data_model, "proyecto", {}) or {}
+
+        try:
+            vmin = float(getattr(self, "_vcc_for_currents", 0.0) or 0.0)
+        except Exception:
+            vmin = 0.0
+
+        if vmin <= 0.0:
+            try:
+                v_nom = float(str(proj.get("dc_nominal_voltage", 0.0)).replace(",", ".") or 0.0)
+            except Exception:
+                v_nom = 0.0
+            try:
+                min_pct = float(str(proj.get("min_voltaje_cc", 0.0)).replace(",", ".") or 0.0)
+            except Exception:
+                min_pct = 0.0
+            if v_nom > 0.0:
+                vmin = v_nom * (1.0 - (min_pct / 100.0))
+
+        if vmin <= 0.0:
+            try:
+                vmin = float(get_vcc_for_currents(proj) or 0.0)
+            except Exception:
+                vmin = 0.0
+
+        if vmin <= 0.0:
+            vmin = 1.0
+
+        self._vcc_for_currents = float(vmin)
+        return float(vmin)
+
+    def _update_permanent_totals(self):
+        if getattr(self, "_in_totals_refresh", False):
+            return
+        self._in_totals_refresh = True
+        try:
+            if getattr(self, "_loading", False):
+                return
+            try:
+                self.commit_pending_edits()
+            except Exception:
+                pass
+
+            proj = getattr(self.data_model, "proyecto", {}) or {}
+            gabinetes = get_model_gabinetes(self.data_model)
+            vmin = self._effective_vmin_for_currents(proj)
+
+            totals = compute_cc_permanentes_totals(proj, gabinetes, vmin) or {}
+            p_total = float(totals.get("p_total", 0.0) or 0.0)
+            p_perm = float(totals.get("p_perm", 0.0) or 0.0)
+            p_mom = float(totals.get("p_mom", max(0.0, p_total - p_perm)) or 0.0)
+            i_perm = float(totals.get("i_perm", p_perm / vmin) or 0.0)
+            i_mom = float(totals.get("i_mom", p_mom / vmin) or 0.0)
+
+            self.lbl_perm_total_p_total.setText(f"Total P total: {fmt(p_total)} [W]")
+            self.lbl_perm_total_p_perm.setText(f"Total P permanente: {fmt(p_perm)} [W]")
+            self.lbl_perm_total_i.setText(f"Total I permanente: {fmt(i_perm)} [A]")
+            self.lbl_perm_total_p_mom.setText(f"Total P momentánea: {fmt(p_mom)} [W]")
+            self.lbl_perm_total_i_fuera.setText(f"Total I momentánea: {fmt(i_mom)} [A]")
+        except Exception:
+            log.debug("Failed to refresh permanent totals (best-effort).", exc_info=True)
+        finally:
+            self._in_totals_refresh = False
+
+    def _update_aleatory_totals(self, *args, **kwargs):
+        _ = args, kwargs
+        if getattr(self, "_loading", False):
+            return
+        try:
+            self.commit_pending_edits()
+        except Exception:
+            pass
+        try:
+            proj = getattr(self.data_model, "proyecto", {}) or {}
+            gabinetes = get_model_gabinetes(self.data_model)
+            vmin = self._effective_vmin_for_currents(proj)
+            rnd = compute_cc_aleatorios_totals(gabinetes, vmin) or {}
+            p_sel = float(rnd.get("p_sel", rnd.get("p_total", 0.0)) or 0.0)
+            i_sel = float(rnd.get("i_sel", rnd.get("i_total", 0.0)) or 0.0)
+            self.lbl_ale_total_p.setText(f"Total P aleatoria seleccionada: {fmt(p_sel)} [W]")
+            self.lbl_ale_total_i.setText(f"Total I aleatoria seleccionada: {fmt(i_sel)} [A]")
+        except Exception:
+            log.debug("Failed to refresh aleatory totals (best-effort).", exc_info=True)
+
+    def _update_momentary_summary_display(self):
+        if getattr(self, "_loading", False):
+            return
+        try:
+            self._commit_table_edits()
+        except Exception:
+            pass
+
+        proj = getattr(self.data_model, "proyecto", {}) or {}
+        try:
+            n_esc = int(self.spin_escenarios.value() or 1)
+        except Exception:
+            n_esc = 1
+        if n_esc < 1:
+            n_esc = 1
+
+        try:
+            self._ensure_cc_escenarios(n_esc)
+        except Exception:
+            pass
+        try:
+            include_map = self._ensure_cc_mom_incl_perm(n_esc)
+        except Exception:
+            include_map = {str(i): False for i in range(1, n_esc + 1)}
+
+        gabinetes = get_model_gabinetes(self.data_model)
+        vmin = self._effective_vmin_for_currents(proj)
+
+        by_scn = {i: 0.0 for i in range(1, n_esc + 1)}
+        try:
+            all_items = iter_cc_items(proj, gabinetes)
+            _, momentaneos, _ = split_by_tipo(all_items)
+            for it in momentaneos:
+                if not bool(getattr(it, "mom_incluir", True)):
+                    continue
+                try:
+                    scn = int(getattr(it, "mom_escenario", 1) or 1)
+                except Exception:
+                    scn = 1
+                if scn < 1 or scn > n_esc:
+                    scn = 1
+                by_scn[scn] = float(by_scn.get(scn, 0.0)) + float(getattr(it, "p_eff", 0.0) or 0.0)
+        except Exception:
+            log.debug("Failed to aggregate momentary loads from model (best-effort).", exc_info=True)
+
+        p_mom_perm = 0.0
+        try:
+            perm_totals = compute_cc_permanentes_totals(proj, gabinetes, vmin) or {}
+            p_mom_perm = max(0.0, float(perm_totals.get("p_mom", 0.0) or 0.0))
+        except Exception:
+            p_mom_perm = 0.0
+
+        include_targets = [i for i in range(1, n_esc + 1) if bool(include_map.get(str(i), False))]
+        if not include_targets:
+            try:
+                target = int(self._controller.get_mom_perm_target_scenario() or 1)
+            except Exception:
+                target = 1
+            if target < 1 or target > n_esc:
+                target = 1
+            include_targets = [target]
+
+        if p_mom_perm > 0.0:
+            for scn in include_targets:
+                by_scn[scn] = float(by_scn.get(scn, 0.0)) + float(p_mom_perm)
+
+        self._ensure_mom_scenarios_model()
+        rows = []
+        for scn in range(1, n_esc + 1):
+            desc_db = ""
+            try:
+                desc_db = self._controller.get_scenario_desc(scn)
+            except Exception:
+                desc_db = ""
+            desc = resolve_scenario_desc(scn, "", desc_db)
+            p_total = float(by_scn.get(scn, 0.0) or 0.0)
+            i_total = float(p_total / vmin) if vmin > 0 else 0.0
+            rows.append(
+                ScenarioRow(
+                    n=int(scn),
+                    include_perm=bool(include_map.get(str(scn), False)),
+                    desc=desc,
+                    p_total=p_total,
+                    i_total=i_total,
+                )
+            )
+        try:
+            if getattr(self, "_mom_scenarios_model", None) is not None:
+                self._mom_scenarios_model.set_rows(rows)
+        except Exception:
+            log.debug("Failed to refresh momentary summary model (best-effort).", exc_info=True)
 
     def _on_cc_computed(self, event):
         try:
@@ -539,8 +802,9 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             proj = getattr(dm, "proyecto", None)
         if not isinstance(proj, dict):
             return
+        proj.pop("cc_results", None)
         calc = proj.get("calculated")
-        if isinstance(calc, dict) and "cc" in calc:
+        if isinstance(calc, dict):
             calc.pop("cc", None)
 
     def _autosave_project_best_effort(self) -> bool:
@@ -708,7 +972,7 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
         self._building = False
         self._loading = False
         self._restore_ui_state()
-        self._request_autofit_all_tables()
+        self._on_inner_tab_changed(self.tabs.currentIndex())
 
         # --- Render from current computed results (if any) ---
         self._rebuild_momentary_scenarios()
@@ -718,6 +982,18 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
     # =========================================================
     # Permanentes
     # =========================================================
+    def _on_perm_data_changed(self, top_left, bottom_right, roles=None):
+        try:
+            super()._on_perm_data_changed(top_left, bottom_right, roles)
+        except Exception:
+            log.debug("Base permanent change handler failed (best-effort).", exc_info=True)
+        if getattr(self, "_building", False) or getattr(self, "_loading", False):
+            return
+        try:
+            self._update_momentary_summary_display()
+        except Exception:
+            log.debug("Momentary summary update after perm change failed (best-effort).", exc_info=True)
+
     def _on_chk_usar_global_toggled(self, checked):
         if self._building:
             return
@@ -744,6 +1020,10 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             except Exception:
                 pass
         self._apply_global_pct_mode()
+        try:
+            self._update_momentary_summary_display()
+        except Exception:
+            log.debug("Momentary summary refresh after global toggle failed (best-effort).", exc_info=True)
         self._autosave_project_best_effort()
 
     def _on_global_pct_changed(self, value: float):
@@ -768,6 +1048,10 @@ class CCConsumptionScreen(ScreenBase, PermanentesTabMixin, MomentaneosTabMixin, 
             else:
                 # Aunque no aplique por fila, los totales dependen del estado actual.
                 self._update_permanent_totals()
+            try:
+                self._update_momentary_summary_display()
+            except Exception:
+                log.debug("Momentary summary refresh after global pct failed (best-effort).", exc_info=True)
             self._autosave_project_best_effort()
         except Exception:
             import logging

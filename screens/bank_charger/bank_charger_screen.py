@@ -38,7 +38,16 @@ from PyQt5.QtWidgets import (
     QComboBox, QPushButton, QInputDialog, QMessageBox, QLabel,
     QTabWidget, QSplitter
 )
-from ui.utils.table_utils import configure_table_autoresize
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
+from ui.utils.edit_bindings import bind_combobox
+from ui.common.state import (
+    save_splitter_state,
+    restore_splitter_state,
+    save_header_state,
+    restore_header_state,
+    get_int,
+    set_int,
+)
 from ui.delegates.editable_bg_delegate import EditableBgDelegate
 
 from PyQt5.QtGui import QColor
@@ -83,6 +92,15 @@ class BankChargerSizingScreen(ScreenBase):
         self._chart_timer.timeout.connect(self._update_profile_chart)
 
         self._build_ui()
+        self._restore_ui_state()
+        try:
+            from PyQt5.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app is not None:
+                app.aboutToQuit.connect(self._persist_ui_state)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("bank charger aboutToQuit connect failed", exc_info=True)
         self._controller = BankChargerController(self)
         self.persistence = self._controller.persistence
         self._perfil_loaded = False
@@ -220,8 +238,8 @@ class BankChargerSizingScreen(ScreenBase):
         page_profile = QWidget()
         page_profile_layout = QVBoxLayout(page_profile)
 
-        split_v = QSplitter(Qt.Vertical)
-        split_top = QSplitter(Qt.Horizontal)
+        self.split_profile_v = QSplitter(Qt.Vertical)
+        self.split_profile_top = QSplitter(Qt.Horizontal)
 
         # Izquierda: perfil
         self.grp_cargas = QGroupBox("Tabla – Perfil de cargas")
@@ -262,13 +280,13 @@ class BankChargerSizingScreen(ScreenBase):
         v_cycle.addWidget(self.tbl_cycle)
         self.grp_cycle.setLayout(v_cycle)
 
-        split_top.addWidget(self.grp_cargas)
-        split_top.addWidget(self.grp_cycle)
-        split_top.setStretchFactor(0, 2)
-        split_top.setStretchFactor(1, 1)
-        split_top.setSizes([800, 400])
+        self.split_profile_top.addWidget(self.grp_cargas)
+        self.split_profile_top.addWidget(self.grp_cycle)
+        self.split_profile_top.setStretchFactor(0, 2)
+        self.split_profile_top.setStretchFactor(1, 1)
+        self.split_profile_top.setSizes([800, 400])
 
-        split_v.addWidget(split_top)
+        self.split_profile_v.addWidget(self.split_profile_top)
 
         # Abajo: gráfico
         self.grp_chart = QGroupBox("Gráfico ciclo de trabajo")
@@ -279,11 +297,11 @@ class BankChargerSizingScreen(ScreenBase):
         vchart.addWidget(self.btn_cap_chart)
         vchart.addWidget(self.plot_widget)
 
-        split_v.addWidget(self.grp_chart)
-        split_v.setStretchFactor(0, 3)
-        split_v.setStretchFactor(1, 2)
+        self.split_profile_v.addWidget(self.grp_chart)
+        self.split_profile_v.setStretchFactor(0, 3)
+        self.split_profile_v.setStretchFactor(1, 2)
 
-        page_profile_layout.addWidget(split_v)
+        page_profile_layout.addWidget(self.split_profile_v)
         self.inner_tabs.addTab(page_profile, "Perfil de cargas")
 
         # ---- TAB 3: IEEE 485 worksheet ----
@@ -319,7 +337,7 @@ class BankChargerSizingScreen(ScreenBase):
         page_sel = QWidget()
         page_sel_layout = QVBoxLayout(page_sel)
 
-        split_sel = QSplitter(Qt.Horizontal)
+        self.split_selection = QSplitter(Qt.Horizontal)
 
         # Banco de baterías
         self.grp_sel_bank = QGroupBox("Selección Banco de Baterías")
@@ -376,10 +394,10 @@ class BankChargerSizingScreen(ScreenBase):
         v_sc.addWidget(self.btn_cap_tbl_sel_charger)
         v_sc.addWidget(self.tbl_sel_charger)
 
-        split_sel.addWidget(self.grp_sel_bank)
-        split_sel.addWidget(self.grp_sel_charger)
-        split_sel.setStretchFactor(0, 1)
-        split_sel.setStretchFactor(1, 1)
+        self.split_selection.addWidget(self.grp_sel_bank)
+        self.split_selection.addWidget(self.grp_sel_charger)
+        self.split_selection.setStretchFactor(0, 1)
+        self.split_selection.setStretchFactor(1, 1)
 
         btns = QHBoxLayout()
         self.btn_export_all = QPushButton("Exportar todo (un clic)")
@@ -390,7 +408,7 @@ class BankChargerSizingScreen(ScreenBase):
         btns.addStretch()
         page_sel_layout.addLayout(btns)
 
-        page_sel_layout.addWidget(split_sel)
+        page_sel_layout.addWidget(self.split_selection)
         self.inner_tabs.addTab(page_sel, "Selección")
 
         # ---- TAB 5: Resumen equipos ----
@@ -421,15 +439,112 @@ class BankChargerSizingScreen(ScreenBase):
 
         self.setLayout(main_layout)
 
+    def _restore_ui_state(self) -> None:
+        try:
+            if getattr(self, "split_profile_v", None) is not None:
+                restore_splitter_state(self.split_profile_v, "bank_charger/ui.split_profile_v")
+            if getattr(self, "split_profile_top", None) is not None:
+                restore_splitter_state(self.split_profile_top, "bank_charger/ui.split_profile_top")
+            if getattr(self, "split_selection", None) is not None:
+                restore_splitter_state(self.split_selection, "bank_charger/ui.split_selection")
+
+            headers = (
+                (getattr(self, "tbl_datos", None), "bank_charger/hdr/tbl_datos"),
+                (getattr(self, "tbl_comp", None), "bank_charger/hdr/tbl_comp"),
+                (getattr(self, "tbl_cargas", None), "bank_charger/hdr/tbl_cargas"),
+                (getattr(self, "tbl_cycle", None), "bank_charger/hdr/tbl_cycle"),
+                (getattr(self, "tbl_ieee", None), "bank_charger/hdr/tbl_ieee"),
+                (getattr(self, "tbl_sel_bank", None), "bank_charger/hdr/tbl_sel_bank"),
+                (getattr(self, "tbl_sel_charger", None), "bank_charger/hdr/tbl_sel_charger"),
+                (getattr(self, "tbl_summary", None), "bank_charger/hdr/tbl_summary"),
+            )
+            for table, key in headers:
+                if table is not None:
+                    restore_header_state(table.horizontalHeader(), key)
+
+            tabs = getattr(self, "inner_tabs", None)
+            if tabs is not None:
+                idx = get_int("bank_charger/ui.active_tab", 0)
+                if 0 <= idx < tabs.count():
+                    tabs.setCurrentIndex(idx)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("bank charger restore ui state failed", exc_info=True)
+
+    def _persist_ui_state(self) -> None:
+        try:
+            if getattr(self, "split_profile_v", None) is not None:
+                save_splitter_state(self.split_profile_v, "bank_charger/ui.split_profile_v")
+            if getattr(self, "split_profile_top", None) is not None:
+                save_splitter_state(self.split_profile_top, "bank_charger/ui.split_profile_top")
+            if getattr(self, "split_selection", None) is not None:
+                save_splitter_state(self.split_selection, "bank_charger/ui.split_selection")
+
+            headers = (
+                (getattr(self, "tbl_datos", None), "bank_charger/hdr/tbl_datos"),
+                (getattr(self, "tbl_comp", None), "bank_charger/hdr/tbl_comp"),
+                (getattr(self, "tbl_cargas", None), "bank_charger/hdr/tbl_cargas"),
+                (getattr(self, "tbl_cycle", None), "bank_charger/hdr/tbl_cycle"),
+                (getattr(self, "tbl_ieee", None), "bank_charger/hdr/tbl_ieee"),
+                (getattr(self, "tbl_sel_bank", None), "bank_charger/hdr/tbl_sel_bank"),
+                (getattr(self, "tbl_sel_charger", None), "bank_charger/hdr/tbl_sel_charger"),
+                (getattr(self, "tbl_summary", None), "bank_charger/hdr/tbl_summary"),
+            )
+            for table, key in headers:
+                if table is not None:
+                    save_header_state(table.horizontalHeader(), key)
+
+            tabs = getattr(self, "inner_tabs", None)
+            if tabs is not None:
+                set_int("bank_charger/ui.active_tab", tabs.currentIndex())
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("bank charger persist ui state failed", exc_info=True)
+
+    def _schedule_autofit_for_tab(self, idx: int) -> None:
+        try:
+            if idx == 0:
+                request_autofit(getattr(self, "tbl_datos", None), delay_ms=120)
+                request_autofit(getattr(self, "tbl_comp", None), delay_ms=120)
+            elif idx == 1:
+                request_autofit(getattr(self, "tbl_cargas", None), delay_ms=120)
+                request_autofit(getattr(self, "tbl_cycle", None), delay_ms=120)
+            elif idx == 2:
+                request_autofit(getattr(self, "tbl_ieee", None), delay_ms=120)
+            elif idx == 3:
+                request_autofit(getattr(self, "tbl_sel_bank", None), delay_ms=120)
+                request_autofit(getattr(self, "tbl_sel_charger", None), delay_ms=120)
+            elif idx == 4:
+                request_autofit(getattr(self, "tbl_summary", None), delay_ms=120)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("bank charger tab autofit failed", exc_info=True)
+
     def _connect_signals(self):
         self.tbl_datos.itemChanged.connect(self._on_datos_changed)
         self.tbl_comp.itemChanged.connect(self._on_comp_changed)
         self.tbl_cargas.itemChanged.connect(self._on_cargas_changed)
         self.tbl_ieee.itemChanged.connect(self._on_ieee_changed)
         if getattr(self, "cmb_vpc_mode", None) is not None:
-            self.cmb_vpc_mode.currentTextChanged.connect(self._on_vpc_mode_changed)
+            bind_combobox(
+                self.cmb_vpc_mode,
+                apply_fn=self._apply_vpc_mode,
+                undo_stack=self.undo_stack,
+                title="Bank/Charger: modo Vpc final",
+                ignore_if=lambda: bool(
+                    getattr(self.data_model, "_ui_refreshing", False) or getattr(self, "_loading", False)
+                ),
+            )
         if getattr(self, "cmb_cells_mode", None) is not None:
-            self.cmb_cells_mode.currentTextChanged.connect(self._on_cells_mode_changed)
+            bind_combobox(
+                self.cmb_cells_mode,
+                apply_fn=self._apply_cells_mode,
+                undo_stack=self.undo_stack,
+                title="Bank/Charger: modo num celdas",
+                ignore_if=lambda: bool(
+                    getattr(self.data_model, "_ui_refreshing", False) or getattr(self, "_loading", False)
+                ),
+            )
         self.btn_add_from_scenario.clicked.connect(self._add_area_from_scenario)
         self.btn_del_area.clicked.connect(self._remove_selected_area)
 
@@ -609,6 +724,36 @@ class BankChargerSizingScreen(ScreenBase):
         if hasattr(self.data_model, "mark_dirty"):
             self.data_model.mark_dirty(True)
         self._refresh_datos_comp_derived()
+
+    def _apply_vpc_mode(self, text: str) -> None:
+        value = str(text or "")
+        combo = getattr(self, "cmb_vpc_mode", None)
+        if combo is not None and combo.currentText() != value:
+            blocked = combo.blockSignals(True)
+            try:
+                idx = combo.findText(value)
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+                else:
+                    combo.setCurrentText(value)
+            finally:
+                combo.blockSignals(blocked)
+        self._on_vpc_mode_changed(value)
+
+    def _apply_cells_mode(self, text: str) -> None:
+        value = str(text or "")
+        combo = getattr(self, "cmb_cells_mode", None)
+        if combo is not None and combo.currentText() != value:
+            blocked = combo.blockSignals(True)
+            try:
+                idx = combo.findText(value)
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+                else:
+                    combo.setCurrentText(value)
+            finally:
+                combo.blockSignals(blocked)
+        self._on_cells_mode_changed(value)
 
     def _vpc_list(self) -> list:
         vals = []
@@ -1107,23 +1252,24 @@ class BankChargerSizingScreen(ScreenBase):
             self._set_cell(self.tbl_comp, 1, 1, fnum(comp_vmax, 2) if comp_vmax != "" else "", editable=False)
             self._set_cell(self.tbl_comp, 2, 1, fnum(comp_vmin, 2) if comp_vmin != "" else "", editable=False)
 
-            # Warnings for manual modes
-            try:
-                if cells_mode == "manual" and n_req > 0 and n_user < n_req:
-                    QMessageBox.warning(
-                        self,
-                        "Comprobación",
-                        f"El número de celdas es menor al mínimo recomendado ({n_req}).",
-                    )
-                if vpc_mode == "manual" and v_cell_min_calc != "" and v_cell_sel is not None:
-                    if float(v_cell_sel) < float(v_cell_min_calc):
+            # Warnings for manual modes (solo en recálculo interactivo).
+            if not bool(getattr(self, "_silent_recalc", False)):
+                try:
+                    if cells_mode == "manual" and n_req > 0 and n_user < n_req:
                         QMessageBox.warning(
                             self,
-                            "Vpc seleccionada",
-                            "La Vpc seleccionada es menor al mínimo recomendado.",
+                            "Comprobación",
+                            f"El número de celdas es menor al mínimo recomendado ({n_req}).",
                         )
-            except Exception:
-                pass
+                    if vpc_mode == "manual" and v_cell_min_calc != "" and v_cell_sel is not None:
+                        if float(v_cell_sel) < float(v_cell_min_calc):
+                            QMessageBox.warning(
+                                self,
+                                "Vpc seleccionada",
+                                "La Vpc seleccionada es menor al mínimo recomendado.",
+                            )
+                except Exception:
+                    pass
 
             # 8) Si hay errores del domain, mostrarlos (sin cerrar app)
             if not res.ok:
@@ -1627,14 +1773,21 @@ class BankChargerSizingScreen(ScreenBase):
             if tabs_now is None:
                 return
             self._on_inner_tab_changed(tabs_now.currentIndex())
+            self._schedule_autofit_for_tab(tabs_now.currentIndex())
 
         QTimer.singleShot(0, _run_refresh)
 
     def _on_inner_tab_changed(self, idx: int):
+        try:
+            set_int("bank_charger/ui.active_tab", idx)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("bank charger tab persist failed", exc_info=True)
         if getattr(self, "_updating", False):
             return
         try:
             self._controller.refresh_bank_charger_inner_tab(idx)
+            self._schedule_autofit_for_tab(idx)
         except Exception:
             import logging
             logging.getLogger(__name__).debug("inner tab refresh failed", exc_info=True)
@@ -2214,9 +2367,98 @@ class BankChargerSizingScreen(ScreenBase):
         self.data_model.mark_dirty(True)
 
     # ========================= API =========================
+    def set_project(self, project):
+        """Canonical setter used by orchestrated refresh flows (best-effort)."""
+        dm = getattr(self, "data_model", None)
+        if dm is None:
+            return
+        try:
+            if hasattr(dm, "set_project") and callable(dm.set_project):
+                dm.set_project(project)
+                return
+        except Exception:
+            logging.getLogger(__name__).debug("bank charger set_project failed", exc_info=True)
+        try:
+            if isinstance(project, dict):
+                dm.proyecto = project
+        except Exception:
+            logging.getLogger(__name__).debug("bank charger set_project fallback failed", exc_info=True)
+
+    def recalculate(self, *, silent: bool = True) -> None:
+        """Idempotent recalc entrypoint for Datos/Comprobación + dependientes."""
+        prev_silent = bool(getattr(self, "_silent_recalc", False))
+        self._silent_recalc = bool(silent)
+        try:
+            self.recalculate_all()
+        except Exception:
+            logging.getLogger(__name__).debug("bank charger recalculate failed", exc_info=True)
+        finally:
+            self._silent_recalc = prev_silent
+
+    def refresh_from_project(self) -> None:
+        """Canonical refresh path: load UI from project and recalc outputs."""
+        dm = getattr(self, "data_model", None)
+        if dm is None:
+            return
+
+        try:
+            if hasattr(dm, "ensure_aliases_consistent"):
+                dm.ensure_aliases_consistent()
+        except Exception:
+            logging.getLogger(__name__).debug("bank charger ensure_aliases_consistent failed", exc_info=True)
+
+        scope = getattr(self, "ui_refresh_scope", None)
+
+        def _run_refresh() -> None:
+            try:
+                self._controller.reset_loaded_flags()
+            except Exception:
+                logging.getLogger(__name__).debug("bank charger reset_loaded_flags failed", exc_info=True)
+
+            idx = 0
+            try:
+                tabs = getattr(self, "inner_tabs", None)
+                if tabs is not None:
+                    idx = int(tabs.currentIndex())
+            except Exception:
+                idx = 0
+
+            try:
+                self._controller.refresh_bank_charger_inner_tab(int(idx))
+            except Exception:
+                logging.getLogger(__name__).debug("bank charger inner tab refresh failed", exc_info=True)
+
+            try:
+                self._schedule_autofit_for_tab(int(idx))
+            except Exception:
+                logging.getLogger(__name__).debug("bank charger autofit refresh failed", exc_info=True)
+
+            self.recalculate(silent=True)
+
+        if callable(scope):
+            try:
+                with scope():
+                    _run_refresh()
+                return
+            except Exception:
+                logging.getLogger(__name__).debug("bank charger ui_refresh_scope failed", exc_info=True)
+        _run_refresh()
+
+    def refresh_from_model(self, reason: str = "", force: bool = False):
+        _ = reason
+        dm = self.data_model
+        try:
+            rev = int(getattr(dm, "revision", 0))
+        except Exception:
+            rev = 0
+        if not bool(force) and self._last_seen_revision == rev:
+            return
+        self.refresh_from_project()
+        self._last_seen_revision = rev
+
     def reload_from_project(self):
-        self._controller.reset_loaded_flags()
-        self._schedule_active_inner_tab_refresh()
+        # Compatibilidad: mantener nombre legacy, delegar al camino canónico.
+        self.refresh_from_project()
 
 
 

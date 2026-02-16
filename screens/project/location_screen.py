@@ -8,10 +8,12 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QSizePolicy,
     QVBoxLayout,
+    QWidget,
 )
 
 from app.sections import Section
@@ -96,7 +98,8 @@ class LocationScreen(ScreenBase):
     # UI
     # ------------------------------
     def initUI(self):
-        layout = QVBoxLayout()
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
@@ -213,6 +216,7 @@ class LocationScreen(ScreenBase):
         self.tabla_gabinetes.setSelectionMode(QTableWidget.SingleSelection)
         self.tabla_gabinetes.setEditTriggers(QAbstractItemView.NoEditTriggers)
         make_table_sortable(self.tabla_gabinetes)
+        self.tabla_gabinetes.setMaximumHeight(320)
         self.tabla_gabinetes.itemChanged.connect(self._on_gabinete_item_changed)
         self.tabla_gabinetes.itemSelectionChanged.connect(self._on_select_gabinete)
 
@@ -226,7 +230,16 @@ class LocationScreen(ScreenBase):
         self.btn_editar_gabinete.setEnabled(False)
         self.btn_eliminar_gabinete.setEnabled(False)
 
-        self.setLayout(layout)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setWidget(content_widget)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(scroll)
+        self.setLayout(main_layout)
 
     # ------------------------------
     # Actualizaciones de UI
@@ -448,6 +461,38 @@ class LocationScreen(ScreenBase):
             import logging
 
             logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
+
+    def reload_from_project(self):
+        """Refresh UI from current project state without side effects."""
+        dm = getattr(self, "data_model", None)
+        try:
+            if dm is not None and hasattr(dm, "ensure_aliases_consistent"):
+                dm.ensure_aliases_consistent()
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
+
+        scope = getattr(self, "ui_refresh_scope", None)
+        if callable(scope):
+            try:
+                with scope():
+                    self.actualizar_combobox_salas()
+                    self.actualizar_tablas()
+                return
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
+        try:
+            self.actualizar_combobox_salas()
+            self.actualizar_tablas()
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).debug("Ignored exception (best-effort).", exc_info=True)
+
+    refresh = reload_from_project
 
     def save_to_model(self):
         """Persist UI edits to DataModel (ScreenBase hook)."""

@@ -1,15 +1,15 @@
 {
   "project": "SSAA",
   "stage": "Stage1",
-  "step": "4A.10",
-  "description": "Refresco determinista de UI: repolish de arbol + tagging userField/tables al arranque, cambio de modo/tema y post-refresh de proyecto.",
+  "step": "4A.30",
+  "description": "Blindaje de contratos refresh/recalc + dirty warning unificado (Guardar/No guardar/Cancelar) al abrir/cerrar con cambios pendientes.",
   "breaking_changes": false,
   "frozen": false,
-  "semver": "1.4.0-alpha.176",
-  "version": "1.4.0-alpha.176.0",
-  "build": 147,
-  "notes": "Refresco determinista de UI: repolish arbol + auto-tag userField/tablas en arranque, cambio modo/tema y despues de actualizar pantallas.",
-  "name": "SSAA_stage1_step_4A10",
-  "date": "2026-02-12",
+  "semver": "1.4.0-alpha.202",
+  "version": "1.4.0-alpha.202.0",
+  "build": 173,
+  "notes": "Se agregan tests de contrato para refresh/recalc (Instalaciones y Banco/Cargador) y un DirtyTracker central para advertencias de cambios sin guardar en abrir/cerrar, evitando falsos positivos durante carga/refresh.",
+  "name": "SSAA_stage1_step_4A30",
+  "date": "2026-02-16",
   "channel": "alpha"
 }

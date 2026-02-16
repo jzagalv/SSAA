@@ -5,6 +5,7 @@ from __future__ import annotations
 from PyQt5.QtWidgets import (
     QWidget,
     QTableWidget,
+    QTableView,
     QLineEdit,
     QComboBox,
     QTextEdit,
@@ -24,6 +25,8 @@ def set_role_table(w: QWidget):
 
 def auto_tag_tables(root: QWidget):
     for t in root.findChildren(QTableWidget):
+        set_role_table(t)
+    for t in root.findChildren(QTableView):
         set_role_table(t)
 
 

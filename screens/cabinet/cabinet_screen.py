@@ -26,21 +26,26 @@ from screens.base import ScreenBase
 from app.sections import Section
 
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
+    QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
     QGraphicsView, QGraphicsScene, QGraphicsItem,
     QStyleOptionGraphicsItem, QGraphicsRectItem,
     QTableWidget, QTableWidgetItem, QComboBox, QCheckBox, QMenu, QMessageBox,
-    QHeaderView, QGroupBox
+    QHeaderView, QGroupBox, QSplitter
 )
 
-from ui.common.state import save_header_state, restore_header_state
+from ui.common.state import (
+    get_str,
+    set_str,
+)
 from ui.theme import get_theme_token
 
 from PyQt5.QtCore import Qt, QPointF, QRectF, QMimeData, pyqtSignal, QTimer, QSignalBlocker
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen, QDrag, QFont
 from ui.table_utils import make_table_sortable
 from ui.table_utils import center_in_cell
-from ui.utils.table_utils import configure_table_autoresize
+from ui.utils.table_utils import configure_table_autoresize, request_autofit
+from ui.utils.user_signals import connect_combobox_user_changed
+from ui.utils.undo_commands import ApplyValueCommand
 
 from .graphics import (
     GRID_SIZE, CABINET_MARGIN, CABINET_WIDTH, CABINET_HEIGHT, EXTRA_SCROLL, DEFAULT_SIZE,
@@ -109,6 +114,11 @@ class CabinetComponentsScreen(ScreenBase):
         self._cab_title_bg = None
 
         self._init_ui()
+        st = self.init_ui_state()
+        if st is not None:
+            st.bind_splitter(self.splitter, "cabinet/ui.splitter")
+            st.bind_header(self.table.horizontalHeader(), "cabinet.components.table.header")
+        self._restore_ui_state()
         self.load_equipment()
         self.load_cabinets()
 
@@ -173,14 +183,31 @@ class CabinetComponentsScreen(ScreenBase):
             import logging
             logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
+    def _on_splitter_moved(self, _pos: int, _index: int) -> None:
+        try:
+            if hasattr(self, "_splitter_save_timer") and self._splitter_save_timer is not None:
+                self._splitter_save_timer.start(250)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
+    def _persist_splitter_state(self) -> None:
+        try:
+            self._persist_ui_state()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
+
 
     # --------------------------------------------------------
     # UI
     # --------------------------------------------------------
     def _init_ui(self):
-        root = QHBoxLayout(self)
+        root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
+        self.splitter = QSplitter(Qt.Horizontal, self)
+        root.addWidget(self.splitter)
 
         # panel izquierdo: gabinetes
         left_group = QGroupBox("Gabinetes")
@@ -195,10 +222,11 @@ class CabinetComponentsScreen(ScreenBase):
         )
         left.addWidget(self.cabinets_list)
         left_group.setLayout(left)
-        root.addWidget(left_group, 1)
 
         # panel central: vista + tabla
-        center = QVBoxLayout()
+        center_widget = QWidget(self)
+        center = QVBoxLayout(center_widget)
+        center.setContentsMargins(0, 0, 0, 0)
         center.setSpacing(10)
 
         design_group = QGroupBox("Diseño del gabinete")
@@ -226,7 +254,6 @@ class CabinetComponentsScreen(ScreenBase):
             "Origen",
         ])
         configure_table_autoresize(self.table)
-        restore_header_state(self.table.horizontalHeader(), "cabinet.components.table.header")
 
         # ---> activar ordenamiento
         make_table_sortable(self.table)
@@ -235,7 +262,6 @@ class CabinetComponentsScreen(ScreenBase):
         table_layout.addWidget(self.table)
         table_group.setLayout(table_layout)
         center.addWidget(table_group, 2)
-        root.addLayout(center, 3)
 
         # panel derecho: componentes disponibles
         right_group = QGroupBox("Consumos")
@@ -245,7 +271,20 @@ class CabinetComponentsScreen(ScreenBase):
         self.equipment_tree.equipmentActivated.connect(self._add_equipment_to_cabinet)
         right.addWidget(self.equipment_tree)
         right_group.setLayout(right)
-        root.addWidget(right_group, 1)
+        self.splitter.addWidget(left_group)
+        self.splitter.addWidget(center_widget)
+        self.splitter.addWidget(right_group)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 3)
+        self.splitter.setStretchFactor(2, 1)
+
+        self._splitter_save_timer = QTimer(self)
+        self._splitter_save_timer.setSingleShot(True)
+        self._splitter_save_timer.timeout.connect(self._persist_splitter_state)
+        self.splitter.splitterMoved.connect(self._on_splitter_moved)
+
+        # Fallback por defecto; restore sobrescribe si hay estado persistido.
+        self.splitter.setSizes([240, 760, 280])
 
     # --------------------------------------------------------
     # Carga de datos
@@ -273,7 +312,10 @@ class CabinetComponentsScreen(ScreenBase):
         # Recordar el TAG del gabinete actualmente seleccionado (si hay)
         prev_tag = None
         if self.current_cabinet is not None:
-            prev_tag = self.current_cabinet.get("tag", "")
+            prev_tag = str(self.current_cabinet.get("tag", "") or "")
+        persisted_tag = ""
+        if self.current_cabinet is None:
+            persisted_tag = get_str("cabinet/ui.selected_tag", "")
 
         # Refrescar la lista visual
         self.cabinets_list.blockSignals(True)
@@ -288,10 +330,11 @@ class CabinetComponentsScreen(ScreenBase):
 
         # Mantener selección por TAG en la lista ya ordenada
         selected_row = -1
-        if prev_tag:
+        target_tag = prev_tag or persisted_tag
+        if target_tag:
             for i in range(self.cabinets_list.count()):
                 it = self.cabinets_list.item(i)
-                if (it.data(Qt.UserRole) or "") == prev_tag:
+                if str(it.data(Qt.UserRole) or "") == str(target_tag):
                     selected_row = i
                     break
 
@@ -321,6 +364,9 @@ class CabinetComponentsScreen(ScreenBase):
         Actualiza el gabinete actual y redibuja la escena y la tabla.
         """
         self.current_cabinet = self._get_cabinet_by_list_row(row)
+        item = self.cabinets_list.item(row) if row >= 0 else None
+        tag = str(item.data(Qt.UserRole) or "") if item is not None else ""
+        set_str("cabinet/ui.selected_tag", tag)
 
         self._dynamic_height = self._cabinet_min_height()
         self.update_design_view()
@@ -546,6 +592,11 @@ class CabinetComponentsScreen(ScreenBase):
         self._draw_cabinet_frame()
         self._show_cabinet_title()
         self._loading = False
+        try:
+            request_autofit(self.table, delay_ms=120)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
 
     def _get_default_component_data(self, base_name: str, lib_uid: str = "") -> dict:
         """
@@ -676,23 +727,26 @@ class CabinetComponentsScreen(ScreenBase):
         # Usar VA (UN SOLO checkbox, centrado)
         chk_va = QCheckBox()
         chk_va.setChecked(bool(d.get("usar_va", False)))
-        chk_va.stateChanged.connect(
-            lambda state, cid=comp_id: self._sync_from_table(cid, "usar_va", state == Qt.Checked)
+        chk_va.clicked.connect(
+            lambda checked, cid=comp_id: self._sync_from_table(cid, "usar_va", bool(checked))
         )
         self.table.setCellWidget(row, COL_USAR_VA, center_in_cell(chk_va))
 
         # Alimentador
         alimentador_combo = QComboBox()
+        alimentador_combo.setProperty("userField", True)
         alimentador_combo.addItems(["General", "Individual", "Indirecta"])
         with QSignalBlocker(alimentador_combo):
             alimentador_combo.setCurrentText(d.get("alimentador", "General"))
-        alimentador_combo.currentTextChanged.connect(
-            lambda val, cid=comp_id: self._sync_from_table(cid, "alimentador", val)
+        connect_combobox_user_changed(
+            alimentador_combo,
+            lambda val, cid=comp_id: self._sync_from_table(cid, "alimentador", val),
         )
         self.table.setCellWidget(row, COL_ALIMENTADOR, alimentador_combo)
 
         # Tipo consumo
         tipo_combo = QComboBox()
+        tipo_combo.setProperty("userField", True)
         tipo_combo.addItems([
             "C.C. permanente",
             "C.C. momentáneo",
@@ -702,13 +756,15 @@ class CabinetComponentsScreen(ScreenBase):
         ])
         with QSignalBlocker(tipo_combo):
             tipo_combo.setCurrentText(d.get("tipo_consumo", "C.C. permanente"))
-        tipo_combo.currentTextChanged.connect(
-            lambda val, cid=comp_id: self._sync_from_table(cid, "tipo_consumo", val)
+        connect_combobox_user_changed(
+            tipo_combo,
+            lambda val, cid=comp_id: self._sync_from_table(cid, "tipo_consumo", val),
         )
         self.table.setCellWidget(row, COL_TIPO, tipo_combo)
 
         # Fase
         fase_combo = QComboBox()
+        fase_combo.setProperty("userField", True)
         fase_combo.addItems(["1F", "3F"])
         with QSignalBlocker(fase_combo):
             fase_combo.setCurrentText(d.get("fase", "1F"))
@@ -719,13 +775,17 @@ class CabinetComponentsScreen(ScreenBase):
 
         # Origen
         origen_combo = QComboBox()
+        origen_combo.setProperty("userField", True)
         origen_combo.addItems(["Genérico", "Según Fabricante", "Por Usuario"])
         with QSignalBlocker(origen_combo):
             origen_combo.setCurrentText(d.get("origen", "Genérico"))
         origen_combo.setProperty("row", row)
         origen_combo.setProperty("comp_id", comp_id)
         origen_combo.setProperty("key", "origen")
-        origen_combo.currentIndexChanged.connect(self._on_origin_changed)
+        connect_combobox_user_changed(
+            origen_combo,
+            lambda _txt, c=origen_combo: self._on_origin_changed(c),
+        )
         self.table.setCellWidget(row, COL_ORIGEN, origen_combo)
 
         self.row_by_id[comp_id] = row
@@ -740,6 +800,27 @@ class CabinetComponentsScreen(ScreenBase):
             if r == row:
                 return cid
         return ""
+
+    def _get_component_value(self, comp_id: str, key: str, default: str = "") -> str:
+        if not self.current_cabinet:
+            return str(default or "")
+        for comp in self.current_cabinet.get("components", []):
+            if comp.get("id") != comp_id:
+                continue
+            data = self._normalize_comp_data(comp.get("data", {}))
+            return str(data.get(key, default) or "")
+        return str(default or "")
+
+    def _push_component_change(self, title: str, apply_fn, old_value, new_value) -> None:
+        old_text = "" if old_value is None else str(old_value)
+        new_text = "" if new_value is None else str(new_value)
+        if old_text == new_text:
+            return
+        cmd = ApplyValueCommand(title, apply_fn, old_text, new_text)
+        try:
+            self.undo_stack.push(cmd)
+        except Exception:
+            apply_fn(new_text)
 
     def _get_db_variants_for(self, base_name: str) -> list:
         """
@@ -915,32 +996,53 @@ class CabinetComponentsScreen(ScreenBase):
                     def on_brand_changed(text: str, cid=comp_id):
                         if self._ui_updating():
                             return
-                        self._sync_from_table(cid, "marca", text)
-                        item_marca = self._ensure_item(row, COL_MARCA, "")
-                        item_marca.setText(text or "")
-                        refresh_models(text)
+                        old_brand = self._get_component_value(cid, "marca", "")
+                        new_brand = "" if text is None else str(text)
 
-                    def on_model_changed(index: int, cid=comp_id):
+                        def apply_brand(value):
+                            value = "" if value is None else str(value)
+                            if brand_combo.currentText() != value:
+                                with QSignalBlocker(brand_combo):
+                                    brand_combo.setCurrentText(value)
+                            self._sync_from_table(cid, "marca", value)
+                            item_marca = self._ensure_item(row, COL_MARCA, "")
+                            item_marca.setText(value or "")
+                            refresh_models(value)
+
+                        self._push_component_change("Gabinete: marca", apply_brand, old_brand, new_brand)
+
+                    def on_model_changed(_text: str, cid=comp_id):
                         if self._ui_updating():
                             return
-                        comp_data = model_combo.itemData(index)
-                        model_text = model_combo.currentText()
-                        self._sync_from_table(cid, "modelo", model_text)
-                        item_modelo = self._ensure_item(row, COL_MODELO, "")
-                        item_modelo.setText(model_text or "")
+                        old_model = self._get_component_value(cid, "modelo", "")
+                        new_model = str(model_combo.currentText() or "")
 
-                        # Completar datos desde base (potencias, tipo, fase, etc.)
-                        if isinstance(comp_data, dict):
-                            for k in ("potencia_w", "potencia_va",
-                                      "usar_va", "tipo_consumo", "fase"):
-                                if k in comp_data:
-                                    self._sync_from_table(cid, k, comp_data[k])
-                            row_idx = self.row_by_id.get(cid)
-                            if row_idx is not None:
-                                self._update_row_from_data(row_idx, comp_data)
+                        def apply_model(value):
+                            value = "" if value is None else str(value)
+                            idx = model_combo.findText(value)
+                            if idx >= 0 and model_combo.currentIndex() != idx:
+                                with QSignalBlocker(model_combo):
+                                    model_combo.setCurrentIndex(idx)
+                            comp_data = model_combo.currentData()
+                            model_text = model_combo.currentText() if idx >= 0 else value
+                            self._sync_from_table(cid, "modelo", model_text)
+                            item_modelo = self._ensure_item(row, COL_MODELO, "")
+                            item_modelo.setText(model_text or "")
 
-                    brand_combo.currentTextChanged.connect(on_brand_changed)
-                    model_combo.currentIndexChanged.connect(on_model_changed)
+                            # Completar datos desde base (potencias, tipo, fase, etc.)
+                            if isinstance(comp_data, dict):
+                                for k in ("potencia_w", "potencia_va",
+                                          "usar_va", "tipo_consumo", "fase"):
+                                    if k in comp_data:
+                                        self._sync_from_table(cid, k, comp_data[k])
+                                row_idx = self.row_by_id.get(cid)
+                                if row_idx is not None:
+                                    self._update_row_from_data(row_idx, comp_data)
+
+                        self._push_component_change("Gabinete: modelo", apply_model, old_model, new_model)
+
+                    connect_combobox_user_changed(brand_combo, on_brand_changed)
+                    connect_combobox_user_changed(model_combo, on_model_changed)
 
             # ---------- ORIGEN: GENÉRICO (marca/modelo bloqueados "----") ----------
             if origen == "Genérico":
@@ -1066,10 +1168,11 @@ class CabinetComponentsScreen(ScreenBase):
             item_va.setText("----")
             item_va.setFlags(flags_va & ~Qt.ItemIsEditable)
 
-    def _on_origin_changed(self, _index: int):
+    def _on_origin_changed(self, combo=None):
         if self._ui_updating() or getattr(self, "_loading", False):
             return
-        combo = self.sender()
+        if combo is None:
+            combo = self.sender()
         if not isinstance(combo, QComboBox):
             return
         comp_id = combo.property("comp_id")
@@ -1228,11 +1331,5 @@ class CabinetComponentsScreen(ScreenBase):
         code = str(payload.get("code", "") or "")
         self.add_component_at(name, QPointF(0, 0), lib_uid=lib_uid, code=code)
 
-    def closeEvent(self, event):
-        try:
-            if hasattr(self, "table") and self.table is not None:
-                save_header_state(self.table.horizontalHeader(), "cabinet.components.table.header")
-        except Exception:
-            import logging
-            logging.getLogger(__name__).debug('Ignored exception (best-effort).', exc_info=True)
-        return super().closeEvent(event)
+    def _persist_ui_state(self):
+        return super()._persist_ui_state()
