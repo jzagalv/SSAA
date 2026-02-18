@@ -248,6 +248,51 @@ class ProfileTablePresenter:
                 _ensure_cell(r_lal, 2).setText(f"{p_ale:.2f}")
                 _ensure_cell(r_lal, 3).setText(f"{(p_ale / vmin):.2f}")
 
+            escenarios = {}
+            if hasattr(scr, "_compute_momentary_scenarios"):
+                try:
+                    escenarios = scr._compute_momentary_scenarios() or {}
+                except Exception:
+                    escenarios = {}
+
+            for r in range(scr.tbl_cargas.rowCount()):
+                it_code = scr.tbl_cargas.item(r, 0)
+                code_n = scr._norm_code(it_code.text() if it_code else "")
+                if code_n in (scr._norm_code(CODE_L1), scr._norm_code(CODE_LAL), ""):
+                    continue
+
+                it_desc = scr.tbl_cargas.item(r, 1)
+                scenario_id = None
+                if it_desc is not None:
+                    raw_sid = it_desc.data(Qt.UserRole)
+                    try:
+                        scenario_id = int(raw_sid) if raw_sid not in (None, "") else None
+                    except Exception:
+                        scenario_id = None
+                    if scenario_id is None:
+                        try:
+                            scenario_id = scr._extract_scenario_id(it_desc.text() or "")
+                        except Exception:
+                            scenario_id = None
+
+                if scenario_id is None:
+                    continue
+
+                data = escenarios.get(scenario_id, escenarios.get(str(scenario_id), {}))
+                if not isinstance(data, dict):
+                    data = {}
+                try:
+                    p_sc = float(data.get("p_total", 0.0) or 0.0)
+                except Exception:
+                    p_sc = 0.0
+                try:
+                    i_sc = float(data.get("i_total", p_sc / vmin) or (p_sc / vmin))
+                except Exception:
+                    i_sc = p_sc / vmin
+
+                _ensure_cell(r, 2).setText(f"{p_sc:.2f}")
+                _ensure_cell(r, 3).setText(f"{i_sc:.2f}")
+
             self.apply_editability()
         finally:
             scr._updating = False

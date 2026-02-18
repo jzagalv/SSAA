@@ -590,26 +590,18 @@ def compute_momentary_scenarios(
     gabinetes: List[Dict[str, Any]],
     vmin: float,
 ) -> Dict[int, Dict[str, float]]:
-    """
-    Compatibilidad con tu implementación original.
-    Construye escenarios momentáneos:
-      1) Base: consumos tipo "C.C. momentáneo" con cc_mom_incluir=True y cc_mom_escenario
-      2) Potencia momentánea derivada de permanentes: p_eff * ((100 - pct)/100)
-         se suma al escenario 1 (legacy).
-    Retorna:
-      {esc: {"p_total": W, "i_total": A}}
-    """
+    """Compute momentary totals per scenario honoring include-perm map."""
     if vmin <= 0:
         vmin = 1.0
 
-    # momentáneos explícitos
-    sum_p: Dict[int, float] = {}
+    sum_p_selected: Dict[int, float] = {}
+    max_esc = 1
 
     for cab in gabinetes or []:
         for comp in (cab.get("components", []) or []):
             data = _normalize_comp_data(comp.get("data", {}) or {})
             tipo = str(data.get("tipo_consumo", "") or "").strip()
-            if tipo != "C.C. momentáneo":
+            if tipo != "C.C. momentÃ¡neo":
                 continue
             if not bool(data.get("cc_mom_incluir", True)):
                 continue
@@ -617,23 +609,40 @@ def compute_momentary_scenarios(
             esc = _as_int(data.get("cc_mom_escenario")) or 1
             if esc < 1:
                 esc = 1
+            if esc > max_esc:
+                max_esc = esc
 
             p_eff = _effective_power_w(data)
             if p_eff <= 0:
                 continue
 
-            sum_p[esc] = sum_p.get(esc, 0.0) + p_eff
+            sum_p_selected[esc] = sum_p_selected.get(esc, 0.0) + p_eff
 
-    # momentáneo derivado desde permanentes (legacy): escenario 1.
-    # La UI actual de Momentáneos maneja inclusión por escenario con cc_mom_incl_perm.
-    p_mom_perm_total = compute_momentary_from_permanents(proyecto, gabinetes)
-    if p_mom_perm_total > 0:
-        sum_p[1] = sum_p.get(1, 0.0) + float(p_mom_perm_total)
+    p_mom_perm_total = float(compute_momentary_from_permanents(proyecto, gabinetes) or 0.0)
+    include_map_raw = (proyecto or {}).get("cc_mom_incl_perm", {})
+    include_map: Dict[str, bool] = {}
+    if isinstance(include_map_raw, dict):
+        for key, raw in include_map_raw.items():
+            k = str(key)
+            if isinstance(raw, str):
+                include_map[k] = raw.strip().casefold() in ("1", "true", "yes", "on")
+            else:
+                include_map[k] = bool(raw)
+            try:
+                k_int = int(k)
+            except Exception:
+                k_int = None
+            if k_int is not None and k_int > max_esc:
+                max_esc = k_int
 
     out: Dict[int, Dict[str, float]] = {}
-    for esc, p in sum_p.items():
-        out[int(esc)] = {"p_total": float(p), "i_total": float(p / vmin)}
+    for esc in range(1, max_esc + 1):
+        p_total = float(sum_p_selected.get(esc, 0.0))
+        if p_mom_perm_total > 0.0 and bool(include_map.get(str(esc), False)):
+            p_total += p_mom_perm_total
+        out[int(esc)] = {"p_total": p_total, "i_total": float(p_total / vmin)}
     return out
+
 
 def _pct_for_permanent(proyecto: Dict[str, Any], data: Dict[str, Any]) -> float:
     """

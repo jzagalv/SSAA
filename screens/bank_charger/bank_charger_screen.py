@@ -61,8 +61,7 @@ from services.ssaa_engine import SSAAEngine
 from domain.cc_consumption import (
     get_model_gabinetes as cc_get_model_gabinetes,
     compute_cc_profile_totals,
-    compute_momentary_scenarios,
-    compute_momentary_from_permanents,
+    compute_momentary_scenarios_full,
 )
 
 import logging
@@ -1469,43 +1468,17 @@ class BankChargerSizingScreen(ScreenBase):
         if vmin <= 0:
             vmin = 1.0
 
-        escenarios = compute_momentary_scenarios(proyecto=proyecto, gabinetes=gabinetes, vmin=vmin)
-        if not isinstance(escenarios, dict):
-            return {}
-
-        # Prefer computed tail-from-permanents cache when available.
-        cached_tail = None
-        calc = proyecto.get("calculated", None)
-        if isinstance(calc, dict):
-            cc_calc = calc.get("cc", None)
-            if isinstance(cc_calc, dict):
-                summary = cc_calc.get("summary", None)
-                if isinstance(summary, dict):
-                    raw_tail = summary.get("p_mom_perm", None)
-                    try:
-                        cached_tail = float(raw_tail)
-                    except Exception:
-                        cached_tail = None
-
-        if cached_tail is None:
-            return escenarios
-
         try:
-            computed_tail = float(compute_momentary_from_permanents(proyecto, gabinetes) or 0.0)
+            n_esc = int(proyecto.get("cc_num_escenarios", 1) or 1)
         except Exception:
-            computed_tail = 0.0
-        delta_tail = float(cached_tail - computed_tail)
-        if abs(delta_tail) < 1e-9:
-            return escenarios
-
-        scn1 = escenarios.get(1, escenarios.get("1", None))
-        if not isinstance(scn1, dict):
-            scn1 = {"p_total": 0.0, "i_total": 0.0}
-        p_total = max(0.0, float(scn1.get("p_total", 0.0) or 0.0) + delta_tail)
-        scn1["p_total"] = float(p_total)
-        scn1["i_total"] = float(p_total / float(vmin))
-        escenarios[1] = scn1
-        return escenarios
+            n_esc = 1
+        escenarios = compute_momentary_scenarios_full(
+            proyecto=proyecto,
+            gabinetes=gabinetes,
+            vmin=vmin,
+            n_escenarios=n_esc,
+        )
+        return escenarios if isinstance(escenarios, dict) else {}
 
     def _extract_scenario_id(self, desc: str) -> int | None:
         text = (desc or "").strip()
@@ -1623,17 +1596,28 @@ class BankChargerSizingScreen(ScreenBase):
         used_ids = self._get_used_scenario_ids()
 
         opciones = []
+        had_candidates = False
         for esc in sorted(escenarios.keys()):
             if int(esc) in used_ids:
                 continue
+            had_candidates = True
             data = escenarios[esc]
             p = float(data.get("p_total", 0.0))
             i = float(data.get("i_total", 0.0))
+            if p <= 0.0 and i <= 0.0:
+                continue
             d = descs.get(str(esc), "")
             label = f"Escenario {esc} – {d} (P={p:.1f} W, I={i:.2f} A)"
             opciones.append((label, esc, p, i, d))
 
         if not opciones:
+            if had_candidates:
+                QMessageBox.information(
+                    self,
+                    "Escenarios C.C.",
+                    "No hay escenarios momentáneos con potencia mayor a cero para agregar.",
+                )
+                return
             QMessageBox.information(
                 self,
                 "No hay escenarios disponibles",

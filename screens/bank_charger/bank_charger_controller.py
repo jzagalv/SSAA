@@ -8,6 +8,7 @@ Low-risk approach: controller holds a reference to the screen and operates on it
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
@@ -65,6 +66,46 @@ class BankChargerController(BaseController):
 
         # Centralized update sequencing
         self.pipeline = BankChargerUpdatePipeline(screen=screen, controller=self)
+        self._subscribe_cc_computed_event()
+
+    def _subscribe_cc_computed_event(self) -> None:
+        dm = self.data_model
+        if dm is None:
+            return
+        bus = getattr(dm, "event_bus", None)
+        if bus is None:
+            return
+        try:
+            from app.events import Computed
+            bus.subscribe(Computed, self._on_computed_event)
+        except Exception:
+            logging.getLogger(__name__).debug("bank charger computed subscription failed", exc_info=True)
+
+    def _on_computed_event(self, event) -> None:
+        if getattr(event, "section", None) != Section.CC:
+            return
+        s = self.screen
+        # Force a fresh profile/IEEE read on next activation.
+        s._perfil_loaded = False
+        s._ieee_loaded = False
+
+        tabs = getattr(s, "inner_tabs", None)
+        if tabs is None:
+            return
+        idx = int(tabs.currentIndex())
+
+        # Hot refresh when profile tab is visible to keep scenario P/I in sync.
+        if idx == 1:
+            try:
+                if not getattr(s, "_perfil_loaded", False):
+                    self._refresh_perfil()
+                else:
+                    s._refresh_perfil_autocalc()
+                    s._update_cycle_table()
+                s._schedule_updates()
+                s._perfil_loaded = True
+            except Exception:
+                logging.getLogger(__name__).debug("bank charger hot profile refresh failed", exc_info=True)
 
     def commit_any_table(self, table: QTableWidget):
         s = self.screen
@@ -261,8 +302,8 @@ class BankChargerController(BaseController):
         has_persisted = bool(perfil_guardado) or bool(random_guardado)
 
         if not has_persisted:
-            # New/legacy-empty projects: initialize canonical defaults and persist them.
-            s._fill_perfil_cargas(save_to_model=True)
+            # Initialize UI defaults without persisting during refresh/open flows.
+            s._fill_perfil_cargas(save_to_model=False)
         s._load_perfil_cargas_from_model()
         s._refresh_perfil_autocalc()
         s._update_cycle_table()

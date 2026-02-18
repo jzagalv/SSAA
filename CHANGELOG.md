@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on *Keep a Changelog* and this project adheres to *Semantic Versioning*.
 
+## [1.4.0-alpha.204] - 2026-02-18
+### Fixed
+- Fix: Totales de escenarios en Momentáneos ahora respetan ‘Incl. perm.’ por escenario (pueden ser varios).
+- Fix: Perfil de cargas sincroniza P[W] de escenarios con P total[W] de Momentáneos y se actualiza ante cambios en CC.
+
+## [1.4.0-alpha.203] - 2026-02-17
+### Fixed
+- Fix: perfil de cargas consistente al abrir proyecto desde cualquier pantalla (evita sobrescritura de L2).
+
 ## [1.4.0-alpha.202] - 2026-02-16
 ### Added
 - Tests de contrato de refresh/recalc: cobertura de camino canónico para Instalaciones y Banco y Cargador, más propagación desde cambios de Proyecto.

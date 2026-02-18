@@ -1,15 +1,15 @@
 {
   "project": "SSAA",
   "stage": "Stage1",
-  "step": "4A.30",
-  "description": "Blindaje de contratos refresh/recalc + dirty warning unificado (Guardar/No guardar/Cancelar) al abrir/cerrar con cambios pendientes.",
+  "step": "4A.32",
+  "description": "Totales de Momentáneos por escenario respetan Incl. perm. y sincronización automática hacia Perfil de cargas en Banco/Cargador.",
   "breaking_changes": false,
   "frozen": false,
-  "semver": "1.4.0-alpha.202",
-  "version": "1.4.0-alpha.202.0",
-  "build": 173,
-  "notes": "Se agregan tests de contrato para refresh/recalc (Instalaciones y Banco/Cargador) y un DirtyTracker central para advertencias de cambios sin guardar en abrir/cerrar, evitando falsos positivos durante carga/refresh.",
-  "name": "SSAA_stage1_step_4A30",
-  "date": "2026-02-16",
+  "semver": "1.4.0-alpha.204",
+  "version": "1.4.0-alpha.204.0",
+  "build": 175,
+  "notes": "Momentáneos ahora aplica la cola de permanentes por escenario según cc_mom_incl_perm; Perfil de cargas sincroniza P/I de escenarios con los totales de C.C. y refresca ante Computed(CC).",
+  "name": "SSAA_stage1_step_4A32",
+  "date": "2026-02-18",
   "channel": "alpha"
 }
